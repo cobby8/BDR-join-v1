@@ -394,7 +394,7 @@
 
     try{
       const res = await fetch(`${WEB_APP_URL}?path=registerTeam`, {
-        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ team, players })
+        method:'POST', 'text/plain;charset=utf-8'}, body: JSON.stringify({ team, players })
       });
       const json = await res.json();
       if (json.ok){ showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId); }
