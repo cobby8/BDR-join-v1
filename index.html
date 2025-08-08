@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>BDR대회 참가신청</title>
+<title>농구대회 팀 참가신청</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -22,7 +22,7 @@
   .muted{color:#6b7684;font-size:13px;margin-top:6px}
   .btn{margin-top:18px;width:100%;padding:14px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-weight:700;font-size:17px;cursor:pointer}
   .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn.done{background:#2ebf6f} /* ✅ 제출 완료 상태 색상 */
+  .btn.done{background:#2ebf6f}
   .btn-sm{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer;margin-top:10px}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .chip{width:28px;height:28px;border-radius:50%;border:1px solid #e3e8ef;cursor:pointer}
@@ -33,7 +33,6 @@
   .player-toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s}
   .toast.show{opacity:1}
-  /* 날짜 입력 + 캘린더 버튼 */
   .date-field{position:relative;display:flex;align-items:center}
   .date-field input[type="date"]{width:100%;padding:14px 44px 14px 12px;border:1px solid #e6ecf5;border-radius:14px;font-size:16px}
   .calendar-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:1px solid #dfe6ee;background:#fff;border-radius:12px;padding:6px 8px;cursor:pointer}
@@ -44,7 +43,7 @@
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>BDR대회 참가신청서</h1>
+    <h1>팀 참가신청</h1>
     <div class="muted">팀 대표 정보 입력 → 선수 명단 자유 추가/삭제 → 제출</div>
 
     <!-- ① 팀 기본정보 -->
@@ -54,23 +53,12 @@
         <label>시도 선택</label>
         <select id="province">
           <option value="">선택</option>
-          <option>서울특별시</option>
-          <option>부산광역시</option>
-          <option>대구광역시</option>
-          <option>인천광역시</option>
-          <option>광주광역시</option>
-          <option>대전광역시</option>
-          <option>울산광역시</option>
-          <option>세종특별자치시</option>
-          <option>경기도</option>
-          <option>강원특별자치도</option>
-          <option>충청북도</option>
-          <option>충청남도</option>
-          <option>전북특별자치도</option>
-          <option>전라남도</option>
-          <option>경상북도</option>
-          <option>경상남도</option>
-          <option>제주특별자치도</option>
+          <option>서울특별시</option><option>부산광역시</option><option>대구광역시</option>
+          <option>인천광역시</option><option>광주광역시</option><option>대전광역시</option>
+          <option>울산광역시</option><option>세종특별자치시</option><option>경기도</option>
+          <option>강원특별자치도</option><option>충청북도</option><option>충청남도</option>
+          <option>전북특별자치도</option><option>전라남도</option><option>경상북도</option>
+          <option>경상남도</option><option>제주특별자치도</option>
         </select>
       </div>
       <div>
@@ -104,11 +92,7 @@
         <label>종별</label>
         <select id="category">
           <option value="">선택</option>
-          <option>일반부</option>
-          <option>대학부</option>
-          <option>여성부</option>
-          <option>유소년부</option>
-          <option>40대부</option>
+          <option>일반부</option><option>대학부</option><option>여성부</option><option>유소년부</option><option>40대부</option>
         </select>
       </div>
       <div>
@@ -170,7 +154,12 @@
 
 <script>
   // === 설정 ===
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
+  const WEB_APP_URL = '<<여기에_Apps_Script_웹앱_URL_붙여넣기>>'; // 새 배포 URL
+
+  // URL 파라미터 (수정 모드 진입용)
+  const qs = new URLSearchParams(location.search);
+  const editTeamId = qs.get('edit');
+  const editCode   = qs.get('code');
 
   // 종별 → 디비전 동적 매핑
   const divisionOptions = {
@@ -269,7 +258,7 @@
     list.forEach(city=>{ const o=document.createElement('option'); o.value=city; o.textContent=city; citySel.appendChild(o); });
   });
 
-  // 연령(만 나이) 계산 함수
+  // 연령(만 나이) 계산
   function calcAge(yyyyMMdd){
     if(!yyyyMMdd) return '';
     const d = new Date(yyyyMMdd);
@@ -281,7 +270,7 @@
     return age;
   }
 
-  // 선수 카드 템플릿
+  // 선수 카드
   function createPlayerCard(idx){
     const div = document.createElement('div');
     div.className = 'player-card';
@@ -360,12 +349,57 @@
     const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2600);
   }
 
-  /* ✅ 제출 핸들러 (중복 제출 방지 + 성공 시 버튼 고정) */
+  // ✅ 수정 모드 프리로드
+  async function preloadForEdit() {
+    if (!editTeamId || !editCode) return;
+    try {
+      const res = await fetch(`${WEB_APP_URL}?path=getTeam&teamId=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`);
+      const json = await res.json();
+      if (!json.ok) { alert('수정 링크가 유효하지 않습니다.'); return; }
+
+      // 팀 채우기
+      document.getElementById('province').value = json.team.province || '';
+      document.getElementById('province').dispatchEvent(new Event('change'));
+      setTimeout(()=>{ document.getElementById('city').value = json.team.city || ''; }, 0);
+      document.getElementById('teamName').value = json.team.teamName || '';
+      document.getElementById('managerName').value = json.team.managerName || '';
+      document.getElementById('managerPhone').value = json.team.managerPhone || '';
+      document.getElementById('category').value = json.team.category || '';
+      document.getElementById('category').dispatchEvent(new Event('change'));
+      setTimeout(()=>{ document.getElementById('division').value = json.team.division || ''; }, 0);
+      document.getElementById('uniformHome').value = json.team.uniformHome || '';
+      document.getElementById('uniformAway').value = json.team.uniformAway || '';
+      const uhPicker = document.getElementById('uniformHomePicker'); if (uhPicker) uhPicker.value = json.team.uniformHome || '#000000';
+      const uaPicker = document.getElementById('uniformAwayPicker'); if (uaPicker) uaPicker.value = json.team.uniformAway || '#ffffff';
+
+      // 선수 채우기
+      playersDiv.innerHTML = '';
+      (json.players || []).forEach((pl, idx)=>{
+        const card = createPlayerCard(idx);
+        card.querySelector('[data-key="name"]').value = pl.name || '';
+        card.querySelector('[data-key="number"]').value = pl.number || '';
+        card.querySelector('[data-key="position"]').value = pl.position || '';
+        const birth = card.querySelector('[data-key="birth"]');
+        birth.value = pl.birth || '';
+        birth.dispatchEvent(new Event('input'));
+        card.querySelector('[data-key="elite"]').value = pl.elite || '';
+        playersDiv.appendChild(card);
+      });
+
+      // 제출 버튼 라벨 변경
+      document.getElementById('submitBtn').textContent = '수정 저장';
+    } catch(e) {
+      console.error(e);
+    }
+  }
+  preloadForEdit();
+
+  /* ✅ 제출 핸들러 (중복 제출 방지 + 성공 시 버튼 고정 + 수정모드 분기) */
   const submitBtn = document.getElementById('submitBtn');
   let submitting = false;
 
   submitBtn.addEventListener('click', async ()=>{
-    if (submitting) return;          // 중복 클릭 방지
+    if (submitting) return;
     submitting = true;
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
@@ -388,10 +422,7 @@
 
     if (!region || !team.teamName || !team.managerName || !team.managerPhone){
       alert('시도/시군구, 팀명, 대표자, 연락처를 모두 입력해 주세요.');
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      submitting = false;
-      return;
+      submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return;
     }
 
     const playerCards = Array.from(playersDiv.querySelectorAll('.player-card'));
@@ -402,47 +433,52 @@
 
     if (players.length < 5){
       alert('선수는 최소 5명 이상 입력해 주세요.');
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      submitting = false;
-      return;
+      submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return;
     }
 
     const numbers = players.map(p=>p.number).filter(Boolean);
     const dup = numbers.find((n,i)=> n && numbers.indexOf(n) !== i);
     if (dup){
       const ok = confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`);
-      if (!ok){
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        submitting = false;
-        return;
-      }
+      if (!ok){ submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return; }
     }
 
     try{
-      const res = await fetch(`${WEB_APP_URL}?path=registerTeam`, {
+      const payload = { team, players };
+      let url = `${WEB_APP_URL}?path=registerTeam`;
+      if (editTeamId && editCode) {
+        url = `${WEB_APP_URL}?path=updateTeam`;
+        payload.teamId = editTeamId;
+        payload.editCode = editCode;
+      }
+
+      const res = await fetch(url, {
         method:'POST',
         headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // CORS 프리플라이트 회피
-        body: JSON.stringify({ team, players })
+        body: JSON.stringify(payload)
       });
       const json = await res.json();
+
       if (json.ok){
-        if (typeof showToast === 'function') showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId);
-        submitBtn.textContent = '제출 완료';
-        submitBtn.classList.add('done');
-        // 비활성화 유지 + submitting은 유지(중복 제출 차단)
+        if (editTeamId){
+          showToast('수정이 저장되었습니다.');
+          submitBtn.textContent = '수정 완료';
+        } else {
+          showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId);
+          submitBtn.textContent = '제출 완료';
+          // ✅ 수정 링크 안내
+          const editUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+          alert(`수정이 필요하면 아래 링크를 저장하세요.\n\n${editUrl}`);
+        }
+        submitBtn.classList.add('done'); // 초록색
+        // 비활성화 유지 + submitting 플래그 유지(중복 제출 방지)
       } else {
         alert('오류: ' + (json.error||'unknown'));
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        submitting = false;
+        submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
       }
-    }catch(err){
+    } catch(err){
       alert('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.\n' + err);
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      submitting = false;
+      submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
     }
   });
 </script>
