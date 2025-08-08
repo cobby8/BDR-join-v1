@@ -146,26 +146,6 @@
     <button class="btn-sm" id="addPlayerBtn">선수 추가 +</button>
     <div class="muted">※ 최소 5명 권장. 팀 내 등번호 중복 없도록 확인해 주세요.</div>
 
-/** Date|string → yyyy-mm-dd (HTML date input 호환) */
-function toYMD_(x) {
-  if (!x) return '';
-  if (x instanceof Date) {
-    return Utilities.formatDate(x, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  }
-  var s = String(x).trim();
-  // 2025.8.1 / 2025/08/01 등도 정규화
-  var m = s.match(/^(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/);
-  if (m) return m[1] + '-' + ('0'+m[2]).slice(-2) + '-' + ('0'+m[3]).slice(-2);
-  // ISO형(2025-08-01T..)면 앞 10글자만
-  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0,10);
-  // 이미 yyyy-mm-dd면 그대로
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  var d = new Date(s);
-  if (!isNaN(d.getTime())) return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  return '';
-}
-
-
     <!-- 제출 -->
     <button class="btn" id="submitBtn">신청서 제출</button>
     <!-- 수정 링크 표시 영역 (처음엔 숨김) -->
