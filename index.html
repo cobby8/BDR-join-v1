@@ -81,7 +81,7 @@
     <div class="row row-2">
       <div>
         <label>대표자 연락처</label>
-        <input id="managerPhone" placeholder="010-0000-0000" />
+        <input id="managerPhone" placeholder="010-0000-0000" inputmode="numeric" autocomplete="tel" />
       </div>
     </div>
 
@@ -154,9 +154,9 @@
 
 <script>
   // === 설정 ===
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec'; // 새 배포 URL
+  const WEB_APP_URL = '<<여기에_Apps_Script_웹앱_URL_붙여넣기>>'; // 최신 배포 URL
 
-  // URL 파라미터 (수정 모드 진입용)
+  // URL 파라미터 (수정 모드)
   const qs = new URLSearchParams(location.search);
   const editTeamId = qs.get('edit');
   const editCode   = qs.get('code');
@@ -349,6 +349,27 @@
     const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2600);
   }
 
+  /* ✅ 전화번호 자동 하이픈 */
+  function formatPhoneNumber(value) {
+    value = value.replace(/[^0-9]/g, '');
+    if (value.length < 4) {
+      return value;
+    } else if (value.length < 8) {
+      return value.replace(/(\d{3})(\d+)/, '$1-$2');
+    } else {
+      return value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
+    }
+  }
+  const phoneInput = document.getElementById('managerPhone');
+  phoneInput.addEventListener('input', function () {
+    const caret = this.selectionStart;
+    const before = this.value;
+    this.value = formatPhoneNumber(this.value);
+    // 간단한 커서 보정(필요시 개선 가능)
+    const diff = this.value.length - before.length;
+    this.selectionEnd = Math.max(0, (caret || 0) + diff);
+  });
+
   // ✅ 수정 모드 프리로드
   async function preloadForEdit() {
     if (!editTeamId || !editCode) return;
@@ -363,7 +384,7 @@
       setTimeout(()=>{ document.getElementById('city').value = json.team.city || ''; }, 0);
       document.getElementById('teamName').value = json.team.teamName || '';
       document.getElementById('managerName').value = json.team.managerName || '';
-      document.getElementById('managerPhone').value = json.team.managerPhone || '';
+      document.getElementById('managerPhone').value = formatPhoneNumber(json.team.managerPhone || '');
       document.getElementById('category').value = json.team.category || '';
       document.getElementById('category').dispatchEvent(new Event('change'));
       setTimeout(()=>{ document.getElementById('division').value = json.team.division || ''; }, 0);
@@ -466,12 +487,11 @@
         } else {
           showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId);
           submitBtn.textContent = '제출 완료';
-          // ✅ 수정 링크 안내
           const editUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
           alert(`수정이 필요하면 아래 링크를 저장하세요.\n\n${editUrl}`);
         }
         submitBtn.classList.add('done'); // 초록색
-        // 비활성화 유지 + submitting 플래그 유지(중복 제출 방지)
+        // 비활성화 유지 + submitting 유지 (중복 제출 차단)
       } else {
         alert('오류: ' + (json.error||'unknown'));
         submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
