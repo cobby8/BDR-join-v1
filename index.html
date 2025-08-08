@@ -146,28 +146,6 @@
     <button class="btn-sm" id="addPlayerBtn">선수 추가 +</button>
     <div class="muted">※ 최소 5명 권장. 팀 내 등번호 중복 없도록 확인해 주세요.</div>
 
-    /** 문자열/노트/배경색에서 HEX 추출 */
-function _normalizeHex_(hex) {
-  if (!hex) return '';
-  hex = String(hex).trim();
-  if (/^#[0-9A-Fa-f]{6}$/.test(hex)) return hex.toLowerCase();
-  if (/^[0-9A-Fa-f]{6}$/.test(hex)) return ('#' + hex).toLowerCase();
-  return '';
-}
-function _extractHex_(s) {
-  if (!s) return '';
-  var m = String(s).match(/#?[0-9A-Fa-f]{6}/);
-  return _normalizeHex_(m ? m[0] : '');
-}
-/** 유니폼 HEX 읽기: 값 → 노트 → 배경색 순으로 시도 */
-function getUniformHexFromCell_(sheet, rowIndex, colIndex) {
-  var rg = sheet.getRange(rowIndex, colIndex);
-  var v = _extractHex_(rg.getDisplayValue()); if (v) return v;
-  var n = _extractHex_(rg.getNote());         if (n) return n;
-  var b = _extractHex_(rg.getBackground());   if (b) return b;
-  return '';
-}
-
 /** Date|string → yyyy-mm-dd (HTML date input 호환) */
 function toYMD_(x) {
   if (!x) return '';
