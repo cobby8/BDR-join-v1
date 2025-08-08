@@ -22,6 +22,7 @@
   .muted{color:#6b7684;font-size:13px;margin-top:6px}
   .btn{margin-top:18px;width:100%;padding:14px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-weight:700;font-size:17px;cursor:pointer}
   .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.done{background:#2ebf6f} /* ✅ 제출 완료 상태 색상 */
   .btn-sm{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer;margin-top:10px}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .chip{width:28px;height:28px;border-radius:50%;border:1px solid #e3e8ef;cursor:pointer}
@@ -231,7 +232,7 @@
   bindColorSync('uniformHomePicker','uniformHome');
   bindColorSync('uniformAwayPicker','uniformAway');
 
-  // 시도 → 시군구 데이터 (요청 시 전체 행정구역 풀셋으로 확장 가능)
+  // 시도 → 시군구 데이터
   const regionData = {
     '서울특별시': ['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
     '부산광역시': ['강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구','기장군'],
@@ -359,8 +360,17 @@
     const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2600);
   }
 
-  // 제출 처리
-  document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  /* ✅ 제출 핸들러 (중복 제출 방지 + 성공 시 버튼 고정) */
+  const submitBtn = document.getElementById('submitBtn');
+  let submitting = false;
+
+  submitBtn.addEventListener('click', async ()=>{
+    if (submitting) return;          // 중복 클릭 방지
+    submitting = true;
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '제출 중...';
+
     const province = document.getElementById('province').value.trim();
     const city = document.getElementById('city').value.trim();
     const region = province && city ? `${province} ${city}` : '';
@@ -377,7 +387,11 @@
     };
 
     if (!region || !team.teamName || !team.managerName || !team.managerPhone){
-      return alert('시도/시군구, 팀명, 대표자, 연락처를 모두 입력해 주세요.');
+      alert('시도/시군구, 팀명, 대표자, 연락처를 모두 입력해 주세요.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      submitting = false;
+      return;
     }
 
     const playerCards = Array.from(playersDiv.querySelectorAll('.player-card'));
@@ -386,20 +400,50 @@
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), memo:get('elite') };
     }).filter(p => p.name);
 
-    if (players.length < 5) return alert('선수는 최소 5명 이상 입력해 주세요.');
+    if (players.length < 5){
+      alert('선수는 최소 5명 이상 입력해 주세요.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      submitting = false;
+      return;
+    }
 
     const numbers = players.map(p=>p.number).filter(Boolean);
     const dup = numbers.find((n,i)=> n && numbers.indexOf(n) !== i);
-    if (dup){ if (!confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`)) return; }
+    if (dup){
+      const ok = confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`);
+      if (!ok){
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        submitting = false;
+        return;
+      }
+    }
 
     try{
       const res = await fetch(`${WEB_APP_URL}?path=registerTeam`, {
-        method:'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify({ team, players })
+        method:'POST',
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // CORS 프리플라이트 회피
+        body: JSON.stringify({ team, players })
       });
       const json = await res.json();
-      if (json.ok){ showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId); }
-      else { alert('오류: ' + (json.error||'unknown')); }
-    }catch(err){ alert('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.\n' + err); }
+      if (json.ok){
+        if (typeof showToast === 'function') showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId);
+        submitBtn.textContent = '제출 완료';
+        submitBtn.classList.add('done');
+        // 비활성화 유지 + submitting은 유지(중복 제출 차단)
+      } else {
+        alert('오류: ' + (json.error||'unknown'));
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        submitting = false;
+      }
+    }catch(err){
+      alert('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.\n' + err);
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      submitting = false;
+    }
   });
 </script>
 </body>
