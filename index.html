@@ -148,6 +148,16 @@
 
     <!-- 제출 -->
     <button class="btn" id="submitBtn">신청서 제출</button>
+    <!-- 수정 링크 표시 영역 (처음엔 숨김) -->
+<div id="editLinkWrap" style="display:none; margin-top:10px;">
+  <div class="muted" style="margin-bottom:6px;">수정 링크</div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <input id="editLinkInput" type="text" readonly
+           style="flex:1; padding:10px 12px; border:1px solid #e6ecf5; border-radius:12px; font-size:14px;">
+    <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
+  </div>
+  <div class="muted" style="margin-top:6px;">※ 이 링크를 저장해 두면 이후에 참가신청서를 수정할 수 있어요.</div>
+</div>
     <div class="toast" id="toast">제출 완료!</div>
   </div>
 </div>
@@ -484,11 +494,40 @@
         if (editTeamId){
           showToast('수정이 저장되었습니다.');
           submitBtn.textContent = '수정 완료';
+          // 수정 링크 박스 표시
+function revealEditLink(url) {
+  const wrap  = document.getElementById('editLinkWrap');
+  const input = document.getElementById('editLinkInput');
+  input.value = url;
+  wrap.style.display = 'block';
+}
+
+// "복사" 버튼 동작
+(function bindCopyEditLink() {
+  const btn = document.getElementById('copyEditLinkBtn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const val = document.getElementById('editLinkInput').value;
+    try {
+      await navigator.clipboard.writeText(val);
+      showToast('링크가 복사되었습니다.');
+    } catch (e) {
+      // 구형 브라우저 대비
+      const input = document.getElementById('editLinkInput');
+      input.select();
+      document.execCommand('copy');
+      showToast('링크가 복사되었습니다.');
+    }
+  });
+})();
+
         } else {
           showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId);
           submitBtn.textContent = '제출 완료';
           const editUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-          alert(`수정이 필요하면 아래 링크를 저장하세요.\n\n${editUrl}`);
+revealEditLink(editUrl); // ✅ 제출 버튼 아래에 표시
+// alert(`수정이 필요하면 아래 링크를 저장하세요.\n\n${editUrl}`); // 원하면 이 알림은 지워도 됩니다.
+
         }
         submitBtn.classList.add('done'); // 초록색
         // 비활성화 유지 + submitting 유지 (중복 제출 차단)
