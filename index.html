@@ -38,6 +38,8 @@
   .calendar-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:1px solid #dfe6ee;background:#fff;border-radius:12px;padding:6px 8px;cursor:pointer}
   .calendar-btn:active{transform:translateY(-50%) scale(0.98)}
   .calendar-btn svg{width:18px;height:18px;display:block}
+  #editLinkWrap{display:none;margin-top:10px}
+  #editLinkInput{flex:1;padding:10px 12px;border:1px solid #e6ecf5;border-radius:12px;font-size:14px}
 </style>
 </head>
 <body>
@@ -148,30 +150,31 @@
 
     <!-- 제출 -->
     <button class="btn" id="submitBtn">신청서 제출</button>
-    <!-- 수정 링크 표시 영역 (처음엔 숨김) -->
-<div id="editLinkWrap" style="display:none; margin-top:10px;">
-  <div class="muted" style="margin-bottom:6px;">수정 링크</div>
-  <div style="display:flex; gap:8px; align-items:center;">
-    <input id="editLinkInput" type="text" readonly
-           style="flex:1; padding:10px 12px; border:1px solid #e6ecf5; border-radius:12px; font-size:14px;">
-    <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
-  </div>
-  <div class="muted" style="margin-top:6px;">※ 이 링크를 저장해 두면 이후에 참가신청서를 수정할 수 있어요.</div>
-</div>
+
+    <!-- 수정 링크 표시 (제출 성공 시 노출) -->
+    <div id="editLinkWrap">
+      <div class="muted" style="margin-bottom:6px;">수정 링크</div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input id="editLinkInput" type="text" readonly>
+        <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
+      </div>
+      <div class="muted" style="margin-top:6px;">※ 이 링크를 저장해 두면 이후에 참가신청서를 수정할 수 있어요.</div>
+    </div>
+
     <div class="toast" id="toast">제출 완료!</div>
   </div>
 </div>
 
 <script>
-  // === 설정 ===
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec'; // 최신 배포 URL
+  /* ====== 설정 ====== */
+  const WEB_APP_URL = '<<여기에_Apps_Script_웹앱_URL_붙여넣기>>'; // 예: https://script.google.com/macros/s/XXXXX/exec
 
   // URL 파라미터 (수정 모드)
   const qs = new URLSearchParams(location.search);
   const editTeamId = qs.get('edit');
   const editCode   = qs.get('code');
 
-  // 종별 → 디비전 동적 매핑
+  /* ====== 종별 → 디비전 ====== */
   const divisionOptions = {
     '일반부': ['D3','D4','D5','D6','D7'],
     '대학부': ['U1','U2'],
@@ -189,11 +192,6 @@
       divisionSelect.innerHTML = '<option value="">종별을 먼저 선택하세요</option>';
       return;
     }
-    if (list.length === 0){
-      divisionSelect.disabled = true;
-      divisionSelect.innerHTML = '<option value="">해당 종별의 디비전 없음</option>';
-      return;
-    }
     divisionSelect.disabled = false;
     const opt0 = document.createElement('option');
     opt0.value = ''; opt0.textContent = '선택';
@@ -205,7 +203,7 @@
   categorySelect.addEventListener('change', e=>populateDivision(e.target.value));
   populateDivision('');
 
-  // 유니폼: 컬러칩 ↔ 컬러피커 ↔ HEX
+  /* ====== 유니폼 컬러칩/피커 동기화 ====== */
   document.querySelectorAll('.chips').forEach(chipRow => {
     const targetId = chipRow.getAttribute('data-target');
     chipRow.addEventListener('click', e => {
@@ -231,7 +229,7 @@
   bindColorSync('uniformHomePicker','uniformHome');
   bindColorSync('uniformAwayPicker','uniformAway');
 
-  // 시도 → 시군구 데이터
+  /* ====== 시도 → 시군구 ====== */
   const regionData = {
     '서울특별시': ['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
     '부산광역시': ['강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구','기장군'],
@@ -251,7 +249,6 @@
     '경상남도': ['거제시','김해시','밀양시','사천시','양산시','진주시','창원시','통영시','거창군','고성군','남해군','산청군','의령군','창녕군','하동군','함안군','함양군','합천군'],
     '제주특별자치도': ['제주시','서귀포시']
   };
-
   const provinceSel = document.getElementById('province');
   const citySel = document.getElementById('city');
   provinceSel.addEventListener('change', e => {
@@ -268,7 +265,7 @@
     list.forEach(city=>{ const o=document.createElement('option'); o.value=city; o.textContent=city; citySel.appendChild(o); });
   });
 
-  // 연령(만 나이) 계산
+  /* ====== 만 나이 계산 ====== */
   function calcAge(yyyyMMdd){
     if(!yyyyMMdd) return '';
     const d = new Date(yyyyMMdd);
@@ -280,7 +277,7 @@
     return age;
   }
 
-  // 선수 카드
+  /* ====== 선수 카드 ====== */
   function createPlayerCard(idx){
     const div = document.createElement('div');
     div.className = 'player-card';
@@ -337,7 +334,7 @@
     const ageEl = div.querySelector('.age-text');
     const updateAge = () => {
       const v = dateInput.value; const age = calcAge(v);
-      if (ageEl) ageEl.textContent = '만 나이: ' + (age === '' ? '-' : age + '세');
+      ageEl.textContent = '만 나이: ' + (age === '' ? '-' : age + '세');
     };
     if (calBtn && dateInput) {
       calBtn.addEventListener('click', () => { if (dateInput.showPicker) dateInput.showPicker(); else { dateInput.focus(); dateInput.click(); } });
@@ -355,32 +352,28 @@
   });
   for(let i=0;i<5;i++) addPlayerBtn.click(); // 기본 5명
 
+  /* ====== 토스트 ====== */
   function showToast(msg){
     const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2600);
   }
 
-  /* ✅ 전화번호 자동 하이픈 */
+  /* ====== 전화번호 자동 하이픈 ====== */
   function formatPhoneNumber(value) {
     value = value.replace(/[^0-9]/g, '');
-    if (value.length < 4) {
-      return value;
-    } else if (value.length < 8) {
-      return value.replace(/(\d{3})(\d+)/, '$1-$2');
-    } else {
-      return value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
-    }
+    if (value.length < 4) return value;
+    if (value.length < 8) return value.replace(/(\d{3})(\d+)/, '$1-$2');
+    return value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
   }
   const phoneInput = document.getElementById('managerPhone');
   phoneInput.addEventListener('input', function () {
     const caret = this.selectionStart;
     const before = this.value;
     this.value = formatPhoneNumber(this.value);
-    // 간단한 커서 보정(필요시 개선 가능)
     const diff = this.value.length - before.length;
     this.selectionEnd = Math.max(0, (caret || 0) + diff);
   });
 
-  // ✅ 수정 모드 프리로드
+  /* ====== 수정 모드 프리로드 ====== */
   async function preloadForEdit() {
     if (!editTeamId || !editCode) return;
     try {
@@ -417,15 +410,40 @@
         playersDiv.appendChild(card);
       });
 
-      // 제출 버튼 라벨 변경
+      // 제출 버튼 라벨 & 수정 링크 표시
       document.getElementById('submitBtn').textContent = '수정 저장';
+      if (json.editUrl) revealEditLink(json.editUrl);
     } catch(e) {
       console.error(e);
     }
   }
   preloadForEdit();
 
-  /* ✅ 제출 핸들러 (중복 제출 방지 + 성공 시 버튼 고정 + 수정모드 분기) */
+  /* ====== 수정 링크 표시/복사 ====== */
+  function revealEditLink(url) {
+    const wrap  = document.getElementById('editLinkWrap');
+    const input = document.getElementById('editLinkInput');
+    input.value = url;
+    wrap.style.display = 'block';
+  }
+  (function bindCopyEditLink() {
+    const btn = document.getElementById('copyEditLinkBtn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      const val = document.getElementById('editLinkInput').value;
+      try {
+        await navigator.clipboard.writeText(val);
+        showToast('링크가 복사되었습니다.');
+      } catch (e) {
+        const input = document.getElementById('editLinkInput');
+        input.select();
+        document.execCommand('copy');
+        showToast('링크가 복사되었습니다.');
+      }
+    });
+  })();
+
+  /* ====== 제출 핸들러 (중복 제출 방지) ====== */
   const submitBtn = document.getElementById('submitBtn');
   let submitting = false;
 
@@ -458,7 +476,7 @@
 
     const playerCards = Array.from(playersDiv.querySelectorAll('.player-card'));
     const players = playerCards.map(card=>{
-      const get = k => card.querySelector(`[data-key="${k}"]`).value.trim();
+      const get = k => (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), memo:get('elite') };
     }).filter(p => p.name);
 
@@ -475,7 +493,12 @@
     }
 
     try{
-      const payload = { team, players };
+      const payload = {
+        team,
+        players,
+        // 백엔드에서 editUrl 생성 시 사용할 기준 경로 전달(도메인 바뀌어도 안전)
+        base: location.origin + location.pathname
+      };
       let url = `${WEB_APP_URL}?path=registerTeam`;
       if (editTeamId && editCode) {
         url = `${WEB_APP_URL}?path=updateTeam`;
@@ -485,7 +508,7 @@
 
       const res = await fetch(url, {
         method:'POST',
-        headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // CORS 프리플라이트 회피
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // 프리플라이트 회피
         body: JSON.stringify(payload)
       });
       const json = await res.json();
@@ -494,43 +517,15 @@
         if (editTeamId){
           showToast('수정이 저장되었습니다.');
           submitBtn.textContent = '수정 완료';
-          // 수정 링크 박스 표시
-function revealEditLink(url) {
-  const wrap  = document.getElementById('editLinkWrap');
-  const input = document.getElementById('editLinkInput');
-  input.value = url;
-  wrap.style.display = 'block';
-}
-
-// "복사" 버튼 동작
-(function bindCopyEditLink() {
-  const btn = document.getElementById('copyEditLinkBtn');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const val = document.getElementById('editLinkInput').value;
-    try {
-      await navigator.clipboard.writeText(val);
-      showToast('링크가 복사되었습니다.');
-    } catch (e) {
-      // 구형 브라우저 대비
-      const input = document.getElementById('editLinkInput');
-      input.select();
-      document.execCommand('copy');
-      showToast('링크가 복사되었습니다.');
-    }
-  });
-})();
-
+          if (json.editUrl) revealEditLink(json.editUrl);
         } else {
           showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId);
           submitBtn.textContent = '제출 완료';
-          const editUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-revealEditLink(editUrl); // ✅ 제출 버튼 아래에 표시
-// alert(`수정이 필요하면 아래 링크를 저장하세요.\n\n${editUrl}`); // 원하면 이 알림은 지워도 됩니다.
-
+          const fallbackEditUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+          revealEditLink(json.editUrl || fallbackEditUrl);
         }
         submitBtn.classList.add('done'); // 초록색
-        // 비활성화 유지 + submitting 유지 (중복 제출 차단)
+        // 비활성화 유지(중복 제출 방지)
       } else {
         alert('오류: ' + (json.error||'unknown'));
         submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
