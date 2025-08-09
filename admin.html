@@ -3,351 +3,381 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>농구대회 관리자</title>
+<title>BDR 관리자</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --blue:#1769ff; --bg:#f6f8fb; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:18px; }
+  :root{ --blue:#1769ff; --bg:#f6f8fb; --card:#fff; --muted:#6b7684; --red:#ef4444; --green:#16a34a }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
-  .wrap{max-width:1200px;margin:28px auto;padding:16px}
-  h1{font-size:22px;margin:0 0 14px}
-  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px 64px}
+  header{display:flex;justify-content:space-between;align-items:center;margin:10px 0 18px}
+  h1{font-size:20px;margin:0}
+  .card{background:var(--card);border-radius:14px;box-shadow:0 8px 28px rgba(23,105,255,.08);padding:16px;margin-top:16px}
   .row{display:grid;gap:12px}
-  @media(min-width:840px){ .row-4{grid-template-columns:2fr 1fr 1fr 1fr} }
-  label{font-weight:600;font-size:13px;display:block;margin-bottom:6px}
-  input,select{width:100%;padding:12px;border:1px solid #e6ecf5;border-radius:12px;font-size:14px;outline:none}
-  input:focus,select:focus{border-color:var(--blue)}
-  table{width:100%;border-collapse:separate;border-spacing:0;margin-top:14px}
-  th,td{padding:10px 12px;border-bottom:1px solid #eef2f7;font-size:14px;text-align:left;vertical-align:middle}
-  th{font-size:12px;color:#6b7684}
-  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:#eef4ff;color:#1b4fff;font-weight:600;font-size:12px}
-  .btn{padding:10px 12px;border:none;border-radius:10px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+  @media(min-width:720px){ .row-2{grid-template-columns:1.2fr 2fr} .row-3{grid-template-columns:1fr 1fr 1fr} }
+  label{display:block;font-weight:600;margin:10px 0 6px}
+  input,select,textarea{width:100%;padding:12px;border:1px solid #e6ecf5;border-radius:12px;font-size:14px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+  .btn{padding:10px 14px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn.danger{background:#fff;color:var(--red);border-color:#ffd1d1}
   .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn-ghost{padding:8px 10px;border:1px solid #e6ecf5;border-radius:10px;background:#fff;cursor:pointer}
-  .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;border:1px solid #e6ecf5;background:#fff}
-  .muted{color:#6b7684;font-size:12px}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
-  .flex{display:flex;gap:8px;align-items:center}
-  .right{margin-left:auto}
-  .drawer{position:fixed;right:0;top:0;width:420px;max-width:100%;height:100%;background:#fff;box-shadow:-8px 0 32px #0000001a;padding:16px 16px 90px;border-left:1px solid #eef2f7;transform:translateX(100%);transition:.25s}
-  .drawer.open{transform:translateX(0)}
-  .drawer h2{margin:4px 0 10px;font-size:18px}
-  .drawer .close{position:absolute;right:12px;top:12px}
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .swatch{width:18px;height:18px;border-radius:4px;border:1px solid #e3e8ef;display:inline-block;vertical-align:middle;margin-left:6px}
-  .sticky-bottom{position:fixed;right:16px;bottom:16px;display:flex;gap:8px}
-  .status-접수{background:#f1f5ff;color:#1b4fff}
-  .status-확정{background:#e8fff2;color:#0a9b4e}
-  .status-취소{background:#fff2f2;color:#d93025}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .muted{color:var(--muted);font-size:12px}
+  table{width:100%;border-collapse:separate;border-spacing:0 10px}
+  th{font-size:12px;color:#5b6472;text-align:left;padding:0 10px}
+  td{background:#fff;padding:12px 10px;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7}
+  tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
+  tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
+  .badge{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:#334155;background:#f1f5fb;border:1px solid #e4ecf7;border-radius:999px;padding:4px 8px}
+  .right{display:flex;justify-content:flex-end}
+  .w-140{width:140px}
+  .jersey{display:inline-flex;align-items:center;gap:6px}
+  .searchbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-block;border:1px solid #e6ecf5;border-radius:999px;padding:6px 10px;font-size:12px}
+  .grid{display:grid;gap:10px}
+  .grid-2{grid-template-columns:1fr 1fr}
+  .help{font-size:12px;color:#6b7280}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>농구대회 관리자</h1>
-
-  <div class="card">
-    <div class="row row-4">
-      <div>
-        <label>검색(팀명/대표/연락처/지역)</label>
-        <input id="q" placeholder="예: 슬로우 / 홍길동 / 010-..." />
-      </div>
-      <div>
-        <label>종별</label>
-        <select id="fCategory">
-          <option value="">전체</option>
-          <option>일반부</option><option>대학부</option><option>여성부</option><option>유소년부</option><option>40대부</option>
-        </select>
-      </div>
-      <div>
-        <label>디비전</label>
-        <select id="fDivision">
-          <option value="">전체</option>
-          <option>D3</option><option>D4</option><option>D5</option><option>D6</option><option>D7</option>
-          <option>U1</option><option>U2</option>
-          <option>하모니</option><option>i1</option><option>i2</option><option>i3</option><option>i4</option>
-        </select>
-      </div>
-      <div>
-        <label>상태</label>
-        <select id="fStatus">
-          <option value="">전체</option>
-          <option>접수</option>
-          <option>확정</option>
-          <option>취소</option>
-        </select>
-      </div>
-    </div>
-
+  <header>
+    <h1>BDR 관리자</h1>
     <div class="toolbar">
-      <div class="flex">
-        <span class="badge" id="countBadge">로딩중...</span>
-        <button class="btn-ghost" id="refreshBtn">새로고침</button>
-      </div>
-      <div class="flex">
-        <button class="btn-ghost" id="exportTeamsBtn">팀 목록 CSV</button>
-      </div>
+      <span class="muted" id="healthDot">●</span>
+      <button class="btn" id="reloadBtn">새로고침</button>
     </div>
+  </header>
 
-    <table id="teamsTable">
-      <thead>
-        <tr>
-          <th>팀ID</th>
-          <th>지역</th>
-          <th>팀명</th>
-          <th>대표자</th>
-          <th>연락처</th>
-          <th>종별</th>
-          <th>디비전</th>
-          <th>유니폼</th>
-          <th>신청일시</th>
-          <th>상태</th>
-          <th>액션</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- 선수 드로어 -->
-<div class="drawer" id="drawer">
-  <button class="btn-ghost close" id="closeDrawer">닫기</button>
-  <h2 id="drawerTitle">선수 목록</h2>
-  <div class="muted" id="drawerMeta"></div>
-
-  <div class="toolbar" style="margin:10px 0">
-    <div class="flex">
-      <button class="btn-ghost" id="exportPlayersBtn">이 팀 선수 CSV</button>
+  <!-- 설정 -->
+  <div class="card">
+    <div class="row row-3">
+      <div>
+        <label>https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec</label>
+        <input id="appUrl" placeholder="https://script.google.com/macros/s/xxx/exec">
+        <div class="help">배포 URL. 브라우저 로컬에 저장됩니다.</div>
+      </div>
+      <div>
+        <label>대회 필터</label>
+        <select id="tourFilter"><option value="">전체 대회</option></select>
+      </div>
+      <div class="right">
+        <button class="btn primary" id="saveSettings">설정 저장</button>
+      </div>
     </div>
   </div>
 
-  <table id="playersTable">
-    <thead>
-      <tr>
-        <th>출석</th>
-        <th>PlayerID</th>
-        <th>이름</th>
-        <th>등번호</th>
-        <th>포지션</th>
-        <th>생년월일</th>
-        <th>만나이</th>
-        <th>선출여부</th>
-        <th>등록일시</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+  <!-- 대회 관리 -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0;font-size:16px">대회 관리</h3>
+      <div class="toolbar">
+        <button class="btn" id="newTourBtn">신규 대회</button>
+      </div>
+    </div>
 
-<div class="sticky-bottom">
-  <a class="btn-ghost" href="./index.html" target="_blank">신청 페이지 열기</a>
+    <div class="row row-2">
+      <div>
+        <label>대회 목록</label>
+        <div id="tourList" class="grid"></div>
+      </div>
+
+      <div>
+        <label id="tourFormTitle">대회 등록/수정</label>
+        <div class="grid grid-2">
+          <input id="tourId" placeholder="자동생성 (수정 시 고정)" disabled>
+          <input id="tourName" placeholder="대회명">
+          <input id="tourStart" type="date" placeholder="시작일">
+          <input id="tourEnd" type="date" placeholder="종료일">
+          <input id="tourStatus" placeholder="상태(접수중, 마감 등)">
+          <input id="tourUrl" placeholder="안내 페이지 URL (선택)">
+        </div>
+        <label style="margin-top:12px">종별/디비전(대회별)</label>
+        <textarea id="tourDivs" rows="5" placeholder="예시) 
+일반부: D3,D4,D5
+여성부: D3,D4
+40대부: D3,D4,D5
+유소년부: 하모니,i1,i2,i3"></textarea>
+        <div class="help">한 줄에 <b>종별: 디비전,디비전</b> 형식으로 입력하세요.</div>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn primary" id="saveTourBtn">저장</button>
+          <button class="btn danger" id="deleteTourBtn">삭제</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 팀/선수 -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0;font-size:16px">팀 / 선수</h3>
+      <div class="searchbar">
+        <input id="searchText" placeholder="팀명/대표자/연락처 검색" class="w-140">
+        <button class="btn" id="searchBtn">검색</button>
+      </div>
+    </div>
+
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>팀ID</th>
+            <th>대회</th>
+            <th>지역</th>
+            <th>팀명 / 대표</th>
+            <th>종별·디비전</th>
+            <th>유니폼</th>
+            <th>신청일시</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="teamsTbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
-  /* ====== 설정 ====== */
-  const WEB_APP_URL = '<<여기에_Apps_Script_웹앱_URL_붙여넣기>>'; // https://script.google.com/macros/s/xxxx/exec
+/* ========= 설정 저장/로드 ========= */
+const store = {
+  get key(){ return 'BDR_ADMIN_CONF' },
+  load(){
+    try { return JSON.parse(localStorage.getItem(this.key) || '{}'); }
+    catch { return {} }
+  },
+  save(obj){ localStorage.setItem(this.key, JSON.stringify(obj||{})); }
+};
+const conf = store.load();
+const $ = s => document.querySelector(s);
+const appUrlInput = $('#appUrl');
+appUrlInput.value = conf.appUrl || '';
 
-  /* ====== 상태 ====== */
-  let allTeams = [];
-  let filteredTeams = [];
-  let currentTeam = null; // {TeamID, ...}
-
-  /* ====== 유틸 ====== */
-  const el = sel => document.querySelector(sel);
-  const fmtDateTime = v => {
-    if (!v) return '';
-    // 시트에서 Date로 내려올 수도/문자일 수도 → Date 시도
-    const d = new Date(v);
-    if (!isNaN(d.getTime())) {
-      const pad = n => (n<10?'0'+n:n);
-      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    }
-    return String(v);
-  };
-  const makeCSV = rows => {
-    const esc = s => `"${String(s ?? '').replace(/"/g,'""')}"`;
-    return rows.map(r => r.map(esc).join(',')).join('\r\n');
-  };
-  const download = (name, text) => {
-    const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
-  /* ====== 데이터 로드 ====== */
-  async function loadTeams() {
-    el('#countBadge').textContent = '로딩중...';
-    const res = await fetch(`${WEB_APP_URL}?path=teams`);
-    const json = await res.json();
-    if (!json.ok) { alert('팀 목록을 불러오지 못했습니다.'); return; }
-    // json.rows = [{TeamID, 시도, 시군구, 팀명, 대표자이름, 대표자연락처, 종별, 디비전, 유니폼(홈), 유니폼(어웨이), 신청일시, 상태, 비고, 수정코드}]
-    allTeams = json.rows || [];
-    applyFilters();
-  }
-
-  function applyFilters() {
-    const q = el('#q').value.trim().toLowerCase();
-    const fCat = el('#fCategory').value;
-    const fDiv = el('#fDivision').value;
-    const fStatus = el('#fStatus').value;
-
-    filteredTeams = allTeams.filter(t => {
-      const region = `${t['시도'] || ''} ${t['시군구'] || ''}`.trim();
-      const hay = [t.TeamID, region, t['팀명'], t['대표자이름'], t['대표자연락처']].map(x => String(x||'').toLowerCase()).join(' ');
-      if (q && !hay.includes(q)) return false;
-      if (fCat && t['종별'] !== fCat) return false;
-      if (fDiv && t['디비전'] !== fDiv) return false;
-      if (fStatus && t['상태'] !== fStatus) return false;
-      return true;
-    });
-    renderTeams();
-  }
-
-  function renderTeams() {
-    const tb = el('#teamsTable tbody');
-    tb.innerHTML = '';
-    el('#countBadge').textContent = `팀 ${filteredTeams.length} / 전체 ${allTeams.length}`;
-
-    filteredTeams.forEach(row => {
-      const tr = document.createElement('tr');
-
-      // 유니폼 컬러: 시트에 배경만 있고 값은 공백일 수 있어 hex 표시가 없을 수 있음 → 화면에서는 스와치로만 표현
-      const uni = document.createElement('div');
-      uni.innerHTML = `
-        <span class="pill">홈</span><span class="swatch" data-home></span>
-        <span class="pill" style="margin-left:6px;">원정</span><span class="swatch" data-away></span>
-      `;
-
-      tr.innerHTML = `
-        <td>${row.TeamID}</td>
-        <td>${(row['시도']||'') + ' ' + (row['시군구']||'')}</td>
-        <td>${row['팀명']||''}</td>
-        <td>${row['대표자이름']||''}</td>
-        <td>${row['대표자연락처']||''}</td>
-        <td>${row['종별']||''}</td>
-        <td>${row['디비전']||''}</td>
-        <td></td>
-        <td>${fmtDateTime(row['신청일시'])}</td>
-        <td><span class="pill status-${row['상태']||'접수'}">${row['상태']||'접수'}</span></td>
-        <td><button class="btn-ghost btn-view" data-team="${row.TeamID}">보기</button></td>
-      `;
-
-      tr.children[7].appendChild(uni);
-
-      // 팀 행에 임시로 홈/어웨이 컬러를 붙이는 방법:
-      // listTeams_가 현재 셀값(hex)을 돌려줄 수도/빈값일 수도 있으므로, hex가 있으면 칠하고 없으면 회색.
-      const homeHex = row['유니폼(홈)'] || '';
-      const awayHex = row['유니폼(어웨이)'] || '';
-      const hSw = uni.querySelector('[data-home]');
-      const aSw = uni.querySelector('[data-away]');
-      hSw.style.background = homeHex || '#e9eef5';
-      aSw.style.background = awayHex || '#e9eef5';
-
-      tb.appendChild(tr);
-    });
-
-    // row action
-    tb.querySelectorAll('.btn-view').forEach(btn=>{
-      btn.addEventListener('click', ()=> openTeam(btn.dataset.team));
-    });
-  }
-
-  /* ====== 팀 열고 선수 보기 ====== */
-  async function openTeam(teamId) {
-    currentTeam = (allTeams.find(t => t.TeamID === teamId) || null);
-    if (!currentTeam) return;
-
-    el('#drawerTitle').textContent = `[${currentTeam.TeamID}] ${currentTeam['팀명']||''}`;
-    el('#drawerMeta').textContent = `${(currentTeam['시도']||'')} ${(currentTeam['시군구']||'')} · ${currentTeam['종별']||''} / ${currentTeam['디비전']||''}`;
-
-    // 선수 불러오기
-    const res = await fetch(`${WEB_APP_URL}?path=players&teamId=${encodeURIComponent(teamId)}`);
-    const json = await res.json();
-    if (!json.ok) { alert('선수 목록을 불러오지 못했습니다.'); return; }
-    renderPlayers(json.rows || []);
-
-    el('#drawer').classList.add('open');
-  }
-
-  function renderPlayers(rows) {
-    const tb = el('#playersTable tbody');
-    tb.innerHTML = '';
-    rows.forEach(r=>{
-      const tr = document.createElement('tr');
-      const checked = r['출석'] === 'Y';
-      tr.innerHTML = `
-        <td><input type="checkbox" class="att" data-player="${r.PlayerID}" ${checked?'checked':''}></td>
-        <td>${r.PlayerID}</td>
-        <td>${r['선수이름']||''}</td>
-        <td>${r['등번호']||''}</td>
-        <td>${r['포지션']||''}</td>
-        <td>${r['생년월일']||''}</td>
-        <td>${r['만나이']||''}</td>
-        <td>${r['선출여부']||''}</td>
-        <td>${fmtDateTime(r['등록일시'])}</td>
-      `;
-      tb.appendChild(tr);
-    });
-
-    // 출석 토글
-    tb.querySelectorAll('input.att').forEach(chk=>{
-      chk.addEventListener('change', async (e)=>{
-        const playerId = e.target.dataset.player;
-        const present = e.target.checked;
-        try{
-          const res = await fetch(`${WEB_APP_URL}?path=checkin`, {
-            method:'POST',
-            headers:{'Content-Type':'text/plain;charset=utf-8'},
-            body: JSON.stringify({ playerId, present })
-          });
-          const json = await res.json();
-          if (!json.ok) throw new Error(json.error||'checkin failed');
-        }catch(err){
-          alert('출석 업데이트 실패: ' + err);
-          e.target.checked = !present; // 롤백
-        }
-      });
-    });
-
-    // CSV 내보내기 바인딩
-    el('#exportPlayersBtn').onclick = ()=>{
-      const header = ['PlayerID','TeamID','선수이름','등번호','포지션','생년월일','만나이','선출여부','등록일시','출석'];
-      const data = rows.map(r=>[
-        r.PlayerID, r.TeamID, r['선수이름']||'', r['등번호']||'',
-        r['포지션']||'', r['생년월일']||'', r['만나이']||'',
-        r['선출여부']||'', fmtDateTime(r['등록일시'])||'', r['출석']||''
-      ]);
-      download(`${currentTeam.TeamID}_players.csv`, makeCSV([header, ...data]));
-    };
-  }
-
-  /* ====== 이벤트 ====== */
-  el('#refreshBtn').addEventListener('click', loadTeams);
-  ['#q','#fCategory','#fDivision','#fStatus'].forEach(sel=>{
-    el(sel).addEventListener('input', applyFilters);
-    el(sel).addEventListener('change', applyFilters);
+/* ========= API 호출 ========= */
+function apiUrl(path, q={}) {
+  const base = (appUrlInput.value || '').trim();
+  const url = new URL(base);
+  url.searchParams.set('path', path);
+  Object.entries(q).forEach(([k,v])=> url.searchParams.set(k, v));
+  return url.toString();
+}
+async function getJSON(u){ const r = await fetch(u); return r.json(); }
+async function postJSON(path, payload){
+  const r = await fetch(apiUrl(path), {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(payload||{})
   });
-  el('#closeDrawer').addEventListener('click', ()=> el('#drawer').classList.remove('open'));
+  return r.json();
+}
 
-  // 팀 CSV
-  el('#exportTeamsBtn').addEventListener('click', ()=>{
-    const header = ['TeamID','시도','시군구','팀명','대표자이름','대표자연락처','종별','디비전','유니폼(홈)','유니폼(어웨이)','신청일시','상태','비고'];
-    const data = filteredTeams.map(t=>[
-      t.TeamID, t['시도']||'', t['시군구']||'', t['팀명']||'',
-      t['대표자이름']||'', t['대표자연락처']||'', t['종별']||'',
-      t['디비전']||'', t['유니폼(홈)']||'', t['유니폼(어웨이)']||'',
-      fmtDateTime(t['신청일시'])||'', t['상태']||'', t['비고']||''
-    ]);
-    download(`teams.csv`, makeCSV([header, ...data]));
+/* ========= 헬스 체크 ========= */
+async function health(){
+  if(!appUrlInput.value) return;
+  try{
+    const j = await getJSON(apiUrl('health'));
+    $('#healthDot').style.color = j.ok ? '#22c55e' : '#ef4444';
+  }catch{ $('#healthDot').style.color = '#ef4444'; }
+}
+
+/* ========= 대회 로드/표시 ========= */
+let TOURS = {};   // {id: {...}}
+let TOUR_ARRAY = [];
+
+function divsToText(divs){
+  if (!divs) return '';
+  return Object.keys(divs).map(k=> `${k}: ${(divs[k]||[]).join(',')}`).join('\n');
+}
+function textToDivs(text){
+  const out = {};
+  (text||'').split('\n').map(s=>s.trim()).filter(Boolean).forEach(line=>{
+    const [cat, rest] = line.split(':').map(s=> (s||'').trim());
+    if(!cat || !rest) return;
+    out[cat] = rest.split(',').map(s=>s.trim()).filter(Boolean);
   });
+  return out;
+}
 
-  // 최초 로드
-  loadTeams();
+async function loadTournaments(){
+  if(!appUrlInput.value) return;
+  const j = await getJSON(apiUrl('tournaments'));
+  TOURS = {}; TOUR_ARRAY = j.rows || [];
+  TOUR_ARRAY.forEach(t => TOURS[t.TourID] = t);
+  renderTournamentList();
+  renderTourFilter();
+}
+function renderTourFilter(){
+  const sel = $('#tourFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체 대회</option>';
+  TOUR_ARRAY.forEach(t=>{
+    const o = document.createElement('option');
+    o.value = t.TourID; o.textContent = t.name;
+    sel.appendChild(o);
+  });
+  if (TOUR_ARRAY.find(x=>x.TourID===cur)) sel.value = cur;
+}
+
+function tourCard(t){
+  const range = (t.start||t.end) ? `${fmtDate(t.start)} ~ ${fmtDate(t.end)}` : '일정미정';
+  return `
+    <div class="pill" data-id="${t.TourID}">
+      <b>${t.name}</b> · ${t.status||'상태미정'} · ${range}
+    </div>`;
+}
+function renderTournamentList(){
+  const box = $('#tourList');
+  box.innerHTML = (TOUR_ARRAY||[]).map(t=>tourCard(t)).join('');
+  // 클릭 → 편집으로 로드
+  box.querySelectorAll('.pill').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const t = TOURS[el.dataset.id];
+      loadTourToForm(t);
+    });
+  });
+}
+function loadTourToForm(t){
+  $('#tourFormTitle').textContent = '대회 수정';
+  $('#tourId').value = t.TourID || '';
+  $('#tourName').value = t.name || '';
+  $('#tourStart').valueAsDate = t.start ? new Date(t.start) : null;
+  $('#tourEnd').valueAsDate   = t.end ? new Date(t.end) : null;
+  $('#tourStatus').value = t.status || '';
+  $('#tourUrl').value = t.url || '';
+  $('#tourDivs').value = divsToText(t.divs || {});
+}
+function clearTourForm(){
+  $('#tourFormTitle').textContent = '대회 등록';
+  ['tourId','tourName','tourStart','tourEnd','tourStatus','tourUrl','tourDivs'].forEach(id=> $('#'+id).value = '');
+}
+
+/* ========= 대회 저장/삭제 ========= */
+$('#newTourBtn').addEventListener('click', clearTourForm);
+$('#saveTourBtn').addEventListener('click', async ()=>{
+  if(!appUrlInput.value) return alert('먼저 Web App URL을 저장하세요.');
+  const payload = {
+    tourId: ($('#tourId').value || '').trim(),
+    name: ($('#tourName').value || '').trim(),
+    start: $('#tourStart').value || '',
+    end: $('#tourEnd').value || '',
+    status: $('#tourStatus').value || '',
+    url: $('#tourUrl').value || '',
+    divs: textToDivs($('#tourDivs').value)
+  };
+  const j = await postJSON('upsertTournament', payload);
+  if (!j.ok) return alert('저장 실패: ' + (j.error||'unknown'));
+  await loadTournaments();
+  alert('저장되었습니다.');
+});
+$('#deleteTourBtn').addEventListener('click', async ()=>{
+  const id = ($('#tourId').value || '').trim();
+  if (!id) return alert('삭제할 대회가 선택되지 않았습니다.');
+  if (!confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+  const j = await postJSON('removeTournament', { tourId: id });
+  if (!j.ok) return alert('삭제 실패: ' + (j.error||'unknown'));
+  clearTourForm();
+  await loadTournaments();
+  alert('삭제되었습니다.');
+});
+
+/* ========= 팀 목록 ========= */
+function fmtDate(v){
+  if (!v) return '';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd} ${hh}:${mi}`;
+}
+function jerseySVG(hex, label){
+  const color = (/^#[0-9A-Fa-f]{6}$/).test(hex||'') ? hex : '#e5e7eb';
+  const text = (label||'').toUpperCase();
+  return `
+  <svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg">
+    <g filter="url(#s)">
+      <path d="M14 3 l4 6 h6 l4-6 h6 v15 l3 3 v27 a3 3 0 0 1 -3 3 h-26 a3 3 0 0 1 -3 -3 v-27 l3-3 v-15 z"
+            fill="${color}" stroke="#cbd5e1" />
+      <text x="21" y="31" font-family="system-ui, sans-serif" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="700">${text}</text>
+    </g>
+    <defs>
+      <filter id="s" x="0" y="0" width="42" height="52">
+        <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".08"/>
+      </filter>
+    </defs>
+  </svg>`;
+}
+
+function rowTeam(t){
+  const home = t.uniformHomeHex || t['유니폼(홈)'] || '';
+  const away = t.uniformAwayHex || t['유니폼(어웨이)'] || '';
+  return `
+    <tr>
+      <td>${t.TeamID}</td>
+      <td>${t.tourName||''}</td>
+      <td>${t.시도||''} ${t.시군구||''}</td>
+      <td>
+        <div><b>${t.팀명||''}</b></div>
+        <div class="muted">${t.대표자이름||''} · ${t.대표자연락처||''}</div>
+      </td>
+      <td>${t.종별||''} · ${t.디비전||''}</td>
+      <td>
+        <div class="jersey">
+          ${jerseySVG(home,'HOME')}
+          ${jerseySVG(away,'AWAY')}
+        </div>
+      </td>
+      <td>${fmtDate(t.신청일시)}</td>
+      <td class="right">
+        <a class="btn" href="./index.html?edit=${encodeURIComponent(t.TeamID)}&code=${encodeURIComponent(t.수정코드||'')}" target="_blank">수정 열기</a>
+      </td>
+    </tr>`;
+}
+
+async function loadTeams(){
+  if(!appUrlInput.value) return;
+  const tourId = ($('#tourFilter').value||'').trim();
+  const j = await getJSON(apiUrl('teams', tourId ? { tourId } : {})); // 백엔드에서 tourId 필터 지원(없어도 무시)
+  const rows = j.rows || [];
+  const q = ($('#searchText').value||'').trim();
+  const filtered = q ? rows.filter(r=>{
+    const blob = [r.TeamID,r.팀명,r.대표자이름,r.대표자연락처,r.시도,r.시군구].join(' ').toLowerCase();
+    return blob.includes(q.toLowerCase());
+  }) : rows;
+
+  const html = filtered.map(r=>rowTeam(r)).join('');
+  $('#teamsTbody').innerHTML = html || `<tr><td colspan="8" class="muted">데이터 없음</td></tr>`;
+}
+
+/* ========= 이벤트 ========= */
+$('#saveSettings').addEventListener('click', async ()=>{
+  const appUrl = (appUrlInput.value||'').trim();
+  if (!appUrl) return alert('Web App URL을 입력하세요.');
+  store.save({ appUrl });
+  await health();
+  await loadTournaments();
+  await loadTeams();
+  alert('저장되었습니다.');
+});
+$('#reloadBtn').addEventListener('click', async ()=>{
+  await health();
+  await loadTournaments();
+  await loadTeams();
+});
+$('#tourFilter').addEventListener('change', loadTeams);
+$('#searchBtn').addEventListener('click', loadTeams);
+$('#searchText').addEventListener('keydown', e=>{ if(e.key==='Enter') loadTeams(); });
+
+/* ========= 부트 ========= */
+(async function boot(){
+  if (conf.appUrl) {
+    await health();
+    await loadTournaments();
+    await loadTeams();
+  }
+})();
 </script>
 </body>
 </html>
-
