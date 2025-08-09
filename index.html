@@ -11,7 +11,7 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
   .wrap{max-width:720px;margin:28px auto;padding:16px}
-  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;position:relative}
   h1{font-size:20px;margin:0 0 14px}
   .section-title{font-weight:700;margin:18px 0 8px}
   label{display:block;font-weight:600;margin:14px 0 6px}
@@ -38,6 +38,12 @@
   .calendar-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:1px solid #dfe6ee;background:#fff;border-radius:12px;padding:6px 8px;cursor:pointer}
   .calendar-btn:active{transform:translateY(-50%) scale(0.98)}
   .calendar-btn svg{width:18px;height:18px;display:block}
+  /* 로고(우상단) */
+  .brand{position:absolute;right:16px;top:16px}
+  .brand img{height:24px;opacity:.95}
+  /* 대회 정보 배지 */
+  .badge{display:inline-flex;gap:8px;align-items:center;font-size:12px;color:#3a3f47;background:#f1f5fb;border:1px solid #e4ecf7;border-radius:999px;padding:6px 10px;margin-top:6px}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #d9e4f2;background:#fff;font-size:12px}
   #editLinkWrap{display:none;margin-top:10px}
   #editLinkInput{flex:1;padding:10px 12px;border:1px solid #e6ecf5;border-radius:12px;font-size:14px}
 </style>
@@ -45,15 +51,27 @@
 <body>
 <div class="wrap">
   <div class="card">
-<div class="card">
-  <!-- 로고 영역 -->
-  <div style="display:flex; justify-content:flex-end;">
-    <img src="BDR(배경없음).png" alt="BDR Logo" style="height:50px; object-fit:contain;">
-  </div>
+    <!-- 로고 -->
+    <div class="brand"><img src="BDR(배경없음).png" alt="BDR"></div>
 
-  <h1>BDR 참가신청서</h1>
-  <div class="muted">팀 대표 정보 입력 → 선수 명단 자유 추가/삭제 → 제출</div>
+    <h1>BDR 참가신청서</h1>
+    <div class="muted">참가 대회 선택 → 팀 대표 정보 → 선수 명단 → 제출</div>
 
+    <!-- 0) 대회 선택 -->
+    <div class="section-title">0) 참가희망 대회</div>
+    <div>
+      <label>대회 선택</label>
+      <select id="tourSelect">
+        <option value="">대회를 선택하세요</option>
+      </select>
+      <div id="tourInfo" class="badge" style="display:none">
+        <span id="tourName" class="pill"></span>
+        <span id="tourStatus" class="pill"></span>
+        <span id="tourDate" class="pill"></span>
+        <a id="tourUrl" class="pill" href="#" target="_blank" rel="noopener" style="text-decoration:none;display:none">안내</a>
+      </div>
+      <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있게 자동으로 제한됩니다.</div>
+    </div>
 
     <!-- ① 팀 기본정보 -->
     <div class="section-title">① 팀 기본정보</div>
@@ -99,9 +117,8 @@
     <div class="row row-2">
       <div>
         <label>종별</label>
-        <select id="category">
-          <option value="">선택</option>
-          <option>일반부</option><option>대학부</option><option>여성부</option><option>유소년부</option><option>40대부</option>
+        <select id="category" disabled>
+          <option value="">대회를 먼저 선택하세요</option>
         </select>
       </div>
       <div>
@@ -158,7 +175,7 @@
     <!-- 제출 -->
     <button class="btn" id="submitBtn">신청서 제출</button>
 
-    <!-- 수정 링크 표시 (제출 성공 시 노출) -->
+    <!-- 수정 링크 표시 -->
     <div id="editLinkWrap">
       <div class="muted" style="margin-bottom:6px;">수정 링크</div>
       <div style="display:flex; gap:8px; align-items:center;">
@@ -174,41 +191,106 @@
 
 <script>
   /* ====== 설정 ====== */
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec'; // 예: https://script.google.com/macros/s/XXXXX/exec
+  const WEB_APP_URL = '<<여기에_최신_웹앱_URL>>';
 
   // URL 파라미터 (수정 모드)
   const qs = new URLSearchParams(location.search);
   const editTeamId = qs.get('edit');
   const editCode   = qs.get('code');
 
-  /* ====== 종별 → 디비전 ====== */
-  const divisionOptions = {
-    '일반부': ['D3','D4','D5','D6','D7'],
-    '대학부': ['U1','U2'],
-    '여성부': ['D3','D4','D5'],
-    '40대부': ['D3','D4','D5'],
-    '유소년부': ['하모니','i1','i2','i3','i4']
-  };
+  /* ====== 대회 선택: 데이터 로드 & 바인딩 ====== */
+  let TOUR_MAP = {};      // { tourId: {name,status,start,end,url,divs:{cat:[div,..]}} }
+  let currentTour = null; // 선택된 대회 객체
+
+  async function loadTournaments() {
+    try {
+      const res = await fetch(`${WEB_APP_URL}?path=tournaments`);
+      const json = await res.json();
+      if (!json.ok) return;
+      const sel = document.getElementById('tourSelect');
+      sel.innerHTML = '<option value="">대회를 선택하세요</option>';
+
+      (json.rows || []).forEach(t => {
+        TOUR_MAP[t.TourID] = t;
+        const opt = document.createElement('option');
+        opt.value = t.TourID;
+        opt.textContent = `${t.name} ${t.status ? '('+t.status+')' : ''}`;
+        sel.appendChild(opt);
+      });
+    } catch(e) {
+      console.warn('tournaments load fail', e);
+    }
+  }
+
+  function formatDateK(v){
+    if (!v) return '';
+    try {
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
+    } catch { return String(v); }
+  }
+
+  function renderTourInfo(t){
+    const box = document.getElementById('tourInfo');
+    if (!t) { box.style.display = 'none'; return; }
+    document.getElementById('tourName').textContent = t.name || '';
+    document.getElementById('tourStatus').textContent = t.status || '상태미정';
+    document.getElementById('tourDate').textContent = (t.start||t.end)? `${formatDateK(t.start)} ~ ${formatDateK(t.end)}` : '일정미정';
+    const a = document.getElementById('tourUrl');
+    if (t.url) { a.href = t.url; a.style.display = 'inline-block'; } else { a.style.display = 'none'; }
+    box.style.display = 'inline-flex';
+  }
+
+  // 종별/디비전 동기화 (대회에 맞게 제한)
   const categorySelect = document.getElementById('category');
   const divisionSelect = document.getElementById('division');
-  function populateDivision(cat){
-    const list = divisionOptions[cat] || [];
+
+  function fillCategoriesFromTour(t){
+    categorySelect.innerHTML = '';
+    divisionSelect.innerHTML = '<option value="">종별을 먼저 선택하세요</option>';
+    divisionSelect.disabled = true;
+
+    if (!t || !t.divs || Object.keys(t.divs).length === 0){
+      categorySelect.disabled = true;
+      categorySelect.innerHTML = '<option value="">대회에 종별/디비전 설정이 없습니다</option>';
+      return;
+    }
+    categorySelect.disabled = false;
+    const opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = '선택';
+    categorySelect.appendChild(opt0);
+
+    Object.keys(t.divs).forEach(cat=>{
+      const o = document.createElement('option'); o.value = cat; o.textContent = cat; categorySelect.appendChild(o);
+    });
+  }
+
+  function fillDivisions(cat){
     divisionSelect.innerHTML = '';
-    if (!cat){
+    if (!currentTour || !cat){
       divisionSelect.disabled = true;
       divisionSelect.innerHTML = '<option value="">종별을 먼저 선택하세요</option>';
       return;
     }
+    const arr = currentTour.divs[cat] || [];
+    if (!arr.length){
+      divisionSelect.disabled = true;
+      divisionSelect.innerHTML = '<option value="">해당 종별의 디비전 없음</option>';
+      return;
+    }
     divisionSelect.disabled = false;
-    const opt0 = document.createElement('option');
-    opt0.value = ''; opt0.textContent = '선택';
-    divisionSelect.appendChild(opt0);
-    list.forEach(v=>{
-      const o = document.createElement('option'); o.value = v; o.textContent = v; divisionSelect.appendChild(o);
-    });
+    const o0 = document.createElement('option'); o0.value=''; o0.textContent='선택'; divisionSelect.appendChild(o0);
+    arr.forEach(dv=>{ const o=document.createElement('option'); o.value=dv; o.textContent=dv; divisionSelect.appendChild(o); });
   }
-  categorySelect.addEventListener('change', e=>populateDivision(e.target.value));
-  populateDivision('');
+
+  document.getElementById('tourSelect').addEventListener('change', e=>{
+    const id = e.target.value;
+    currentTour = id ? TOUR_MAP[id] : null;
+    renderTourInfo(currentTour);
+    fillCategoriesFromTour(currentTour);
+  });
+  categorySelect.addEventListener('change', e=>fillDivisions(e.target.value));
 
   /* ====== 유니폼 컬러칩/피커 동기화 ====== */
   document.querySelectorAll('.chips').forEach(chipRow => {
@@ -357,7 +439,7 @@
     const idx = playersDiv.querySelectorAll('.player-card').length;
     playersDiv.appendChild(createPlayerCard(idx));
   });
-  for(let i=0;i<5;i++) addPlayerBtn.click(); // 기본 5명
+  for(let i=0;i<5;i++) addPlayerBtn.click();
 
   /* ====== 토스트 ====== */
   function showToast(msg){
@@ -388,6 +470,19 @@
       const json = await res.json();
       if (!json.ok) { alert('수정 링크가 유효하지 않습니다.'); return; }
 
+      // 대회 선택 동기화(대회 목록 먼저 로드된 뒤에 처리)
+      const afterTourReady = async () => {
+        if (json.team.tourId && TOUR_MAP[json.team.tourId]) {
+          document.getElementById('tourSelect').value = json.team.tourId;
+          currentTour = TOUR_MAP[json.team.tourId];
+          renderTourInfo(currentTour);
+          fillCategoriesFromTour(currentTour);
+          document.getElementById('category').value = json.team.category || '';
+          fillDivisions(json.team.category || '');
+          setTimeout(()=>{ document.getElementById('division').value = json.team.division || ''; }, 0);
+        }
+      };
+
       // 팀 채우기
       document.getElementById('province').value = json.team.province || '';
       document.getElementById('province').dispatchEvent(new Event('change'));
@@ -395,9 +490,7 @@
       document.getElementById('teamName').value = json.team.teamName || '';
       document.getElementById('managerName').value = json.team.managerName || '';
       document.getElementById('managerPhone').value = formatPhoneNumber(json.team.managerPhone || '');
-      document.getElementById('category').value = json.team.category || '';
-      document.getElementById('category').dispatchEvent(new Event('change'));
-      setTimeout(()=>{ document.getElementById('division').value = json.team.division || ''; }, 0);
+
       document.getElementById('uniformHome').value = json.team.uniformHome || '';
       document.getElementById('uniformAway').value = json.team.uniformAway || '';
       const uhPicker = document.getElementById('uniformHomePicker'); if (uhPicker) uhPicker.value = json.team.uniformHome || '#000000';
@@ -417,14 +510,13 @@
         playersDiv.appendChild(card);
       });
 
-      // 제출 버튼 라벨 & 수정 링크 표시
       document.getElementById('submitBtn').textContent = '수정 저장';
-      if (json.editUrl) revealEditLink(json.editUrl);
+      // 대회 목록이 아직 안 로드되었을 수 있으므로 완료 후 실행
+      afterTourReady();
     } catch(e) {
       console.error(e);
     }
   }
-  preloadForEdit();
 
   /* ====== 수정 링크 표시/복사 ====== */
   function revealEditLink(url) {
@@ -450,7 +542,7 @@
     });
   })();
 
-  /* ====== 제출 핸들러 (중복 제출 방지) ====== */
+  /* ====== 제출 핸들러 ====== */
   const submitBtn = document.getElementById('submitBtn');
   let submitting = false;
 
@@ -466,6 +558,9 @@
     const region = province && city ? `${province} ${city}` : '';
 
     const team = {
+      // 대회 정보 포함!
+      tourId: (document.getElementById('tourSelect').value || '').trim(),
+      tourName: currentTour?.name || '',
       region,
       teamName: document.getElementById('teamName').value.trim(),
       managerName: document.getElementById('managerName').value.trim(),
@@ -476,8 +571,16 @@
       uniformAway: document.getElementById('uniformAway')?.value?.trim() || '',
     };
 
+    if (!team.tourId){
+      alert('참가할 대회를 선택해 주세요.');
+      submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return;
+    }
     if (!region || !team.teamName || !team.managerName || !team.managerPhone){
       alert('시도/시군구, 팀명, 대표자, 연락처를 모두 입력해 주세요.');
+      submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return;
+    }
+    if (!team.category || !team.division){
+      alert('종별과 디비전을 선택해 주세요.');
       submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return;
     }
 
@@ -503,7 +606,6 @@
       const payload = {
         team,
         players,
-        // 백엔드에서 editUrl 생성 시 사용할 기준 경로 전달(도메인 바뀌어도 안전)
         base: location.origin + location.pathname
       };
       let url = `${WEB_APP_URL}?path=registerTeam`;
@@ -515,7 +617,7 @@
 
       const res = await fetch(url, {
         method:'POST',
-        headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // 프리플라이트 회피
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
       const json = await res.json();
@@ -531,8 +633,7 @@
           const fallbackEditUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
           revealEditLink(json.editUrl || fallbackEditUrl);
         }
-        submitBtn.classList.add('done'); // 초록색
-        // 비활성화 유지(중복 제출 방지)
+        submitBtn.classList.add('done');
       } else {
         alert('오류: ' + (json.error||'unknown'));
         submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
@@ -542,6 +643,12 @@
       submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
     }
   });
+
+  /* ====== 부트스트랩: 대회 목록 먼저 → 수정모드 템플릿 로드 ====== */
+  (async function boot(){
+    await loadTournaments();
+    await preloadForEdit(); // 수정 모드면 채움
+  })();
 </script>
 </body>
 </html>
