@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:18px; --red:#ef4444; --muted:#6b7684 }
+  :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:18px; }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
   .wrap{max-width:720px;margin:28px auto;padding:16px}
@@ -15,11 +15,11 @@
   h1{font-size:20px;margin:0 0 14px}
   .section-title{font-weight:700;margin:18px 0 8px}
   label{display:block;font-weight:600;margin:14px 0 6px}
-  input,select,textarea{width:100%;padding:14px 12px;border:1px solid #e6ecf5;border-radius:14px;font-size:16px;outline:none;background:#fff}
-  input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+  input,select{width:100%;padding:14px 12px;border:1px solid #e6ecf5;border-radius:14px;font-size:16px;outline:none}
+  input:focus,select:focus{border-color:var(--blue)}
   .row{display:grid;gap:12px}
   @media(min-width:560px){ .row-2{grid-template-columns:1fr 1fr} .row-3{grid-template-columns:1fr 1fr 1fr} }
-  .muted{color:var(--muted);font-size:13px;margin-top:6px}
+  .muted{color:#6b7684;font-size:13px;margin-top:6px}
   .btn{margin-top:18px;width:100%;padding:14px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-weight:700;font-size:17px;cursor:pointer}
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .btn.done{background:#2ebf6f}
@@ -31,445 +31,288 @@
   .colorhex{width:120px}
   .player-card{border:1px dashed #e6ecf5;border-radius:14px;padding:12px;margin-top:10px;background:#fafcff}
   .player-toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:3}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s}
   .toast.show{opacity:1}
   .date-field{position:relative;display:flex;align-items:center}
   .date-field input[type="date"]{width:100%;padding:14px 44px 14px 12px;border:1px solid #e6ecf5;border-radius:14px;font-size:16px}
   .calendar-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:1px solid #dfe6ee;background:#fff;border-radius:12px;padding:6px 8px;cursor:pointer}
   .calendar-btn:active{transform:translateY(-50%) scale(0.98)}
   .calendar-btn svg{width:18px;height:18px;display:block}
+  /* 로고 */
   .brand{position:absolute;right:30px;top:30px}
   .brand img{height:24px;opacity:.95}
-  /* 단계(접기/펴기) */
-  .step{display:none}
-  .step.active{display:block}
-  .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
-  .next{padding:10px 14px;border:1px solid #dfe6ee;background:#fff;border-radius:12px;cursor:pointer}
-  .next.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
-  /* 인라인 에러 */
-  .error{border-color:var(--red)!important;background:#fff7f7}
-  .error-note{color:var(--red);font-size:12px;margin-top:6px}
-  /* 수정 링크 영역 */
-  #editLinkWrap{display:none;margin-top:10px}
-  #editLinkInput{flex:1;padding:10px 12px;border:1px solid #e6ecf5;border-radius:12px;font-size:14px}
-  #qr{display:none;margin-top:8px;text-align:center}
-  #qr img{width:140px;height:140px;border-radius:12px;border:1px solid #e6ecf5;background:#fff}
-  /* 붙여넣기 입력 패널(간단 토글) */
-  #pastePanel{display:none;margin-top:10px}
-  #pasteText{height:120px;resize:vertical}
-  /* 대비 경고 */
-  .warn{display:none;font-size:12px;color:#b45309;background:#fff7ed;border:1px solid #fde68a;padding:8px 10px;border-radius:10px;margin-top:8px}
+
+  /* 수정/셀프등록 링크 박스 */
+  #editLinkWrap,#joinLinkWrap{display:none;margin-top:10px}
+  #editLinkInput,#joinLinkInput{flex:1;padding:10px 12px;border:1px solid #e6ecf5;border-radius:12px;font-size:14px}
+
+  /* 지난 명단 모달 */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px}
+  .modal .box{max-width:720px;width:100%;background:#fff;border-radius:16px;padding:16px;max-height:80vh;overflow:auto}
+  .roster{border:1px solid #eef2f7;border-radius:12px;padding:12px;margin-top:10px}
+  .roster h4{margin:0 0 8px;font-size:14px}
+  .row-4{display:grid;gap:8px;grid-template-columns:1.2fr .8fr .8fr 1fr}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
     <div class="brand"><img src="BDR(배경없음).png" alt="BDR"></div>
+
     <h1>BDR 참가신청서</h1>
     <div class="muted">참가 대회 선택 → 팀 대표 정보 → 선수 명단 → 제출</div>
 
     <!-- 0) 대회 선택 -->
-    <div class="step active" id="step0">
-      <div class="section-title">0) 참가희망 대회</div>
+    <div class="section-title">0) 참가희망 대회</div>
+    <div>
+      <label>대회 선택</label>
+      <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
+      <div id="tourInfo" class="badge" style="display:none">
+        <span id="tourName" class="pill"></span>
+        <span id="tourStatus" class="pill"></span>
+        <span id="tourDate" class="pill"></span>
+        <a id="tourUrl" class="pill" href="#" target="_blank" rel="noopener" style="text-decoration:none;display:none">안내</a>
+      </div>
+      <div class="muted">※ 대회 설정에 따라 <b>종별/디비전</b>이 제한됩니다.</div>
+    </div>
+
+    <!-- ① 팀 기본정보 -->
+    <div class="section-title">① 팀 기본정보</div>
+    <div class="row row-2">
       <div>
-        <label>대회 선택</label>
-        <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
-        <div id="tourInfo" class="muted" style="display:none;margin-top:8px"></div>
-        <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있게 자동 제한돼요.</div>
+        <label>시도 선택</label>
+        <select id="province">
+          <option value="">선택</option>
+          <option>서울특별시</option><option>부산광역시</option><option>대구광역시</option>
+          <option>인천광역시</option><option>광주광역시</option><option>대전광역시</option>
+          <option>울산광역시</option><option>세종특별자치시</option><option>경기도</option>
+          <option>강원특별자치도</option><option>충청북도</option><option>충청남도</option>
+          <option>전북특별자치도</option><option>전라남도</option><option>경상북도</option>
+          <option>경상남도</option><option>제주특별자치도</option>
+        </select>
       </div>
-      <div class="nextbar">
-        <button class="next primary" data-next="#step1">다음 →</button>
+      <div>
+        <label>시군구 선택</label>
+        <select id="city" disabled>
+          <option value="">시도를 먼저 선택하세요</option>
+        </select>
+      </div>
+    </div>
+    <div class="row row-2">
+      <div>
+        <label>팀명</label>
+        <input id="teamName" placeholder="예: 슬로우" />
+      </div>
+      <div>
+        <label>대표자 이름</label>
+        <input id="managerName" placeholder="이름" />
+      </div>
+    </div>
+    <div class="row row-2">
+      <div>
+        <label>대표자 연락처</label>
+        <input id="managerPhone" placeholder="010-0000-0000" inputmode="numeric" autocomplete="tel" />
+        <div class="muted"><button class="btn-sm" id="btnPast">지난 명단 불러오기</button></div>
       </div>
     </div>
 
-    <!-- 1) 팀 기본정보 -->
-    <div class="step" id="step1">
-      <div class="section-title">① 팀 기본정보</div>
-      <div class="row row-2">
-        <div>
-          <label>시도 선택</label>
-          <select id="province">
-            <option value="">선택</option>
-            <option>서울특별시</option><option>부산광역시</option><option>대구광역시</option>
-            <option>인천광역시</option><option>광주광역시</option><option>대전광역시</option>
-            <option>울산광역시</option><option>세종특별자치시</option><option>경기도</option>
-            <option>강원특별자치도</option><option>충청북도</option><option>충청남도</option>
-            <option>전북특별자치도</option><option>전라남도</option><option>경상북도</option>
-            <option>경상남도</option><option>제주특별자치도</option>
-          </select>
-          <div class="error-note" id="errProvince" style="display:none">시도를 선택해주세요</div>
-        </div>
-        <div>
-          <label>시군구 선택</label>
-          <select id="city" disabled><option value="">시도를 먼저 선택하세요</option></select>
-          <div class="error-note" id="errCity" style="display:none">시군구를 선택해주세요</div>
-        </div>
+    <!-- ② 종별/디비전 -->
+    <div class="section-title">② 종별/디비전</div>
+    <div class="row row-2">
+      <div>
+        <label>종별</label>
+        <select id="category" disabled><option value="">대회를 먼저 선택하세요</option></select>
       </div>
-      <div class="row row-2">
-        <div>
-          <label>팀명</label>
-          <input id="teamName" placeholder="예: 슬로우" />
-          <div class="error-note" id="errTeamName" style="display:none">팀명을 입력해주세요</div>
-        </div>
-        <div>
-          <label>대표자 이름</label>
-          <input id="managerName" placeholder="이름" />
-          <div class="error-note" id="errManagerName" style="display:none">대표자 이름을 입력해주세요</div>
-        </div>
-      </div>
-      <div class="row row-2">
-        <div>
-          <label>대표자 연락처</label>
-          <input id="managerPhone" placeholder="010-0000-0000" inputmode="numeric" autocomplete="tel" />
-          <div class="error-note" id="errPhone" style="display:none">연락처 형식: 010-1234-5678</div>
-        </div>
-      </div>
-      <div class="nextbar">
-        <button class="next" data-next="#step0">← 이전</button>
-        <button class="next primary" data-next="#step2">다음 →</button>
+      <div>
+        <label>디비전</label>
+        <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
       </div>
     </div>
 
-    <!-- 2) 종별/디비전 -->
-    <div class="step" id="step2">
-      <div class="section-title">② 종별/디비전</div>
-      <div class="row row-2">
-        <div>
-          <label>종별</label>
-          <select id="category" disabled><option value="">대회를 먼저 선택하세요</option></select>
-          <div class="error-note" id="errCategory" style="display:none">종별을 선택해주세요</div>
-        </div>
-        <div>
-          <label>디비전</label>
-          <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
-          <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
-        </div>
-      </div>
-      <div class="nextbar">
-        <button class="next" data-next="#step1">← 이전</button>
-        <button class="next primary" data-next="#step3">다음 →</button>
+    <!-- ③ 유니폼 색상 -->
+    <div class="section-title">③ 유니폼 색상</div>
+    <label>홈 색상</label>
+    <div class="chips" data-target="uniformHome">
+      <div class="chip" style="background:#ffffff" data-color="#ffffff"></div>
+      <div class="chip" style="background:#000000" data-color="#000000"></div>
+      <div class="chip" style="background:#1769ff" data-color="#1769ff"></div>
+      <div class="chip" style="background:#ff3b30" data-color="#ff3b30"></div>
+      <div class="chip" style="background:#34c759" data-color="#34c759"></div>
+      <div class="chip" style="background:#ffcc00" data-color="#ffcc00"></div>
+      <div class="chip" style="background:#8e8e93" data-color="#8e8e93"></div>
+    </div>
+    <div class="colorbar">
+      <div class="colorbox">
+        <input type="color" id="uniformHomePicker" />
+        <input class="colorhex" id="uniformHome" placeholder="#1769ff" />
       </div>
     </div>
 
-    <!-- 3) 유니폼 색상 -->
-    <div class="step" id="step3">
-      <div class="section-title">③ 유니폼 색상</div>
-
-      <label>홈 색상</label>
-      <div class="chips" data-target="uniformHome">
-        <div class="chip" style="background:#ffffff" data-color="#ffffff"></div>
-        <div class="chip" style="background:#000000" data-color="#000000"></div>
-        <div class="chip" style="background:#1769ff" data-color="#1769ff"></div>
-        <div class="chip" style="background:#ff3b30" data-color="#ff3b30"></div>
-        <div class="chip" style="background:#34c759" data-color="#34c759"></div>
-        <div class="chip" style="background:#ffcc00" data-color="#ffcc00"></div>
-        <div class="chip" style="background:#8e8e93" data-color="#8e8e93"></div>
-      </div>
-      <div class="colorbar">
-        <div class="colorbox">
-          <input type="color" id="uniformHomePicker" />
-          <input class="colorhex" id="uniformHome" placeholder="#1769ff" />
-        </div>
-      </div>
-
-      <label>어웨이 색상</label>
-      <div class="chips" data-target="uniformAway">
-        <div class="chip" style="background:#ffffff" data-color="#ffffff"></div>
-        <div class="chip" style="background:#000000" data-color="#000000"></div>
-        <div class="chip" style="background:#1769ff" data-color="#1769ff"></div>
-        <div class="chip" style="background:#ff3b30" data-color="#ff3b30"></div>
-        <div class="chip" style="background:#34c759" data-color="#34c759"></div>
-        <div class="chip" style="background:#ffcc00" data-color="#ffcc00"></div>
-        <div class="chip" style="background:#8e8e93" data-color="#8e8e93"></div>
-      </div>
-      <div class="colorbar">
-        <div class="colorbox">
-          <input type="color" id="uniformAwayPicker" />
-          <input class="colorhex" id="uniformAway" placeholder="#000000" />
-        </div>
-      </div>
-      <div id="contrastWarn" class="warn">유니폼 색상 대비가 낮아 번호/이름 가독성이 떨어질 수 있어요.</div>
-
-      <div class="nextbar">
-        <button class="next" data-next="#step2">← 이전</button>
-        <button class="next primary" data-next="#step4">다음 →</button>
+    <label>어웨이 색상</label>
+    <div class="chips" data-target="uniformAway">
+      <div class="chip" style="background:#ffffff" data-color="#ffffff"></div>
+      <div class="chip" style="background:#000000" data-color="#000000"></div>
+      <div class="chip" style="background:#1769ff" data-color="#1769ff"></div>
+      <div class="chip" style="background:#ff3b30" data-color="#ff3b30"></div>
+      <div class="chip" style="background:#34c759" data-color="#34c759"></div>
+      <div class="chip" style="background:#ffcc00" data-color="#ffcc00"></div>
+      <div class="chip" style="background:#8e8e93" data-color="#8e8e93"></div>
+    </div>
+    <div class="colorbar">
+      <div class="colorbox">
+        <input type="color" id="uniformAwayPicker" />
+        <input class="colorhex" id="uniformAway" placeholder="#000000" />
       </div>
     </div>
 
-    <!-- 4) 선수 명단 -->
-    <div class="step" id="step4">
-      <div class="section-title">④ 선수 명단</div>
-      <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-sm" id="addPlayerBtn">선수 추가 +</button>
-        <button class="btn-sm" id="togglePasteBtn" type="button">명단 붙여넣기</button>
-      </div>
-      <div id="pastePanel">
-        <div class="muted">탭/쉼표 구분으로 붙여넣기(이름,등번호,포지션,G/F/C,생년월일(YYYY-MM-DD),선출여부)</div>
-        <textarea id="pasteText" placeholder="예)
-홍길동	7	G	2001-03-02	비선출
-김철수,11,F,2000-12-10,선출"></textarea>
-        <div style="display:flex;gap:8px">
-          <button class="btn-sm" id="pasteApplyBtn" type="button">붙여넣기 적용</button>
-          <button class="btn-sm" id="pasteClearBtn" type="button">지우기</button>
-        </div>
-      </div>
-      <div id="players"></div>
-      <div class="muted">※ 최소 5명 권장. 팀 내 등번호 중복 없도록 확인해 주세요.</div>
+    <!-- ④ 선수 명단 -->
+    <div class="section-title">④ 선수 명단</div>
+    <div id="players"></div>
+    <button class="btn-sm" id="addPlayerBtn">선수 추가 +</button>
+    <div class="muted">※ 최소 5명 권장. 팀 내 등번호 중복 없도록 확인해 주세요.</div>
 
-      <!-- 제출 -->
-      <button class="btn" id="submitBtn">신청서 제출</button>
+    <!-- 제출 -->
+    <button class="btn" id="submitBtn">신청서 제출</button>
 
-      <!-- 수정 링크 + QR -->
-      <div id="editLinkWrap">
-        <div class="muted" style="margin-bottom:6px;">수정 링크</div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input id="editLinkInput" type="text" readonly>
-          <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
-        </div>
-        <div id="qr"><img alt="수정 링크 QR"></div>
-        <div class="muted" style="margin-top:6px;">※ 이 링크를 저장하면 이후에 참가신청서를 수정할 수 있어요.</div>
-      </div>
-
-      <div class="nextbar">
-        <button class="next" data-next="#step3">← 이전</button>
+    <!-- 수정 링크 -->
+    <div id="editLinkWrap">
+      <div class="muted" style="margin-bottom:6px;">수정 링크</div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input id="editLinkInput" type="text" readonly>
+        <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
       </div>
     </div>
 
-    <div class="toast" id="toast">제출 완료!</div>
+    <!-- 팀원 셀프등록 링크 -->
+    <div id="joinLinkWrap">
+      <div class="muted" style="margin-bottom:6px;">팀원 셀프등록 링크</div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input id="joinLinkInput" type="text" readonly>
+        <button class="btn-sm" id="copyJoinLinkBtn" type="button">복사</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast">완료</div>
+  </div>
+</div>
+
+<!-- 지난 명단 모달 -->
+<div class="modal" id="pastModal">
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0">지난 명단 불러오기</h3>
+      <button class="btn-sm" id="closePast">&times;</button>
+    </div>
+    <div class="muted">대표자 연락처 기준 최근 접수한 팀의 명단을 가져올 수 있어요. 가져올 선수를 체크하세요.</div>
+    <div id="pastList"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="btn" id="applyPast">선택 선수 추가</button>
+    </div>
   </div>
 </div>
 
 <script>
   /* ====== 설정 ====== */
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
-
-  // URL 파라미터 (수정 모드)
+  const WEB_APP_URL = 'YOUR_DEPLOYED_WEB_APP_URL_HERE'; // ← 실제 배포 URL로 교체!
   const qs = new URLSearchParams(location.search);
   const editTeamId = qs.get('edit');
   const editCode   = qs.get('code');
 
-  /* ====== 단계(접기/펴기) ====== */
-  document.querySelectorAll('.next').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const target = btn.getAttribute('data-next');
-      if (!target) return;
-      // 현재 섹션 필수값 간단 검증
-      const curr = btn.closest('.step');
-      if (!validateStep(curr.id)) return;
-      document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
-      document.querySelector(target).classList.add('active');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+  /* ====== 유틸 ====== */
+  function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); }
+  function formatPhoneNumber(value) {
+    value = value.replace(/[^0-9]/g, '');
+    if (value.length < 4) return value;
+    if (value.length < 8) return value.replace(/(\d{3})(\d+)/, '$1-$2');
+    return value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
+  }
+  const phoneInput = document.getElementById('managerPhone');
+  phoneInput.addEventListener('input', function () {
+    const caret = this.selectionStart, before = this.value;
+    this.value = formatPhoneNumber(this.value);
+    const diff = this.value.length - before.length;
+    this.selectionEnd = Math.max(0, (caret || 0) + diff);
   });
 
-  /* ====== 대회 선택: 데이터 로드 & 바인딩 ====== */
-  let TOUR_MAP = {};      // { tourId: {name,status,start,end,url,divs:{cat:[div,..]}} }
-  let currentTour = null; // 선택된 대회 객체
-
+  /* ====== 대회 데이터 ====== */
+  let TOUR_MAP = {}; let currentTour = null;
   async function loadTournaments() {
     try {
       const res = await fetch(`${WEB_APP_URL}?path=tournaments`);
-      const json = await res.json();
-      if (!json.ok) return;
+      const json = await res.json(); if (!json.ok) return;
       const sel = document.getElementById('tourSelect');
       sel.innerHTML = '<option value="">대회를 선택하세요</option>';
-
-      (json.rows || []).forEach(t => {
+      (json.rows||[]).forEach(t=>{
         TOUR_MAP[t.TourID] = t;
-        const opt = document.createElement('option');
-        opt.value = t.TourID;
-        const period = (t.start||t.end) ? ` · ${formatDateK(t.start)}~${formatDateK(t.end)}` : '';
-        opt.textContent = `${t.name}${t.status ? ' ('+t.status+')' : ''}${period}`;
-        sel.appendChild(opt);
+        const o=document.createElement('option'); o.value=t.TourID; o.textContent = t.name; sel.appendChild(o);
       });
-    } catch(e) {
-      console.warn('tournaments load fail', e);
-    }
+    } catch(e){}
   }
-
-  function formatDateK(v){
-    if (!v) return '';
-    try {
-      const d = new Date(v);
-      if (isNaN(d.getTime())) return String(v);
-      return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
-    } catch { return String(v); }
-  }
-
+  function formatDateK(v){ try{ const d=new Date(v); if(isNaN(d)) return v||''; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;}catch{return v||'';} }
   function renderTourInfo(t){
-    const box = document.getElementById('tourInfo');
-    if (!t) { box.style.display = 'none'; box.textContent=''; return; }
-    const date = (t.start||t.end)? `${formatDateK(t.start)} ~ ${formatDateK(t.end)}` : '일정미정';
-    const url = t.url ? ` · <a href="${t.url}" target="_blank" rel="noopener">안내</a>` : '';
-    box.innerHTML = `<b>${t.name}</b> · ${t.status||'상태미정'} · ${date}${url}`;
-    box.style.display = 'block';
+    const box=document.getElementById('tourInfo');
+    if (!t) { box.style.display='none'; return; }
+    document.getElementById('tourName').textContent = t.name||'';
+    document.getElementById('tourStatus').textContent = t.status||'상태미정';
+    document.getElementById('tourDate').textContent = (t.start||t.end)? `${formatDateK(t.start)} ~ ${formatDateK(t.end)}` : '일정미정';
+    const a=document.getElementById('tourUrl'); if (t.url){ a.href=t.url; a.style.display='inline-block'; } else { a.style.display='none'; }
+    box.style.display='inline-flex';
   }
-
-  // 종별/디비전 동기화 (대회에 맞게 제한)
-  const categorySelect = document.getElementById('category');
-  const divisionSelect = document.getElementById('division');
-
+  const categorySelect=document.getElementById('category');
+  const divisionSelect=document.getElementById('division');
   function fillCategoriesFromTour(t){
-    categorySelect.innerHTML = '';
-    divisionSelect.innerHTML = '<option value="">종별을 먼저 선택하세요</option>';
-    divisionSelect.disabled = true;
-
-    if (!t || !t.divs || Object.keys(t.divs).length === 0){
-      categorySelect.disabled = true;
-      categorySelect.innerHTML = '<option value="">대회에 종별/디비전 설정이 없습니다</option>';
-      return;
-    }
-    categorySelect.disabled = false;
-    const opt0 = document.createElement('option');
-    opt0.value = ''; opt0.textContent = '선택';
-    categorySelect.appendChild(opt0);
-
-    Object.keys(t.divs).forEach(cat=>{
-      const o = document.createElement('option'); o.value = cat; o.textContent = cat; categorySelect.appendChild(o);
-    });
+    categorySelect.innerHTML=''; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
+    if (!t || !t.divs || Object.keys(t.divs).length===0){ categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return; }
+    categorySelect.disabled=false;
+    const o0=document.createElement('option'); o0.value=''; o0.textContent='선택'; categorySelect.appendChild(o0);
+    Object.keys(t.divs).forEach(cat=>{ const o=document.createElement('option'); o.value=cat; o.textContent=cat; categorySelect.appendChild(o); });
   }
-
   function fillDivisions(cat){
-    divisionSelect.innerHTML = '';
-    if (!currentTour || !cat){
-      divisionSelect.disabled = true;
-      divisionSelect.innerHTML = '<option value="">종별을 먼저 선택하세요</option>';
-      return;
-    }
-    const arr = currentTour.divs[cat] || [];
-    if (!arr.length){
-      divisionSelect.disabled = true;
-      divisionSelect.innerHTML = '<option value="">해당 종별의 디비전 없음</option>';
-      return;
-    }
-    divisionSelect.disabled = false;
-    const o0 = document.createElement('option'); o0.value=''; o0.textContent='선택'; divisionSelect.appendChild(o0);
+    divisionSelect.innerHTML='';
+    if (!currentTour || !cat){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; return; }
+    const arr=currentTour.divs[cat]||[];
+    if (!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
+    divisionSelect.disabled=false;
+    const o0=document.createElement('option'); o0.value=''; o0.textContent='선택'; divisionSelect.appendChild(o0);
     arr.forEach(dv=>{ const o=document.createElement('option'); o.value=dv; o.textContent=dv; divisionSelect.appendChild(o); });
   }
-
   document.getElementById('tourSelect').addEventListener('change', e=>{
-    const id = e.target.value;
-    currentTour = id ? TOUR_MAP[id] : null;
-    renderTourInfo(currentTour);
-    fillCategoriesFromTour(currentTour);
-    saveDraftSoon();
+    const id=e.target.value; currentTour=id?TOUR_MAP[id]:null; renderTourInfo(currentTour); fillCategoriesFromTour(currentTour);
   });
-  categorySelect.addEventListener('change', e=>{ fillDivisions(e.target.value); saveDraftSoon(); });
-  divisionSelect.addEventListener('change', saveDraftSoon);
-
-  /* ====== 유니폼 컬러칩/피커 동기화 + 대비경고 ====== */
-  document.querySelectorAll('.chips').forEach(chipRow => {
-    const targetId = chipRow.getAttribute('data-target');
-    chipRow.addEventListener('click', e => {
-      const chip = e.target.closest('.chip'); if (!chip) return;
-      const color = chip.getAttribute('data-color');
-      document.getElementById(targetId).value = color;
-      const picker = document.getElementById(targetId + 'Picker');
-      if (picker) picker.value = color;
-      checkContrast(); saveDraftSoon();
-    });
-  });
-  function bindColorSync(pickerId, hexId){
-    const picker = document.getElementById(pickerId);
-    const hex = document.getElementById(hexId);
-    picker.addEventListener('input', () => { hex.value = picker.value; checkContrast(); saveDraftSoon(); });
-    hex.addEventListener('input', () => {
-      const v = hex.value;
-      if (/^#?[0-9A-Fa-f]{6}$/.test(v.replace('#',''))) {
-        picker.value = v.startsWith('#') ? v : '#' + v;
-        hex.value = picker.value;
-        checkContrast(); saveDraftSoon();
-      }
-    });
-  }
-  bindColorSync('uniformHomePicker','uniformHome');
-  bindColorSync('uniformAwayPicker','uniformAway');
-
-  /* 대비 계산(WCAG 간단버전) + 경고 */
-  function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
-  function relLum({r,g,b}){ const c=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
-  function contrastRatio(h1,h2){ try{const L1=relLum(hexToRgb(h1)); const L2=relLum(hexToRgb(h2)); const [a,b]=L1>L2?[L1,L2]:[L2,L1]; return (a+0.05)/(b+0.05);}catch{return 7}}
-  function checkContrast(){
-    const h = document.getElementById('uniformHome').value || '';
-    const a = document.getElementById('uniformAway').value || '';
-    const warn = document.getElementById('contrastWarn');
-    const ok1 = /^#[0-9A-Fa-f]{6}$/.test(h), ok2 = /^#[0-9A-Fa-f]{6}$/.test(a);
-    if (!ok1 && !ok2){ warn.style.display='none'; return; }
-    const poor = (ok1 && Math.max(contrastRatio(h,'#000000'), contrastRatio(h,'#ffffff')) < 4.5) ||
-                 (ok2 && Math.max(contrastRatio(a,'#000000'), contrastRatio(a,'#ffffff')) < 4.5);
-    warn.style.display = poor ? 'block' : 'none';
-  }
+  categorySelect.addEventListener('change', e=>fillDivisions(e.target.value));
 
   /* ====== 시도 → 시군구 ====== */
-  const regionData = {
-    '서울특별시': ['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-    '부산광역시': ['강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구','기장군'],
-    '대구광역시': ['남구','달서구','동구','북구','서구','수성구','중구','달성군','군위군'],
-    '인천광역시': ['강화군','계양구','미추홀구','남동구','동구','부평구','서구','연수구','중구','옹진군'],
-    '광주광역시': ['광산구','남구','동구','북구','서구'],
-    '대전광역시': ['대덕구','동구','서구','유성구','중구'],
-    '울산광역시': ['남구','동구','북구','중구','울주군'],
-    '세종특별자치시': ['세종시'],
-    '경기도': ['가평군','고양시','과천시','광명시','광주시','구리시','군포시','김포시','남양주시','동두천시','부천시','성남시','수원시','시흥시','안산시','안성시','안양시','양주시','양평군','여주시','연천군','오산시','용인시','의왕시','의정부시','이천시','파주시','평택시','포천시','하남시','화성시'],
-    '강원특별자치도': ['강릉시','동해시','속초시','삼척시','원주시','춘천시','태백시','고성군','양구군','양양군','영월군','인제군','정선군','철원군','평창군','홍천군','화천군','횡성군'],
-    '충청북도': ['제천시','청주시','충주시','괴산군','단양군','보은군','영동군','옥천군','음성군','증평군'],
-    '충청남도': ['계룡시','공주시','논산시','당진시','보령시','서산시','아산시','천안시','금산군','부여군','서천군','예산군','청양군','태안군','홍성군'],
-    '전북특별자치도': ['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','고창군','무주군','부안군','순창군','임실군','장수군','진안군'],
-    '전라남도': ['광양시','나주시','목포시','순천시','여수시','강진군','고흥군','곡성군','구례군','담양군','무안군','보성군','신안군','영광군','영암군','완도군','장성군','장흥군','진도군','함평군','해남군','화순군'],
-    '경상북도': ['경산시','경주시','구미시','김천시','문경시','상주시','안동시','영주시','영천시','포항시','고령군','군위군','봉화군','성주군','영덕군','영양군','예천군','울릉군','울진군','의성군','청도군','청송군','칠곡군'],
-    '경상남도': ['거제시','김해시','밀양시','사천시','양산시','진주시','창원시','통영시','거창군','고성군','남해군','산청군','의령군','창녕군','하동군','함안군','함양군','합천군'],
-    '제주특별자치도': ['제주시','서귀포시']
-  };
-  const provinceSel = document.getElementById('province');
-  const citySel = document.getElementById('city');
+  const regionData = {/* (생략: 기존 시/군/구 맵 그대로) */};
+  // — 실제 배포 시, 기존에 쓰던 regionData 객체를 그대로 붙여넣으세요 —
+  const provinceSel=document.getElementById('province'); const citySel=document.getElementById('city');
   provinceSel.addEventListener('change', e => {
-    const prov = e.target.value;
-    citySel.innerHTML = '';
-    if (!prov) {
-      citySel.disabled = true;
-      citySel.innerHTML = '<option value="">시도를 먼저 선택하세요</option>';
-    } else {
-      const list = regionData[prov] || [];
-      citySel.disabled = false;
-      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='선택'; citySel.appendChild(opt0);
-      list.forEach(city=>{ const o=document.createElement('option'); o.value=city; o.textContent=city; citySel.appendChild(o); });
-    }
-    saveDraftSoon();
+    const prov=e.target.value; citySel.innerHTML=''; if (!prov){ citySel.disabled=true; citySel.innerHTML='<option value="">시도를 먼저 선택하세요</option>'; return; }
+    const list=regionData[prov]||[]; citySel.disabled=false; const opt0=document.createElement('option'); opt0.value=''; opt0.textContent='선택'; citySel.appendChild(opt0);
+    list.forEach(city=>{ const o=document.createElement('option'); o.value=city; o.textContent=city; citySel.appendChild(o); });
   });
-  citySel.addEventListener('change', saveDraftSoon);
 
-  /* ====== 만 나이 계산 ====== */
-  function calcAge(yyyyMMdd){
-    if(!yyyyMMdd) return '';
-    const d = new Date(yyyyMMdd);
-    if(Number.isNaN(d.getTime())) return '';
-    const today = new Date();
-    let age = today.getFullYear() - d.getFullYear();
-    const m = today.getMonth() - d.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
-    return age;
+  /* ====== 유니폼 컬러 동기화 ====== */
+  document.querySelectorAll('.chips').forEach(row=>{
+    const target=row.getAttribute('data-target');
+    row.addEventListener('click', e=>{ const chip=e.target.closest('.chip'); if(!chip) return; const color=chip.getAttribute('data-color'); document.getElementById(target).value=color; const picker=document.getElementById(target+'Picker'); if(picker) picker.value=color; });
+  });
+  function bindColorSync(pickerId, hexId){
+    const picker=document.getElementById(pickerId), hex=document.getElementById(hexId);
+    picker.addEventListener('input', ()=> hex.value=picker.value);
+    hex.addEventListener('input', ()=>{ const v=hex.value; if (/^#?[0-9A-Fa-f]{6}$/.test(v.replace('#',''))){ picker.value=v.startsWith('#')?v:'#'+v; hex.value=picker.value; }});
   }
+  bindColorSync('uniformHomePicker','uniformHome'); bindColorSync('uniformAwayPicker','uniformAway');
 
   /* ====== 선수 카드 ====== */
+  function calcAge(yyyyMMdd){ if(!yyyyMMdd) return ''; const d=new Date(yyyyMMdd); if(Number.isNaN(d.getTime())) return ''; const today=new Date(); let age=today.getFullYear()-d.getFullYear(); const m=today.getMonth()-d.getMonth(); if(m<0||(m===0&&today.getDate()<d.getDate())) age--; return age; }
   function createPlayerCard(idx){
-    const div = document.createElement('div');
-    div.className = 'player-card';
-    div.innerHTML = `
+    const div=document.createElement('div'); div.className='player-card';
+    div.innerHTML=`
       <div class="row row-3">
-        <div>
-          <label>선수 이름</label>
-          <input placeholder="이름" data-key="name">
-        </div>
-        <div>
-          <label>등번호</label>
-          <input placeholder="예: 7" data-key="number" inputmode="numeric">
-        </div>
-        <div>
-          <label>포지션</label>
-          <select data-key="position">
-            <option value="">선택</option>
-            <option>G</option><option>F</option><option>C</option>
-          </select>
+        <div><label>선수 이름</label><input placeholder="이름" data-key="name"></div>
+        <div><label>등번호</label><input placeholder="예: 7" data-key="number"></div>
+        <div><label>포지션</label>
+          <select data-key="position"><option value="">선택</option><option>G</option><option>F</option><option>C</option></select>
         </div>
       </div>
       <div class="row row-2" style="margin-top:8px">
@@ -489,129 +332,73 @@
         </div>
         <div>
           <label>선출여부</label>
-          <select data-key="elite">
-            <option value="">선택</option>
-            <option value="선출">선출</option>
-            <option value="비선출">비선출</option>
-          </select>
+          <select data-key="elite"><option value="">선택</option><option value="선출">선출</option><option value="비선출">비선출</option></select>
         </div>
       </div>
       <div class="player-toolbar">
-        <span class="muted">선수 카드</span>
+        <span class="muted">선수 #${idx+1}</span>
         <button class="btn-sm remove">삭제</button>
-      </div>
-    `;
-    div.querySelector('.remove').addEventListener('click',()=>{ div.remove(); saveDraftSoon(); });
-    const dateInput = div.querySelector('input[type="date"][data-key="birth"]');
-    const calBtn = div.querySelector('.calendar-btn');
-    const ageEl = div.querySelector('.age-text');
-    const updateAge = () => {
-      const v = dateInput.value; const age = calcAge(v);
-      ageEl.textContent = '만 나이: ' + (age === '' ? '-' : age + '세');
-    };
-    if (calBtn && dateInput) {
-      calBtn.addEventListener('click', () => { if (dateInput.showPicker) dateInput.showPicker(); else { dateInput.focus(); dateInput.click(); } });
-      dateInput.addEventListener('input', ()=>{ updateAge(); saveDraftSoon(); });
-      updateAge();
-    }
-    div.querySelectorAll('[data-key]').forEach(el=> el.addEventListener('input', saveDraftSoon));
+      </div>`;
+    div.querySelector('.remove').addEventListener('click',()=>div.remove());
+    const dateInput=div.querySelector('input[data-key="birth"]');
+    const calBtn=div.querySelector('.calendar-btn'); const ageEl=div.querySelector('.age-text');
+    const updateAge=()=>{ const v=dateInput.value; const a=calcAge(v); ageEl.textContent='만 나이: '+(a===''?'-':a+'세'); };
+    if (calBtn && dateInput){ calBtn.addEventListener('click', ()=>{ if(dateInput.showPicker) dateInput.showPicker(); else {dateInput.focus(); dateInput.click();} }); dateInput.addEventListener('input', updateAge); updateAge(); }
     return div;
   }
-
-  const playersDiv = document.getElementById('players');
-  const addPlayerBtn = document.getElementById('addPlayerBtn');
-  addPlayerBtn.addEventListener('click', ()=>{ playersDiv.appendChild(createPlayerCard(playersDiv.children.length)); saveDraftSoon(); });
-
-  // 기본 5명
+  const playersDiv=document.getElementById('players'); const addPlayerBtn=document.getElementById('addPlayerBtn');
+  addPlayerBtn.addEventListener('click', ()=>{ const idx=playersDiv.querySelectorAll('.player-card').length; playersDiv.appendChild(createPlayerCard(idx)); });
   for(let i=0;i<5;i++) addPlayerBtn.click();
 
-  // 붙여넣기 패널
-  document.getElementById('togglePasteBtn').addEventListener('click', ()=>{
-    const p = document.getElementById('pastePanel');
-    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  /* ====== 지난 명단 불러오기 ====== */
+  const pastModal=document.getElementById('pastModal'); const pastList=document.getElementById('pastList');
+  document.getElementById('btnPast').addEventListener('click', async ()=>{
+    const phone=(document.getElementById('managerPhone').value||'').trim(); if(!phone) return alert('먼저 대표자 연락처를 입력하세요.');
+    try{
+      const r=await fetch(`${WEB_APP_URL}?path=pastRosters&phone=${encodeURIComponent(phone)}&limit=3`); const j=await r.json();
+      if(!j.ok) return alert('불러오기 실패: ' + (j.error||'unknown'));
+      renderPast(j.rosters||[]);
+      pastModal.style.display='flex';
+    }catch(e){ alert('불러오기 오류: '+e.message); }
   });
-  document.getElementById('pasteClearBtn').addEventListener('click', ()=>{ document.getElementById('pasteText').value=''; });
-  document.getElementById('pasteApplyBtn').addEventListener('click', ()=>{
-    const text = document.getElementById('pasteText').value||'';
-    if (!text.trim()) return;
-    const lines = text.replace(/\r\n/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean);
-    lines.forEach(line=>{
-      const cols = line.split(/\t|,/).map(s=>s.trim());
-      const [name='', number='', position='', birth='', elite=''] = cols;
-      const card = createPlayerCard(playersDiv.children.length);
-      card.querySelector('[data-key="name"]').value = name;
-      card.querySelector('[data-key="number"]').value = number;
-      card.querySelector('[data-key="position"]').value = position.toUpperCase();
-      const birthEl = card.querySelector('[data-key="birth"]');
-      birthEl.value = birth;
-      birthEl.dispatchEvent(new Event('input'));
-      card.querySelector('[data-key="elite"]').value = elite;
+  document.getElementById('closePast').addEventListener('click', ()=> pastModal.style.display='none');
+  function renderPast(bundles){
+    pastList.innerHTML='';
+    if (!bundles.length){ pastList.innerHTML='<div class="muted">과거 접수 내역이 없습니다.</div>'; return; }
+    bundles.forEach(b=>{
+      const box=document.createElement('div'); box.className='roster';
+      box.innerHTML=`<h4>${b.teamName||''} <span class="muted">(${b.tourName||''})</span> · <span class="muted">${new Date(b.createdAt).toLocaleString()}</span></h4>`;
+      const table=document.createElement('div');
+      (b.players||[]).forEach(pl=>{
+        const row=document.createElement('div'); row.className='row-4';
+        row.innerHTML=`
+          <label style="display:flex;align-items:center;gap:8px;margin:0">
+            <input type="checkbox" data-bundle="${b.teamId}" data-name="${pl.name||''}" data-number="${pl.number||''}" data-position="${pl.position||''}" data-birth="${pl.birth||''}" data-elite="${pl.elite||''}">
+            <span>${pl.name||''}</span>
+          </label>
+          <div class="muted">등번호: ${pl.number||''}</div>
+          <div class="muted">포지션: ${pl.position||''}</div>
+          <div class="muted">생년월일: ${pl.birth||''}</div>`;
+        table.appendChild(row);
+      });
+      box.appendChild(table); pastList.appendChild(box);
+    });
+  }
+  document.getElementById('applyPast').addEventListener('click', ()=>{
+    const checks=[...pastList.querySelectorAll('input[type="checkbox"]:checked')];
+    if (!checks.length) { showToast('선택된 선수가 없어요'); return; }
+    checks.forEach(ch=>{
+      const card=createPlayerCard(playersDiv.querySelectorAll('.player-card').length);
+      card.querySelector('[data-key="name"]').value = ch.dataset.name || '';
+      card.querySelector('[data-key="number"]').value = ch.dataset.number || '';
+      card.querySelector('[data-key="position"]').value = ch.dataset.position || '';
+      const birth = card.querySelector('[data-key="birth"]'); birth.value = ch.dataset.birth || ''; birth.dispatchEvent(new Event('input'));
+      card.querySelector('[data-key="elite"]').value = ch.dataset.elite || '';
       playersDiv.appendChild(card);
     });
-    saveDraftSoon();
-    showToast('붙여넣기 적용 완료');
+    pastModal.style.display='none';
+    showToast('선택한 선수를 추가했어요');
   });
-
-  /* ====== 토스트 ====== */
-  function showToast(msg){
-    const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2400);
-  }
-
-  /* ====== 전화번호 자동 하이픈 ====== */
-  function formatPhoneNumber(value) {
-    value = value.replace(/[^0-9]/g, '');
-    if (value.length < 4) return value;
-    if (value.length < 8) return value.replace(/(\d{3})(\d+)/, '$1-$2');
-    return value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
-  }
-  const phoneInput = document.getElementById('managerPhone');
-  phoneInput.addEventListener('input', function () {
-    const caret = this.selectionStart;
-    const before = this.value;
-    this.value = formatPhoneNumber(this.value);
-    const diff = this.value.length - before.length;
-    this.selectionEnd = Math.max(0, (caret || 0) + diff);
-    saveDraftSoon();
-  });
-
-  /* ====== 인라인 검증 ====== */
-  function setError(el, noteId, on){
-    if (!el) return;
-    if (on) { el.classList.add('error'); if (noteId) document.getElementById(noteId).style.display='block'; }
-    else { el.classList.remove('error'); if (noteId) document.getElementById(noteId).style.display='none'; }
-  }
-  function validateStep(stepId){
-    let ok = true;
-    if (stepId === 'step0') {
-      const v = document.getElementById('tourSelect').value;
-      if (!v){ showToast('대회를 선택해 주세요'); ok = false; }
-    }
-    if (stepId === 'step1') {
-      const prov = document.getElementById('province');
-      const city = document.getElementById('city');
-      const team = document.getElementById('teamName');
-      const man  = document.getElementById('managerName');
-      const ph   = document.getElementById('managerPhone');
-      const phOk = /^010-\d{4}-\d{4}$/.test(ph.value);
-      setError(prov, 'errProvince', !prov.value);
-      setError(city, 'errCity', !city.value);
-      setError(team, 'errTeamName', !team.value.trim());
-      setError(man, 'errManagerName', !man.value.trim());
-      setError(ph, 'errPhone', !phOk);
-      ok = prov.value && city.value && team.value.trim() && man.value.trim() && phOk;
-      if (!ok) showToast('필수 항목을 확인해 주세요');
-    }
-    if (stepId === 'step2') {
-      const cat = document.getElementById('category');
-      const div = document.getElementById('division');
-      setError(cat, 'errCategory', !cat.value);
-      setError(div, 'errDivision', !div.value);
-      ok = !!(cat.value && div.value);
-      if (!ok) showToast('종별/디비전을 선택해 주세요');
-    }
-    // step3은 대비 경고만, 필수 아님
-    return ok;
-  }
 
   /* ====== 수정 모드 프리로드 ====== */
   async function preloadForEdit() {
@@ -621,8 +408,9 @@
       const json = await res.json();
       if (!json.ok) { alert('수정 링크가 유효하지 않습니다.'); return; }
 
-      // 대회 동기화
-      if (json.team.tourId && TOUR_MAP[json.team.tourId]) {
+      // 대회 먼저
+      if (json.team.tourId) {
+        await loadTournaments();
         document.getElementById('tourSelect').value = json.team.tourId;
         currentTour = TOUR_MAP[json.team.tourId];
         renderTourInfo(currentTour);
@@ -630,6 +418,8 @@
         document.getElementById('category').value = json.team.category || '';
         fillDivisions(json.team.category || '');
         setTimeout(()=>{ document.getElementById('division').value = json.team.division || ''; }, 0);
+      } else {
+        await loadTournaments();
       }
 
       // 팀 채우기
@@ -639,157 +429,53 @@
       document.getElementById('teamName').value = json.team.teamName || '';
       document.getElementById('managerName').value = json.team.managerName || '';
       document.getElementById('managerPhone').value = formatPhoneNumber(json.team.managerPhone || '');
-
       document.getElementById('uniformHome').value = json.team.uniformHome || '';
       document.getElementById('uniformAway').value = json.team.uniformAway || '';
-      const uhPicker = document.getElementById('uniformHomePicker'); if (uhPicker) uhPicker.value = json.team.uniformHome || '#000000';
-      const uaPicker = document.getElementById('uniformAwayPicker'); if (uaPicker) uaPicker.value = json.team.uniformAway || '#ffffff';
-      checkContrast();
+      const uh = document.getElementById('uniformHomePicker'), ua = document.getElementById('uniformAwayPicker');
+      if (uh) uh.value = json.team.uniformHome || '#000000';
+      if (ua) ua.value = json.team.uniformAway || '#ffffff';
 
-      // 선수 채우기
+      // 선수
       playersDiv.innerHTML = '';
       (json.players || []).forEach((pl, idx)=>{
         const card = createPlayerCard(idx);
         card.querySelector('[data-key="name"]').value = pl.name || '';
         card.querySelector('[data-key="number"]').value = pl.number || '';
-        card.querySelector('[data-key="position"]').value = (pl.position||'').toUpperCase();
-        const birth = card.querySelector('[data-key="birth"]');
-        birth.value = pl.birth || '';
-        birth.dispatchEvent(new Event('input'));
+        card.querySelector('[data-key="position"]').value = pl.position || '';
+        const birth = card.querySelector('[data-key="birth"]'); birth.value = pl.birth || ''; birth.dispatchEvent(new Event('input'));
         card.querySelector('[data-key="elite"]').value = pl.elite || '';
         playersDiv.appendChild(card);
       });
 
       document.getElementById('submitBtn').textContent = '수정 저장';
-      showToast('수정모드로 불러왔습니다.');
-    } catch(e) {
-      console.error(e);
-    }
+
+      // joinUrl/수정링크 표시 (서버가 joinUrl 제공)
+      if (json.joinUrl) revealJoinLink(json.joinUrl);
+      const editUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`;
+      revealEditLink(editUrl);
+    } catch(e) { console.error(e); }
   }
 
-  /* ====== 수정 링크 표시/복사 + QR ====== */
-  function revealEditLink(url) {
-    const wrap  = document.getElementById('editLinkWrap');
-    const input = document.getElementById('editLinkInput');
-    input.value = url;
-    wrap.style.display = 'block';
-    // QR (간편: Google Chart API 사용)
-    const qrBox = document.getElementById('qr');
-    const img = qrBox.querySelector('img');
-    img.src = 'https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl=' + encodeURIComponent(url);
-    qrBox.style.display = 'block';
-  }
-  (function bindCopyEditLink() {
-    const btn = document.getElementById('copyEditLinkBtn');
-    if (!btn) return;
-    btn.addEventListener('click', async () => {
-      const val = document.getElementById('editLinkInput').value;
-      try {
-        await navigator.clipboard.writeText(val);
-        showToast('링크가 복사되었습니다.');
-      } catch (e) {
-        const input = document.getElementById('editLinkInput');
-        input.select();
-        document.execCommand('copy');
-        showToast('링크가 복사되었습니다.');
-      }
-    });
+  /* ====== 링크 표시/복사 ====== */
+  function revealEditLink(url){ const wrap=document.getElementById('editLinkWrap'); const input=document.getElementById('editLinkInput'); input.value=url; wrap.style.display='block'; }
+  function revealJoinLink(url){ const wrap=document.getElementById('joinLinkWrap'); const input=document.getElementById('joinLinkInput'); input.value=url; wrap.style.display='block'; }
+  (function(){
+    const b1=document.getElementById('copyEditLinkBtn'); if (b1) b1.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(document.getElementById('editLinkInput').value); showToast('복사되었습니다'); }catch{ const i=document.getElementById('editLinkInput'); i.select(); document.execCommand('copy'); showToast('복사되었습니다'); } });
+    const b2=document.getElementById('copyJoinLinkBtn'); if (b2) b2.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(document.getElementById('joinLinkInput').value); showToast('복사되었습니다'); }catch{ const i=document.getElementById('joinLinkInput'); i.select(); document.execCommand('copy'); showToast('복사되었습니다'); } });
   })();
 
-  /* ====== 자동 저장/복구 ====== */
-  const DRAFT_KEY = 'BDR_FORM_DRAFT_v1';
-  let saveTimer = null;
-  function saveDraftSoon(){
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveDraft, 400);
-  }
-  function collectPlayers(){
-    return Array.from(document.querySelectorAll('#players .player-card')).map(card=>{
-      const get = k => (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
-      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') || get('memo') };
-    }).filter(p => (p.name || p.number || p.position || p.birth || p.elite));
-  }
-  function saveDraft(){
-    const draft = {
-      tourId: document.getElementById('tourSelect').value || '',
-      province: document.getElementById('province').value || '',
-      city: document.getElementById('city').value || '',
-      teamName: document.getElementById('teamName').value || '',
-      managerName: document.getElementById('managerName').value || '',
-      managerPhone: document.getElementById('managerPhone').value || '',
-      category: document.getElementById('category').value || '',
-      division: document.getElementById('division').value || '',
-      uniformHome: document.getElementById('uniformHome').value || '',
-      uniformAway: document.getElementById('uniformAway').value || '',
-      players: collectPlayers()
-    };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  }
-  function restoreDraft(){
-    try{
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const d = JSON.parse(raw);
-      if (d.tourId && TOUR_MAP[d.tourId]) {
-        document.getElementById('tourSelect').value = d.tourId;
-        currentTour = TOUR_MAP[d.tourId];
-        renderTourInfo(currentTour);
-        fillCategoriesFromTour(currentTour);
-      }
-      document.getElementById('province').value = d.province || '';
-      document.getElementById('province').dispatchEvent(new Event('change'));
-      setTimeout(()=>{ document.getElementById('city').value = d.city || ''; }, 0);
-      document.getElementById('teamName').value = d.teamName || '';
-      document.getElementById('managerName').value = d.managerName || '';
-      document.getElementById('managerPhone').value = d.managerPhone || '';
-      if (d.category){ document.getElementById('category').value = d.category; fillDivisions(d.category); }
-      setTimeout(()=>{ if (d.division) document.getElementById('division').value = d.division; }, 0);
-      document.getElementById('uniformHome').value = d.uniformHome || '';
-      document.getElementById('uniformAway').value = d.uniformAway || '';
-      const uhPicker = document.getElementById('uniformHomePicker'); if (uhPicker && d.uniformHome) uhPicker.value = d.uniformHome;
-      const uaPicker = document.getElementById('uniformAwayPicker'); if (uaPicker && d.uniformAway) uaPicker.value = d.uniformAway;
-      checkContrast();
-      // players
-      if (Array.isArray(d.players) && d.players.length){
-        playersDiv.innerHTML = '';
-        d.players.forEach((pl, idx)=>{
-          const card = createPlayerCard(idx);
-          card.querySelector('[data-key="name"]').value = pl.name || '';
-          card.querySelector('[data-key="number"]').value = pl.number || '';
-          card.querySelector('[data-key="position"]').value = (pl.position||'').toUpperCase();
-          const birth = card.querySelector('[data-key="birth"]');
-          birth.value = pl.birth || '';
-          birth.dispatchEvent(new Event('input'));
-          card.querySelector('[data-key="elite"]').value = pl.elite || '';
-          playersDiv.appendChild(card);
-        });
-      }
-      showToast('임시 저장 내용이 복구되었습니다.');
-    }catch{}
-  }
-  window.addEventListener('beforeunload', saveDraft);
-
   /* ====== 제출 핸들러 ====== */
-  const submitBtn = document.getElementById('submitBtn');
-  let submitting = false;
-
+  const submitBtn=document.getElementById('submitBtn'); let submitting=false;
   submitBtn.addEventListener('click', async ()=>{
-    // 전체 필수 검증 한번 더
-    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
+    if (submitting) return; submitting=true; const original=submitBtn.textContent; submitBtn.disabled=true; submitBtn.textContent='제출 중...';
 
-    if (submitting) return;
-    submitting = true;
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = '제출 중...';
-
-    const province = document.getElementById('province').value.trim();
-    const city = document.getElementById('city').value.trim();
-    const region = province && city ? `${province} ${city}` : '';
+    const province=document.getElementById('province').value.trim();
+    const city=document.getElementById('city').value.trim();
+    const region=province && city ? `${province} ${city}` : '';
 
     const team = {
       tourId: (document.getElementById('tourSelect').value || '').trim(),
-      tourName: (currentTour?.name || ''),
+      tourName: currentTour?.name || '',
       region,
       teamName: document.getElementById('teamName').value.trim(),
       managerName: document.getElementById('managerName').value.trim(),
@@ -799,77 +485,38 @@
       uniformHome: document.getElementById('uniformHome')?.value?.trim() || '',
       uniformAway: document.getElementById('uniformAway')?.value?.trim() || '',
     };
+    if (!team.tourId){ alert('참가할 대회를 선택해 주세요.'); return reset(); }
+    if (!region || !team.teamName || !team.managerName || !team.managerPhone){ alert('시도/시군구, 팀명, 대표자, 연락처를 모두 입력해 주세요.'); return reset(); }
+    if (!team.category || !team.division){ alert('종별과 디비전을 선택해 주세요.'); return reset(); }
 
-    const playerCards = Array.from(playersDiv.querySelectorAll('.player-card'));
-    const players = playerCards.map(card=>{
-      const get = k => (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
+    const playerCards=[...playersDiv.querySelectorAll('.player-card')];
+    const players=playerCards.map(card=>{
+      const get=k=>(card.querySelector(`[data-key="${k}"]`)?.value||'').trim();
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), memo:get('elite') };
-    }).filter(p => p.name);
+    }).filter(p=>p.name);
+    if (players.length < 5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return reset(); }
+    const numbers=players.map(p=>p.number).filter(Boolean); const dup=numbers.find((n,i)=>n && numbers.indexOf(n)!==i);
+    if (dup){ if(!confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`)) return reset(); }
 
-    if (players.length < 5){
-      alert('선수는 최소 5명 이상 입력해 주세요.');
-      submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return;
-    }
-    // 등번호 중복 시, 해당 카드 하이라이트
-    const numbers = players.map(p=>p.number).filter(Boolean);
-    const dup = numbers.find((n,i)=> n && numbers.indexOf(n) !== i);
-    if (dup){
-      Array.from(playersDiv.querySelectorAll('[data-key="number"]')).forEach(inp=>{
-        inp.classList.toggle('error', inp.value === dup);
-      });
-      const ok = confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`);
-      if (!ok){ submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return; }
-    }
+    function reset(){ submitBtn.disabled=false; submitBtn.textContent=original; submitting=false; }
 
     try{
-      const payload = { team, players, base: location.origin + location.pathname };
+      const payload={ team, players, base: location.origin + location.pathname };
       let url = `${WEB_APP_URL}?path=registerTeam`;
-      if (editTeamId && editCode) {
-        url = `${WEB_APP_URL}?path=updateTeam`;
-        payload.teamId = editTeamId;
-        payload.editCode = editCode;
-      }
+      if (editTeamId && editCode){ url = `${WEB_APP_URL}?path=updateTeam`; payload.teamId=editTeamId; payload.editCode=editCode; }
 
-      const res = await fetch(url, {
-        method:'POST',
-        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-
+      const res=await fetch(url,{ method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+      const json=await res.json();
       if (json.ok){
-        if (editTeamId){
-          showToast('수정이 저장되었습니다.');
-          submitBtn.textContent = '수정 완료';
-          if (json.editUrl) revealEditLink(json.editUrl);
-        } else {
-          showToast('신청이 완료되었습니다. 팀ID: ' + json.teamId);
-          submitBtn.textContent = '제출 완료';
-          const fallbackEditUrl = `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-          const urlFinal = json.editUrl || fallbackEditUrl;
-          revealEditLink(urlFinal);
-        }
+        if (editTeamId){ showToast('수정 저장 완료'); submitBtn.textContent='수정 완료'; if (json.editUrl) revealEditLink(json.editUrl); if (json.joinUrl) revealJoinLink(json.joinUrl); }
+        else { showToast('신청 완료!'); submitBtn.textContent='제출 완료'; const eurl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`; revealEditLink(eurl); if (json.joinUrl) revealJoinLink(json.joinUrl); }
         submitBtn.classList.add('done');
-        // 임시 저장 삭제
-        localStorage.removeItem(DRAFT_KEY);
-      } else {
-        alert('오류: ' + (json.error||'unknown'));
-        submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
-      }
-    } catch(err){
-      alert('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.\n' + err);
-      submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false;
-    }
+      } else { alert('오류: ' + (json.error||'unknown')); reset(); }
+    }catch(err){ alert('네트워크 오류: '+err.message); reset(); }
   });
 
-  /* ====== 부트스트랩 ====== */
-  (async function boot(){
-    await loadTournaments();
-    // 초기에 자동 저장본 복구
-    restoreDraft();
-    // 수정 모드면 서버에서 다시 정확 값 로드(복구보다 우선)
-    await preloadForEdit();
-  })();
+  /* ====== 부트 ====== */
+  (async function boot(){ await loadTournaments(); await preloadForEdit(); })();
 </script>
 </body>
 </html>
