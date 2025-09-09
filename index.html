@@ -1,448 +1,549 @@
-<!-- filename: join.html (또는 index.html) -->
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>BDR 참가신청서</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:18px; --red:#ef4444; --muted:#6b7684 }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
-  .wrap{max-width:720px;margin:28px auto;padding:16px}
-  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;position:relative}
-  h1{font-size:20px;margin:0 0 14px}
-  .section-title{font-weight:700;margin:18px 0 8px}
-  label{display:block;font-weight:600;margin:14px 0 6px}
-  input,select,textarea{width:100%;padding:14px 12px;border:1px solid #e6ecf5;border-radius:14px;font-size:16px;outline:none;background:#fff}
-  input:focus,select:focus,textarea:focus{border-color:var(--blue)}
-  .row{display:grid;gap:12px}
-  @media(min-width:560px){ .row-2{grid-template-columns:1fr 1fr} .row-3{grid-template-columns:1fr 1fr 1fr} }
-  .muted{color:var(--muted);font-size:13px;margin-top:6px}
-  .btn{margin-top:18px;width:100%;padding:14px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-weight:700;font-size:17px;cursor:pointer}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn.done{background:#2ebf6f}
-  .btn-sm{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer;margin-top:10px}
-  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:3}
-  .toast.show{opacity:1}
-  .brand{position:absolute;right:30px;top:30px}
-  .brand img{height:24px;opacity:.95}
+/** ===============================================================
+ * BDR Admin Backend (Sheets + GAS)
+ * EN schema + legacy absorption + KST time fix
+ *
+ * GET : ?path=health | tournaments | teams | getTeam
+ * POST: ?path=upsertTournament | removeTournament | registerTeam | updateTeam
+ *       (path는 대소문자 무시)
+ *
+ * Tournaments header (row1, exact order):
+ *  tourId | name | url | start | end | regStart | regEnd | status
+ *  | divSets | divs | places | adminCode | createdAt | updatedAt
+ *
+ * Teams header (row1, exact order):
+ *  teamId | tourId | tourName | teamNameKo | teamNameEn | region | province | city
+ *  | managerName | managerPhone | category | division
+ *  | uniformHome | uniformAway | players | editCode | createdAt | updatedAt
+ * =============================================================== */
 
-  .step{display:none}.step.active{display:block}
-  .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
-  .next{padding:10px 14px;border:1px solid #dfe6ee;background:#fff;border-radius:12px;cursor:pointer}
-  .next.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
-  .error{border-color:var(--red)!important;background:#fff7f7}
-  .error-note{color:var(--red);font-size:12px;margin-top:6px}
+const CONF = {
+  TOURNAMENT_SHEET_CANDIDATES: ['tournaments','대회','Tournaments'],
+  TEAM_SHEET_CANDIDATES      : ['teams','신청','Teams','신청팀','접수'],
 
-  /* 대회 정보 카드 (요청 항목 순서의 표 형태) */
-  #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
-  #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
-  #tourInfo .kv b{color:#111}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <div class="brand"><img src="BDR(배경없음).png" alt="BDR"></div>
-    <h1>BDR 참가신청서</h1>
-    <div class="muted">참가 대회 선택 → 팀 대표 정보 → 선수 명단 → 제출</div>
+  // ---- Tournaments ----
+  HEADERS: [
+    'tourId','name','url','start','end','regStart','regEnd','status',
+    'divSets','divs','places','adminCode','createdAt','updatedAt'
+  ],
+  ALIASES: {
+    tourId    : ['tourId','TourID','대회id','ID','Id','id'],
+    name      : ['name','대회명'],
+    url       : ['url','안내페이지 url','안내URL','pageUrl'],
+    start     : ['start','대회시작','event.start','eventStart'],
+    end       : ['end','대회종료','event.end','eventEnd'],
+    regStart  : ['regStart','reg.start','reg_start','regStartDate','reg.start.date','접수시작'],
+    regEnd    : ['regEnd','reg.end','reg_end','regEndDate','reg.end.date','접수종료'],
+    status    : ['status','상태'],
+    divSets   : ['divSets','종별구분'],
+    divs      : ['divs','종별','divisions','divs_json'],
+    places    : ['places','장소'],
+    adminCode : ['adminCode','관리코드'],
+    createdAt : ['createdAt','created_at','최초생성'],
+    updatedAt : ['updatedAt','updated_at','마지막수정'],
+    'admin.salt': ['admin.salt','salt'],
+    'admin.hash': ['admin.hash','hash']
+  },
 
-    <!-- 0) 대회 선택 -->
-    <div class="step active" id="step0">
-      <div class="section-title">0) 참가희망 대회</div>
-      <label>대회 선택</label>
-      <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
-      <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
-      <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있게 자동 제한돼요.</div>
-      <div class="nextbar" id="nextbar0" style="display:none">
-        <button class="next primary" data-next="#step1">다음 →</button>
-      </div>
-    </div>
+  // ---- Teams ----
+  TEAM_HEADERS: [
+    'teamId','tourId','tourName','teamNameKo','teamNameEn','region','province','city',
+    'managerName','managerPhone','category','division',
+    'uniformHome','uniformAway','players','editCode','createdAt','updatedAt'
+  ],
+  TEAM_ALIASES: {
+    teamId      : ['teamId','팀id','TeamID','TEAMID','id'],
+    tourId      : ['tourId','TourID','대회id'],
+    tourName    : ['tourName','대회명'],
+    teamNameKo  : ['teamNameKo','teamName','팀명','팀명(한글)'],
+    teamNameEn  : ['teamNameEn','영문팀명','team_en','팀명(영문)'],
+    region      : ['region','지역'],
+    province    : ['province','시도'],
+    city        : ['city','시군구'],
+    managerName : ['managerName','대표자','담당자','manager'],
+    managerPhone: ['managerPhone','연락처','phone','tel'],
+    category    : ['category','종별'],
+    division    : ['division','디비전'],
+    uniformHome : ['uniformHome','homeColor','홈유니폼'],
+    uniformAway : ['uniformAway','awayColor','원정유니폼'],
+    players     : ['players','선수명단','players_json'],
+    editCode    : ['editCode','code','수정코드'],
+    createdAt   : ['createdAt','created_at','최초생성'],
+    updatedAt   : ['updatedAt','updated_at','마지막수정']
+  },
 
-    <!-- 1) 팀 기본정보 -->
-    <div class="step" id="step1">
-      <div class="section-title">① 팀 기본정보</div>
+  LEGACY_KEEP: []
+};
 
-      <div class="row row-2">
-        <div>
-          <label>시도 선택</label>
-          <select id="province"><option value="">선택</option>
-            <option>서울특별시</option><option>부산광역시</option><option>대구광역시</option>
-            <option>인천광역시</option><option>광주광역시</option><option>대전광역시</option>
-            <option>울산광역시</option><option>세종특별자치시</option><option>경기도</option>
-            <option>강원특별자치도</option><option>충청북도</option><option>충청남도</option>
-            <option>전북특별자치도</option><option>전라남도</option><option>경상북도</option>
-            <option>경상남도</option><option>제주특별자치도</option>
-          </select>
-          <div class="error-note" id="errProvince" style="display:none">시도를 선택해주세요</div>
-        </div>
-        <div>
-          <label>시군구 선택</label>
-          <select id="city" disabled><option value="">시도를 먼저 선택하세요</option></select>
-          <div class="error-note" id="errCity" style="display:none">시군구를 선택해주세요</div>
-        </div>
-      </div>
+/* --------------------------- Utilities --------------------------- */
+const TZ = 'Asia/Seoul';
+function nowIsoTz(){
+  return Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+}
+const J = JSON;
+function pad(n){ return String(n).padStart(2,'0'); }
+function dstr(v, withTime){
+  if (!v) return '';
+  const d = (v instanceof Date)? v : new Date(v);
+  if (isNaN(d)) return '';
+  return withTime
+    ? d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())
+    : d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function parseJSON(s, fb){ try{ return J.parse(s); }catch(e){ return fb; } }
+function has(v){ return String(v||'').trim() !== ''; }
+function onlyDigits(s){ return String(s||'').replace(/\D+/g,''); }
+function genId_(prefix){
+  return (prefix||'X') + (Date.now().toString(36)+Math.random().toString(36).slice(2,7)).toUpperCase();
+}
+function genCode_(n){
+  var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var s=''; for(var i=0;i<(n||6);i++) s+=chars.charAt(Math.floor(Math.random()*chars.length));
+  return s;
+}
 
-      <!-- 팀명(한글/영문) 같은 행 - 둘 다 필수 -->
-      <div class="row row-2">
-        <div>
-          <label>팀명(한글)</label>
-          <input id="teamNameKo" placeholder="예: 슬로우" />
-          <div class="error-note" id="errTeamNameKo" style="display:none">팀명(한글)을 입력해주세요</div>
-        </div>
-        <div>
-          <label>팀명(영문)</label>
-          <input id="teamNameEn" placeholder="예: SLOW" />
-          <div class="error-note" id="errTeamNameEn" style="display:none">팀명(영문)을 입력해주세요</div>
-        </div>
-      </div>
+/* --------------------------- Sheet helpers --------------------------- */
+function getSheetByCandidates_(names, createName){
+  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  for (var i=0;i<names.length;i++){ var sh=ss.getSheetByName(names[i]); if (sh) return sh; }
+  return ss.insertSheet(createName || names[0]);
+}
+function readHeader_(sh){
+  const last=sh.getLastColumn()||1;
+  const h=sh.getRange(1,1,1,last).getValues()[0];
+  var end=h.length; while(end>0 && String(h[end-1]||'').trim()==='') end--;
+  return h.slice(0,end);
+}
+function findCol_(hdr, key, aliases){
+  const cand = (aliases && aliases[key]) ? aliases[key] : (CONF.ALIASES[key] || [key]);
+  for (var i=0;i<cand.length;i++){ var pos=hdr.indexOf(cand[i]); if (pos>=0) return pos+1; }
+  return 0;
+}
+function getVal_(row, hdr, key, aliases){
+  const cand = (aliases && aliases[key]) ? aliases[key] : (CONF.ALIASES[key] || [key]);
+  for (var i=0;i<cand.length;i++){ var idx=hdr.indexOf(cand[i]); if (idx>=0) return row[idx]; }
+  return '';
+}
 
-      <!-- 대표자 이름/연락처 한 행 (연락처 숫자만) -->
-      <div class="row row-2">
-        <div>
-          <label>대표자 이름</label>
-          <input id="managerName" placeholder="이름" />
-          <div class="error-note" id="errManagerName" style="display:none">대표자 이름을 입력해주세요</div>
-        </div>
-        <div>
-          <label>대표자 연락처</label>
-          <input id="managerPhone" placeholder="숫자만 입력(하이픈 없이)" inputmode="numeric" pattern="[0-9]*" maxlength="11" autocomplete="tel" />
-          <div class="error-note" id="errPhone" style="display:none">숫자만 입력(예: 01012345678)</div>
-        </div>
-      </div>
-
-      <div class="nextbar">
-        <button class="next" data-next="#step0">← 이전</button>
-        <button class="next primary" data-next="#step2">다음 →</button>
-      </div>
-    </div>
-
-    <!-- 2) 종별/디비전 -->
-    <div class="step" id="step2">
-      <div class="section-title">② 종별/디비전</div>
-      <div class="row row-2">
-        <div>
-          <label>종별</label>
-          <select id="category" disabled><option value="">대회를 먼저 선택하세요</option></select>
-          <div class="error-note" id="errCategory" style="display:none">종별을 선택해주세요</div>
-        </div>
-        <div>
-          <label>디비전</label>
-          <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
-          <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
-        </div>
-      </div>
-      <div class="nextbar">
-        <button class="next" data-next="#step1">← 이전</button>
-        <button class="next primary" data-next="#step3">다음 →</button>
-      </div>
-    </div>
-
-    <!-- 3) 유니폼 색상 -->
-    <div class="step" id="step3">
-      <div class="section-title">③ 유니폼 색상</div>
-      <label>홈 색상</label>
-      <div class="row row-2"><input type="color" id="uniformHomePicker" /><input id="uniformHome" placeholder="#1769ff" /></div>
-      <label>어웨이 색상</label>
-      <div class="row row-2"><input type="color" id="uniformAwayPicker" /><input id="uniformAway" placeholder="#000000" /></div>
-      <div id="contrastWarn" class="muted" style="display:none">유니폼 색상 대비가 낮아 번호/이름 가독성이 떨어질 수 있어요.</div>
-      <div class="nextbar">
-        <button class="next" data-next="#step2">← 이전</button>
-        <button class="next primary" data-next="#step4">다음 →</button>
-      </div>
-    </div>
-
-    <!-- 4) 선수 명단 (간략: 기존 로직 유지) -->
-    <div class="step" id="step4">
-      <div class="section-title">④ 선수 명단</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-sm" id="addPlayerBtn">선수 추가 +</button>
-      </div>
-      <div id="players"></div>
-      <div class="muted">※ 최소 5명 권장. 팀 내 등번호 중복 없도록 확인해 주세요.</div>
-      <button class="btn" id="submitBtn">신청서 제출</button>
-      <div class="nextbar"><button class="next" data-next="#step3">← 이전</button></div>
-
-      <!-- 제출 후 수정링크 -->
-      <div id="editLinkWrap" style="display:none;margin-top:12px">
-        <div class="muted" style="margin-bottom:6px;">수정 링크</div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input id="editLinkInput" type="text" readonly style="flex:1">
-          <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
-        </div>
-        <div id="qr" style="display:none;margin-top:8px;text-align:center">
-          <img alt="수정 링크 QR" style="width:140px;height:140px;border-radius:12px;border:1px solid #e6ecf5;background:#fff">
-        </div>
-      </div>
-    </div>
-
-    <div class="toast" id="toast">완료!</div>
-  </div>
-</div>
-
-<script>
-  /* ====== 설정 ====== */
-  const WEB_APP_URL = '<<여기에_본인_GAS_WebApp_URL/exec_붙여넣기>>';
-
-  const qs = new URLSearchParams(location.search);
-  const editTeamId = qs.get('edit');
-  const editCode   = qs.get('code');
-
-  const $=s=>document.querySelector(s);
-
-  /* ====== 단계 이동 ====== */
-  document.querySelectorAll('.next').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const target = btn.getAttribute('data-next');
-      if (!target) return;
-      const curr = btn.closest('.step');
-      if (!validateStep(curr.id)) return;
-      document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
-      document.querySelector(target).classList.add('active');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  });
-
-  /* ====== 대회 목록 & 카드 ====== */
-  let TOUR_MAP={}, currentTour=null;
-
-  async function loadTournaments() {
-    const res = await fetch(`${WEB_APP_URL}?path=tournaments`);
-    const json = await res.json();
-    if (!json.ok) return;
-    const sel = $('#tourSelect'); sel.innerHTML = '<option value="">대회를 선택하세요</option>';
-    (json.rows||[]).forEach(t=>{
-      const key = t.TourID || t.tourId;
-      TOUR_MAP[key]=t;
-      const opt=document.createElement('option');
-      opt.value=key;
-      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
-      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
-      sel.appendChild(opt);
-    });
+/** ---------- Tournaments: header normalize/order ---------- */
+function ensureTournamentHeaderOrder_(){
+  const sh = getSheetByCandidates_(CONF.TOURNAMENT_SHEET_CANDIDATES, CONF.TOURNAMENT_SHEET_CANDIDATES[0]);
+  const curHdr = readHeader_(sh);
+  if (curHdr.length === 0){
+    sh.getRange(1,1,1,CONF.HEADERS.length).setValues([CONF.HEADERS]);
+    return sh;
   }
-  function fmtDate(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; }
-  function pad2(n){ return String(n).padStart(2,'0'); }
-  function fmtDT(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
-  function summarizeDivs(divs){
-    try{
-      const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{});
-      const parts=Object.keys(obj).map(cat=>{
-        const arr=Array.isArray(obj[cat])?obj[cat]:[];
-        return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`;
+  const newHdr = CONF.HEADERS.slice();
+  const lastRow = sh.getLastRow();
+  const rows = lastRow>1 ? sh.getRange(2,1,lastRow-1,sh.getLastColumn()).getValues() : [];
+  const normalized = rows.map(function(row){
+    var tourId   = String(getVal_(row, curHdr, 'tourId')||'').trim();
+    var name     = String(getVal_(row, curHdr, 'name')||'').trim();
+    var url      = String(getVal_(row, curHdr, 'url')||'').trim();
+
+    var start    = dstr(getVal_(row, curHdr, 'start'));
+    var end      = dstr(getVal_(row, curHdr, 'end'));
+    var regStart = dstr(getVal_(row, curHdr, 'regStart'), true);
+    var regEnd   = dstr(getVal_(row, curHdr, 'regEnd'), true);
+
+    var status   = String(getVal_(row, curHdr, 'status')||'').trim();
+
+    var divSets = parseJSON(String(getVal_(row, curHdr, 'divSets')||''), null);
+    var divsObj = parseJSON(String(getVal_(row, curHdr, 'divs')||''), null);
+    if (!divsObj) divsObj = {};
+    if (!divSets && divsObj && typeof divsObj==='object'){
+      divSets = Object.keys(divsObj).map(function(g){ return {group:g, divisions:Array.isArray(divsObj[g])?divsObj[g]:[]}; });
+    }
+
+    var places = parseJSON(String(getVal_(row, curHdr, 'places')||''), null);
+    if (!places) places = [];
+    if (Array.isArray(places)){
+      places = places.map(function(p){
+        if (p && typeof p==='object'){ return { name: String(p.name || p.address || '') }; }
+        return { name: String(p||'') };
       });
-      return parts.length?parts.join(' / '):'-';
-    }catch{return '-';}
-  }
-  function parsePlaces(p){
-    try{
-      const arr=Array.isArray(p)?p:JSON.parse(p||'[]');
-      const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean);
-      return names.length?names.join(' · '):'-';
-    }catch{return '-';}
-  }
-  function renderTourInfo(t){
-    const box=$('#tourInfo'); const nextbar=$('#nextbar0');
-    if(!t){ box.style.display='none'; box.textContent=''; nextbar.style.display='none'; return; }
-    const urlLine=t.url?`<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`:'';
-    box.innerHTML=`
-      <div class="kv">
-        <b>대회명</b><div>${t.name||'-'}</div>
-        <b>종별</b><div>${summarizeDivs(t.divs)}</div>
-        <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
-        <b>장소</b><div>${parsePlaces(t.places)}</div>
-        <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
-        ${urlLine}
-      </div>`;
-    box.style.display='block'; nextbar.style.display='flex';
-  }
-  $('#tourSelect').addEventListener('change',e=>{
-    const id=e.target.value; currentTour=id?TOUR_MAP[id]:null;
-    renderTourInfo(currentTour);
-    fillCategoriesFromTour(currentTour);
+    }
+
+    var adminCode = String(getVal_(row, curHdr, 'adminCode')||'').trim();
+    var createdAt = String(getVal_(row, curHdr, 'createdAt')||'').trim() || nowIsoTz();
+    var updatedAt = String(getVal_(row, curHdr, 'updatedAt')||'').trim();
+
+    return [
+      tourId, name, url, start, end, regStart, regEnd, status,
+      J.stringify(divSets||[]),
+      J.stringify(divsObj||{}),
+      J.stringify(places||[]),
+      adminCode,
+      createdAt, updatedAt
+    ];
   });
 
-  /* ====== 종별/디비전 제한 ====== */
-  const categorySelect=$('#category'), divisionSelect=$('#division');
-  function fillCategoriesFromTour(t){
-    categorySelect.innerHTML=''; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
-    if(!t || !t.divs || !Object.keys(t.divs).length){ categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return; }
-    categorySelect.disabled=false;
-    categorySelect.appendChild(new Option('선택',''));
-    Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
+  sh.clear();
+  sh.getRange(1,1,1,newHdr.length).setValues([newHdr]);
+  if (normalized.length) sh.getRange(2,1,normalized.length,newHdr.length).setValues(normalized);
+  return sh;
+}
+
+function headerIndex_(sh){
+  const hdr=readHeader_(sh); var idx={};
+  CONF.HEADERS.forEach(function(h){ var c=findCol_(hdr,h); if (c) idx[h]=c; });
+  return idx;
+}
+
+/** ---------- Teams: header normalize/order ---------- */
+function ensureTeamHeaderOrder_(){
+  const sh = getSheetByCandidates_(CONF.TEAM_SHEET_CANDIDATES, CONF.TEAM_SHEET_CANDIDATES[0]);
+  const curHdr = readHeader_(sh);
+  if (curHdr.length === 0){
+    sh.getRange(1,1,1,CONF.TEAM_HEADERS.length).setValues([CONF.TEAM_HEADERS]);
+    return sh;
   }
-  categorySelect.addEventListener('change',e=>{
-    const cat=e.target.value; divisionSelect.innerHTML='';
-    if(!currentTour || !cat){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; return; }
-    const arr=currentTour.divs[cat]||[]; if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
-    divisionSelect.disabled=false; divisionSelect.appendChild(new Option('선택','')); arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
+  const newHdr = CONF.TEAM_HEADERS.slice();
+  const lastRow = sh.getLastRow();
+  const rows = lastRow>1 ? sh.getRange(2,1,lastRow-1,sh.getLastColumn()).getValues() : [];
+  const A = CONF.TEAM_ALIASES;
+
+  const normalized = rows.map(function(row){
+    var teamId      = String(getVal_(row, curHdr, 'teamId', A)      ||'').trim();
+    var tourId      = String(getVal_(row, curHdr, 'tourId', A)      ||'').trim();
+    var tourName    = String(getVal_(row, curHdr, 'tourName', A)    ||'').trim();
+    var teamNameKo  = String(getVal_(row, curHdr, 'teamNameKo', A)  || getVal_(row, curHdr, 'teamName', A) || '').trim();
+    var teamNameEn  = String(getVal_(row, curHdr, 'teamNameEn', A)  ||'').trim();
+    var region      = String(getVal_(row, curHdr, 'region', A)      ||'').trim();
+    var province    = String(getVal_(row, curHdr, 'province', A)    ||'').trim();
+    var city        = String(getVal_(row, curHdr, 'city', A)        ||'').trim();
+    var managerName = String(getVal_(row, curHdr, 'managerName', A) ||'').trim();
+    var managerPhone= onlyDigits(getVal_(row, curHdr, 'managerPhone', A) || '');
+    var category    = String(getVal_(row, curHdr, 'category', A)    ||'').trim();
+    var division    = String(getVal_(row, curHdr, 'division', A)    ||'').trim();
+    var uniformHome = String(getVal_(row, curHdr, 'uniformHome', A) ||'').trim();
+    var uniformAway = String(getVal_(row, curHdr, 'uniformAway', A) ||'').trim();
+
+    var players     = parseJSON(String(getVal_(row, curHdr, 'players', A) || '[]'), []);
+    var editCode    = String(getVal_(row, curHdr, 'editCode', A)   ||'').trim();
+    var createdAt   = String(getVal_(row, curHdr, 'createdAt', A)  ||'').trim() || nowIsoTz();
+    var updatedAt   = String(getVal_(row, curHdr, 'updatedAt', A)  ||'').trim();
+
+    return [
+      teamId, tourId, tourName, teamNameKo, teamNameEn, region, province, city,
+      managerName, managerPhone, category, division,
+      uniformHome, uniformAway, J.stringify(players||[]), editCode, createdAt, updatedAt
+    ];
   });
 
-  /* ====== 연락처 숫자만 ====== */
-  const phoneInput=$('#managerPhone');
-  phoneInput.addEventListener('input',()=>{ phoneInput.value=(phoneInput.value||'').replace(/\D+/g,'').slice(0,11); });
+  sh.clear();
+  sh.getRange(1,1,1,newHdr.length).setValues([newHdr]);
+  if (normalized.length) sh.getRange(2,1,normalized.length,newHdr.length).setValues(normalized);
+  return sh;
+}
 
-  /* ====== 시도/시군구 ====== */
-  const regionMap={'서울특별시':['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-  '부산광역시':['강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구','기장군'],
-  '대구광역시':['남구','달서구','동구','북구','서구','수성구','중구','달성군','군위군'],
-  '인천광역시':['강화군','계양구','미추홀구','남동구','동구','부평구','서구','연수구','중구','옹진군'],
-  '광주광역시':['광산구','남구','동구','북구','서구'],
-  '대전광역시':['대덕구','동구','서구','유성구','중구'],
-  '울산광역시':['남구','동구','북구','중구','울주군'],
-  '세종특별자치시':['세종시'],
-  '경기도':['가평군','고양시','과천시','광명시','광주시','구리시','군포시','김포시','남양주시','동두천시','부천시','성남시','수원시','시흥시','안산시','안성시','안양시','양주시','양평군','여주시','연천군','오산시','용인시','의왕시','의정부시','이천시','파주시','평택시','포천시','하남시','화성시'],
-  '강원특별자치도':['강릉시','동해시','속초시','삼척시','원주시','춘천시','태백시','고성군','양구군','양양군','영월군','인제군','정선군','철원군','평창군','홍천군','화천군','횡성군'],
-  '충청북도':['제천시','청주시','충주시','괴산군','단양군','보은군','영동군','옥천군','음성군','증평군'],
-  '충청남도':['계룡시','공주시','논산시','당진시','보령시','서산시','아산시','천안시','금산군','부여군','서천군','예산군','청양군','태안군','홍성군'],
-  '전북특별자치도':['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','고창군','무주군','부안군','순창군','임실군','장수군','진안군'],
-  '전라남도':['광양시','나주시','목포시','순천시','여수시','강진군','고흥군','곡성군','구례군','담양군','무안군','보성군','신안군','영광군','영암군','완도군','장성군','장흥군','진도군','함평군','해남군','화순군'],
-  '경상북도':['경산시','경주시','구미시','김천시','문경시','상주시','안동시','영주시','영천시','포항시','고령군','군위군','봉화군','성주군','영덕군','영양군','예천군','울릉군','울진군','의성군','청도군','청송군','칠곡군'],
-  '경상남도':['거제시','김해시','밀양시','사천시','양산시','진주시','창원시','통영시','거창군','고성군','남해군','산청군','의령군','창녕군','하동군','함안군','함양군','합천군'],
-  '제주특별자치도':['제주시','서귀포시']};
-  $('#province').addEventListener('change',e=>{
-    const prov=e.target.value; const citySel=$('#city'); citySel.innerHTML='';
-    if(!prov){ citySel.disabled=true; citySel.innerHTML='<option value="">시도를 먼저 선택하세요</option>'; }
-    else{ citySel.disabled=false; citySel.appendChild(new Option('선택','')); (regionMap[prov]||[]).forEach(c=>citySel.appendChild(new Option(c,c))); }
-  });
+function teamHeaderIndex_(sh){
+  const hdr=readHeader_(sh); var idx={};
+  CONF.TEAM_HEADERS.forEach(function(h){ var c=findCol_(hdr,h,CONF.TEAM_ALIASES); if (c) idx[h]=c; });
+  return idx;
+}
 
-  /* ====== 선수 카드 (간단 버전) ====== */
-  function createPlayerCard(){
-    const div=document.createElement('div'); div.style.border='1px dashed #e6ecf5'; div.style.borderRadius='14px'; div.style.padding='10px'; div.style.marginTop='10px'; div.style.background='#fafcff';
-    div.innerHTML = `<div class="row row-3">
-      <div><label>선수 이름</label><input data-key="name" placeholder="이름"></div>
-      <div><label>등번호</label><input data-key="number" inputmode="numeric" placeholder="예: 7"></div>
-      <div><label>포지션</label><select data-key="position"><option value="">선택</option><option>G</option><option>F</option><option>C</option></select></div>
-    </div>
-    <div class="row row-2" style="margin-top:8px">
-      <div><label>생년월일 (선택)</label><input data-key="birth" type="date"></div>
-      <div><label>선출여부</label><select data-key="elite"><option value="">선택</option><option>선출</option><option>비선출</option></select></div>
-    </div>
-    <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>`;
-    div.querySelector('.remove').addEventListener('click',()=>div.remove());
-    return div;
-  }
-  const playersDiv=$('#players'); $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
-  for(let i=0;i<5;i++) $('#addPlayerBtn').click();
+/* --------------------------- Router helpers --------------------------- */
+function respond_(obj,e){
+  return ContentService.createTextOutput(J.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+function parseBody_(e){
+  try{ if(e&&e.postData&&e.postData.contents) return J.parse(e.postData.contents);}catch(err){}
+  const p=e&&e.parameter||{}; if(p.payload){ try{ return J.parse(p.payload);}catch(err){} } return p||{};
+}
 
-  /* ====== 검증 ====== */
-  function setErr(el,noteId,on){ if(!el) return; if(on){ el.classList.add('error'); if(noteId) $('#'+noteId).style.display='block'; } else { el.classList.remove('error'); if(noteId) $('#'+noteId).style.display='none'; } }
-  function validateStep(stepId){
-    let ok=true;
-    if(stepId==='step0'){
-      const v=$('#tourSelect').value; if(!v){ show('대회를 선택해 주세요'); ok=false; }
-    }
-    if(stepId==='step1'){
-      const prov=$('#province'), city=$('#city'), tKo=$('#teamNameKo'), tEn=$('#teamNameEn'), man=$('#managerName'), ph=$('#managerPhone');
-      const phOk=/^\d{10,11}$/.test(ph.value);
-      setErr(prov,'errProvince',!prov.value); setErr(city,'errCity',!city.value);
-      setErr(tKo,'errTeamNameKo',!tKo.value.trim()); setErr(tEn,'errTeamNameEn',!tEn.value.trim());
-      setErr(man,'errManagerName',!man.value.trim()); setErr(ph,'errPhone',!phOk);
-      ok = prov.value && city.value && tKo.value.trim() && tEn.value.trim() && man.value.trim() && phOk;
-      if(!ok) show('필수 항목을 확인해 주세요');
-    }
-    if(stepId==='step2'){
-      const cat=$('#category'), div=$('#division'); setErr(cat,'errCategory',!cat.value); setErr(div,'errDivision',!div.value);
-      ok = !!(cat.value && div.value); if(!ok) show('종별/디비전을 선택해 주세요');
-    }
-    return ok;
-  }
+/* --------------------------- Business: Tournaments --------------------------- */
+function listTournaments_(){
+  const sh=ensureTournamentHeaderOrder_();
+  const hdr=readHeader_(sh);
+  const last=sh.getLastRow(); if (last<2) return [];
+  const vals=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues();
 
-  /* ====== 토스트 ====== */
-  function show(msg){ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
-
-  /* ====== 제출 ====== */
-  $('#submitBtn').addEventListener('click', async ()=>{
-    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
-
-    const province=$('#province').value.trim(), city=$('#city').value.trim();
-    const team={
-      tourId: $('#tourSelect').value.trim(),
-      tourName: (currentTour&&currentTour.name)||'',
-      region: province && city ? `${province} ${city}` : '',
-      province, city,
-      teamNameKo: $('#teamNameKo').value.trim(),
-      teamNameEn: $('#teamNameEn').value.trim(),
-      teamName  : $('#teamNameKo').value.trim(), // 호환
-      managerName: $('#managerName').value.trim(),
-      managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
-      category: $('#category').value,
-      division: $('#division').value,
-      uniformHome: $('#uniformHome')?.value?.trim()||'',
-      uniformAway: $('#uniformAway')?.value?.trim()||''
+  const rows=vals.map(function(r){
+    function v(k){ var c=findCol_(hdr,k); return c ? r[c-1] : ''; }
+    return {
+      tourId : String(v('tourId')||''),
+      TourID : String(v('tourId')||''), // old frontends
+      name   : String(v('name')||''),
+      url    : String(v('url')||''),
+      start  : String(v('start')||''),
+      end    : String(v('end')||''),
+      regStart: String(v('regStart')||''),
+      regEnd  : String(v('regEnd')||''),
+      status : String(v('status')||''),
+      divSets: parseJSON(String(v('divSets')||'[]'), []),
+      divs   : parseJSON(String(v('divs')||'{}'), {}),
+      places : parseJSON(String(v('places')||'[]'), []),
+      createdAt: String(v('createdAt')||''),
+      updatedAt: String(v('updatedAt')||'')
     };
-    const players=[...document.querySelectorAll('#players .row')].length
-      ? Array.from(document.querySelectorAll('#players .row.row-3')).map(row=>{
-          const card=row.closest('div[style*="border"]');
-          const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value||'').trim();
-          return {name:get('name'), number:get('number'), position:get('position'), birth:(card.querySelector('[data-key="birth"]')?.value||''), elite:(card.querySelector('[data-key="elite"]')?.value||'')};
-        }).filter(p=>p.name)
-      : [];
-
-    const payload={team, players, base: location.origin + location.pathname};
-    const url = (editTeamId && editCode) ? `${WEB_APP_URL}?path=updateTeam` : `${WEB_APP_URL}?path=registerTeam`;
-    if (editTeamId && editCode){ payload.teamId=editTeamId; payload.editCode=editCode; }
-
-    const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
-    try{
-      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-      const json=await res.json();
-      if(json.ok){
-        btn.textContent= editTeamId ? '수정 완료' : '제출 완료';
-        btn.classList.add('done'); show(editTeamId?'수정이 저장되었습니다.':'신청이 완료되었습니다.');
-        const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-        $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
-        const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
-      }else{
-        alert('오류: '+(json.error||'unknown')); btn.disabled=false; btn.textContent=bak;
-      }
-    }catch(err){ alert('네트워크 오류\n'+err); btn.disabled=false; btn.textContent=bak; }
   });
 
-  $('#copyEditLinkBtn').addEventListener('click', async ()=>{
-    const val=$('#editLinkInput').value; try{ await navigator.clipboard.writeText(val); show('링크가 복사되었습니다.'); }catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
-  });
+  rows.sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+  return rows;
+}
+function findTournamentRow_(tourId){
+  const sh=ensureTournamentHeaderOrder_(); const hdr=readHeader_(sh);
+  const col = findCol_(hdr, 'tourId'); if (!col) return {sh:sh,hdr:hdr,rowIndex:-1};
+  const last=sh.getLastRow(); if (last<2) return {sh:sh,hdr:hdr,rowIndex:-1};
+  const ids=sh.getRange(2,col,last-1,1).getValues().map(function(v){ return String(v[0]||'').trim(); });
+  const pos=ids.indexOf(String(tourId||'').trim());
+  return {sh:sh,hdr:hdr,rowIndex:(pos>=0?pos+2:-1)};
+}
 
-  /* ====== 부트스트랩 ====== */
-  (async function init(){
-    await loadTournaments();
-    renderTourInfo(TOUR_MAP[$('#tourSelect').value]||null);
-    if (editTeamId && editCode){
-      // 수정 모드 프리로드
-      const res=await fetch(`${WEB_APP_URL}?path=getTeam&teamId=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`);
-      const json=await res.json();
-      if(json.ok){
-        // 대회 동기화
-        if (json.team.tourId && TOUR_MAP[json.team.tourId]){
-          $('#tourSelect').value=json.team.tourId; currentTour=TOUR_MAP[json.team.tourId]; renderTourInfo(currentTour); fillCategoriesFromTour(currentTour);
-          $('#category').value=json.team.category||''; const arr=currentTour.divs[$('#category').value]||[]; $('#division').innerHTML=''; $('#division').appendChild(new Option('선택','')); arr.forEach(dv=>$('#division').appendChild(new Option(dv,dv))); $('#division').value=json.team.division||'';
-        }
-        // 팀
-        $('#province').value=json.team.province||''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{$('#city').value=json.team.city||'';},0);
-        $('#teamNameKo').value=json.team.teamNameKo || json.team.teamName || '';
-        $('#teamNameEn').value=json.team.teamNameEn || '';
-        $('#managerName').value=json.team.managerName||'';
-        $('#managerPhone').value=String(json.team.managerPhone||'').replace(/\D+/g,'');
-        $('#uniformHome').value=json.team.uniformHome||''; $('#uniformAway').value=json.team.uniformAway||'';
-        // 선수
-        playersDiv.innerHTML=''; (json.players||[]).forEach(()=>playersDiv.appendChild(createPlayerCard()));
-        const cards=document.querySelectorAll('#players [data-key="name"]'); (json.players||[]).forEach((pl,i)=>{
-          const card=playersDiv.children[i];
-          card.querySelector('[data-key="name"]').value=pl.name||'';
-          card.querySelector('[data-key="number"]').value=pl.number||'';
-          card.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase();
-          card.querySelector('[data-key="birth"]').value=pl.birth||'';
-          card.querySelector('[data-key="elite"]').value=pl.elite||'';
-        });
-        $('#submitBtn').textContent='수정 저장';
-      }else{
-        alert('수정 링크가 유효하지 않습니다.');
-      }
-    }
-  })();
-</script>
-</body>
-</html>
+function upsertTournament_(p){
+  const sh=ensureTournamentHeaderOrder_(); const hdr=readHeader_(sh); const idx=headerIndex_(sh);
+
+  const tourIdIn = String(p.tourId||'').trim();
+  const name     = String(p.name||'').trim();
+  const adminIn  = String(p.adminCode||'').trim();
+  if(!name)    return {ok:false,error:'name(대회명)은 필수입니다.'};
+  if(!adminIn) return {ok:false,error:'adminCode(관리코드)는 필수입니다.'};
+
+  var rowN=-1;
+  if (tourIdIn){
+    var f=findTournamentRow_(tourIdIn); if (f.rowIndex>0) rowN=f.rowIndex;
+  }
+
+  const now = nowIsoTz();
+  function toStrJson(v,fb){ if(typeof v==='string'){ try{J.parse(v); return v;}catch(e){} } return J.stringify(v!=null?v:fb); }
+  const normPlaces = Array.isArray(p.places) ? p.places.map(function(x){ return {name:String((x&&x.name)||'')}; }) : [];
+
+  if (rowN===-1){
+    const newId = tourIdIn || genId_('T');
+    const line = new Array(readHeader_(sh).length).fill('');
+    line[idx['tourId']-1]   = newId;
+    line[idx['name']-1]     = name;
+    line[idx['url']-1]      = String(p.url||'');
+    line[idx['start']-1]    = dstr(p.start);
+    line[idx['end']-1]      = dstr(p.end);
+    line[idx['regStart']-1] = dstr(p.regStart || p['reg.start'] || p.reg_start || p.regStartDate || p['reg.start.date'], true);
+    line[idx['regEnd']-1]   = dstr(p.regEnd   || p['reg.end']   || p.reg_end   || p.regEndDate   || p['reg.end.date']  , true);
+    line[idx['status']-1]   = String(p.status||'');
+    line[idx['divSets']-1]  = toStrJson(p.divSets, []);
+    line[idx['divs']-1]     = toStrJson(p.divs,    {});
+    line[idx['places']-1]   = J.stringify(normPlaces);
+    line[idx['adminCode']-1]= adminIn;
+    line[idx['createdAt']-1]= now;
+    line[idx['updatedAt']-1]= now;
+    sh.appendRow(line);
+    return {ok:true, tourId:newId, created:true};
+  }
+
+  const range = sh.getRange(rowN,1,1,sh.getLastColumn());
+  const old = range.getValues()[0];
+  const storedAdmin = String(old[idx['adminCode']-1]||'').trim();
+  const hadAdmin = has(storedAdmin);
+  if (hadAdmin && storedAdmin !== adminIn) return {ok:false,error:'관리코드가 올바르지 않습니다.'};
+
+  var line=old.slice();
+  line[idx['name']-1]     = name;
+  line[idx['url']-1]      = String(p.url||'');
+  line[idx['start']-1]    = dstr(p.start);
+  line[idx['end']-1]      = dstr(p.end);
+  line[idx['regStart']-1] = dstr(p.regStart || p['reg.start'] || p.reg_start || p.regStartDate || p['reg.start.date'], true);
+  line[idx['regEnd']-1]   = dstr(p.regEnd   || p['reg.end']   || p.reg_end   || p.regEndDate   || p['reg.end.date']  , true);
+  line[idx['status']-1]   = String(p.status||'');
+  function toStrJson2(v,fb){ if(typeof v==='string'){ try{J.parse(v); return v;}catch(e){} } return J.stringify(v!=null?v:fb); }
+  line[idx['divSets']-1]  = toStrJson2(p.divSets, parseJSON(String(line[idx['divSets']-1]||'[]'),[]));
+  line[idx['divs']-1]     = toStrJson2(p.divs,    parseJSON(String(line[idx['divs']-1]||'{}'),{}));
+  line[idx['places']-1]   = J.stringify(normPlaces);
+  line[idx['adminCode']-1]= adminIn;
+  line[idx['updatedAt']-1]= now;
+  range.setValues([line]);
+  return {ok:true, tourId:String(line[idx['tourId']-1]||''), created:false};
+}
+function removeTournament_(p){
+  const sh=ensureTournamentHeaderOrder_(); const hdr=readHeader_(sh);
+  const tourId=String(p.tourId||'').trim();
+  const adminIn=String(p.adminCode||'').trim();
+  if(!tourId)  return {ok:false,error:'tourId가 필요합니다.'};
+  if(!adminIn) return {ok:false,error:'adminCode가 필요합니다.'};
+  const f=findTournamentRow_(tourId); if (f.rowIndex<=0) return {ok:false,error:'대회를 찾을 수 없습니다.'};
+  const idx=headerIndex_(sh);
+  const rowVals=sh.getRange(f.rowIndex,1,1,sh.getLastColumn()).getValues()[0];
+  const storedAdmin = String(rowVals[idx['adminCode']-1]||'').trim();
+  if (!has(storedAdmin)) return {ok:false,error:'관리코드가 설정되지 않았습니다. 먼저 저장(수정)으로 설정 후 삭제하세요.'};
+  if (storedAdmin !== adminIn) return {ok:false,error:'관리코드가 올바르지 않습니다.'};
+  sh.deleteRow(f.rowIndex);
+  return {ok:true, removed:true};
+}
+
+/* --------------------------- Business: Teams --------------------------- */
+function listTeams_(tourIdOpt){
+  const sh=ensureTeamHeaderOrder_(); const hdr=readHeader_(sh);
+  const last=sh.getLastRow(); if(last<2) return [];
+  const vals=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues();
+  const rows=vals.map(function(r){
+    var o={}; hdr.forEach(function(h,i){ o[h]=r[i]; });
+    // 보정
+    o.managerPhone = onlyDigits(o.managerPhone);
+    o.players = parseJSON(String(o.players||'[]'),[]);
+    return o;
+  });
+  if (tourIdOpt){
+    const key = ['tourId','TourID','대회id'].find(function(k){ return hdr.indexOf(k)>=0; }) || 'tourId';
+    return rows.filter(function(x){ return String(x[key]||'').trim()===String(tourIdOpt).trim(); });
+  }
+  return rows;
+}
+
+function findTeamRow_(teamId){
+  const sh=ensureTeamHeaderOrder_(); const hdr=readHeader_(sh);
+  const col = findCol_(hdr, 'teamId', CONF.TEAM_ALIASES); if (!col) return {sh:sh,hdr:hdr,rowIndex:-1};
+  const last=sh.getLastRow(); if (last<2) return {sh:sh,hdr:hdr,rowIndex:-1};
+  const ids=sh.getRange(2,col,last-1,1).getValues().map(function(v){ return String(v[0]||'').trim(); });
+  const pos=ids.indexOf(String(teamId||'').trim());
+  return {sh:sh,hdr:hdr,rowIndex:(pos>=0?pos+2:-1)};
+}
+
+function registerTeam_(p){
+  // 필수: tourId, teamNameKo, teamNameEn
+  var t = p && p.team || {};
+  var players = p && p.players || [];
+  if (!has(t.tourId))      return {ok:false,error:'tourId가 필요합니다.'};
+  if (!has(t.teamNameKo))  return {ok:false,error:'팀명(한글)은 필수입니다.'};
+  if (!has(t.teamNameEn))  return {ok:false,error:'팀명(영문)은 필수입니다.'};
+
+  const sh=ensureTeamHeaderOrder_(); const hdr=readHeader_(sh); const idx=teamHeaderIndex_(sh);
+  const now = nowIsoTz();
+  const teamId = genId_('TM');
+  const editCode = genCode_(6);
+
+  const line = new Array(readHeader_(sh).length).fill('');
+  line[idx['teamId']-1]      = teamId;
+  line[idx['tourId']-1]      = String(t.tourId||'').trim();
+  line[idx['tourName']-1]    = String(t.tourName||'').trim();
+  line[idx['teamNameKo']-1]  = String(t.teamNameKo||'').trim();
+  line[idx['teamNameEn']-1]  = String(t.teamNameEn||'').trim();
+  line[idx['region']-1]      = String(t.region||'').trim();
+  line[idx['province']-1]    = String(t.province||'').trim();
+  line[idx['city']-1]        = String(t.city||'').trim();
+  line[idx['managerName']-1] = String(t.managerName||'').trim();
+  line[idx['managerPhone']-1]= onlyDigits(t.managerPhone||'');
+  line[idx['category']-1]    = String(t.category||'').trim();
+  line[idx['division']-1]    = String(t.division||'').trim();
+  line[idx['uniformHome']-1] = String(t.uniformHome||'').trim();
+  line[idx['uniformAway']-1] = String(t.uniformAway||'').trim();
+  line[idx['players']-1]     = J.stringify(players||[]);
+  line[idx['editCode']-1]    = editCode;
+  line[idx['createdAt']-1]   = now;
+  line[idx['updatedAt']-1]   = now;
+
+  sh.appendRow(line);
+
+  var base = (p && p.base) || '';
+  var editUrl = base ? (base + '?edit=' + encodeURIComponent(teamId) + '&code=' + encodeURIComponent(editCode)) : '';
+  return {ok:true, teamId:teamId, editCode:editCode, editUrl:editUrl};
+}
+
+function updateTeam_(p){
+  var t = p && p.team || {};
+  var players = p && p.players || [];
+  var teamId = String(p.teamId||'').trim();
+  var code   = String(p.editCode||p.code||'').trim();
+  if (!has(teamId)) return {ok:false,error:'teamId가 필요합니다.'};
+
+  const f=findTeamRow_(teamId); if (f.rowIndex<=0) return {ok:false,error:'팀을 찾을 수 없습니다.'};
+  const sh=f.sh, hdr=f.hdr, idx=teamHeaderIndex_(sh);
+  const row = sh.getRange(f.rowIndex,1,1,sh.getLastColumn()).getValues()[0];
+  const storedCode = String(row[idx['editCode']-1]||'').trim();
+  if (!has(storedCode)) return {ok:false,error:'수정코드가 설정되지 않았습니다.'};
+  if (storedCode !== code) return {ok:false,error:'수정코드가 올바르지 않습니다.'};
+
+  // teamNameKo / teamNameEn 모두 필수
+  if (!has(t.teamNameKo)) return {ok:false,error:'팀명(한글)은 필수입니다.'};
+  if (!has(t.teamNameEn)) return {ok:false,error:'팀명(영문)은 필수입니다.'};
+
+  var line = row.slice();
+  line[idx['tourId']-1]      = String(t.tourId||row[idx['tourId']-1]||'').trim();
+  line[idx['tourName']-1]    = String(t.tourName||row[idx['tourName']-1]||'').trim();
+  line[idx['teamNameKo']-1]  = String(t.teamNameKo||'').trim();
+  line[idx['teamNameEn']-1]  = String(t.teamNameEn||'').trim();
+  line[idx['region']-1]      = String(t.region||'').trim();
+  line[idx['province']-1]    = String(t.province||'').trim();
+  line[idx['city']-1]        = String(t.city||'').trim();
+  line[idx['managerName']-1] = String(t.managerName||'').trim();
+  line[idx['managerPhone']-1]= onlyDigits(t.managerPhone||'');
+  line[idx['category']-1]    = String(t.category||'').trim();
+  line[idx['division']-1]    = String(t.division||'').trim();
+  line[idx['uniformHome']-1] = String(t.uniformHome||'').trim();
+  line[idx['uniformAway']-1] = String(t.uniformAway||'').trim();
+  line[idx['players']-1]     = J.stringify(players||parseJSON(String(line[idx['players']-1]||'[]'),[]));
+  line[idx['updatedAt']-1]   = nowIsoTz();
+
+  sh.getRange(f.rowIndex,1,1,sh.getLastColumn()).setValues([line]);
+  return {ok:true, teamId:teamId, updated:true};
+}
+
+function getTeam_(p){
+  var teamId = String(p.teamId||'').trim();
+  var code   = String(p.code||'').trim();
+  if (!has(teamId)) return {ok:false,error:'teamId가 필요합니다.'};
+  const f=findTeamRow_(teamId); if (f.rowIndex<=0) return {ok:false,error:'팀을 찾을 수 없습니다.'};
+  const sh=f.sh, idx=teamHeaderIndex_(sh);
+  const row = sh.getRange(f.rowIndex,1,1,sh.getLastColumn()).getValues()[0];
+  const storedCode = String(row[idx['editCode']-1]||'').trim();
+  if (has(storedCode) && code && storedCode !== code) return {ok:false,error:'수정코드가 올바르지 않습니다.'};
+
+  function g(k){ return row[idx[k]-1]; }
+  const team = {
+    teamId: g('teamId'),
+    tourId: g('tourId'),
+    tourName: g('tourName'),
+    teamNameKo: g('teamNameKo'),
+    teamNameEn: g('teamNameEn'),
+    region: g('region'),
+    province: g('province'),
+    city: g('city'),
+    managerName: g('managerName'),
+    managerPhone: String(g('managerPhone')||''),
+    category: g('category'),
+    division: g('division'),
+    uniformHome: g('uniformHome'),
+    uniformAway: g('uniformAway'),
+    createdAt: g('createdAt'),
+    updatedAt: g('updatedAt')
+  };
+  const players = parseJSON(String(g('players')||'[]'),[]);
+  return {ok:true, team:team, players:players};
+}
+
+/* --------------------------- Router --------------------------- */
+function doGet(e){
+  const path=(e.parameter && e.parameter.path || '').toLowerCase();
+  try{
+    if(!path || path==='health')   return respond_({ok:true, now:nowIsoTz()}, e);
+    if(path==='tournaments')       return respond_({ok:true, rows:listTournaments_()}, e);
+    if(path==='teams')             return respond_({ok:true, rows:listTeams_(e.parameter && e.parameter.tourId)}, e);
+    if(path==='getteam')           return respond_(getTeam_(e.parameter||{}), e);
+    return respond_({ok:false,error:'unknown path'}, e);
+  }catch(err){ return respond_({ok:false,error:String(err&&err.message||err)}, e); }
+}
+function doPost(e){
+  const path=(e.parameter && e.parameter.path || '').toLowerCase();
+  const body=parseBody_(e);
+  try{
+    if(path==='upserttournament')  return respond_(upsertTournament_(body), e);
+    if(path==='removetournament')  return respond_(removeTournament_(body), e);
+    if(path==='registerteam')      return respond_(registerTeam_(body), e);
+    if(path==='updateteam')        return respond_(updateTeam_(body), e);
+    return respond_({ok:false,error:'unknown path'}, e);
+  }catch(err){ return respond_({ok:false,error:String(err&&err.message||err)}, e); }
+}
+
+/* --------------------------- Maintenance --------------------------- */
+function REPAIR_TOUR_HEADERS(){ ensureTournamentHeaderOrder_(); }
+function REPAIR_TEAM_HEADERS(){ ensureTeamHeaderOrder_(); }
+function RECOMPUTE_STATUS(){
+  const sh=ensureTournamentHeaderOrder_(); const hdr=readHeader_(sh);
+  const last=sh.getLastRow(); if(last<2) return;
+  const rsCol=findCol_(hdr,'regStart'), reCol=findCol_(hdr,'regEnd'), stCol=findCol_(hdr,'status'), upCol=findCol_(hdr,'updatedAt');
+  if(!(rsCol && reCol && stCol)) return;
+  const rg=sh.getRange(2,1,last-1,sh.getLastColumn()); const vals=rg.getValues(); const now=nowIsoTz();
+  vals.forEach(function(row){
+    const rs=new Date(row[rsCol-1]), re=new Date(row[reCol-1]), n=new Date();
+    const st = (!isNaN(rs)&&!isNaN(re)) ? (n<rs?'접수전':(n>re?'마감':'접수중')) : String(row[stCol-1]||'');
+    row[stCol-1]=st; if (upCol) row[upCol-1]=now;
+  });
+  rg.setValues(vals);
+}
