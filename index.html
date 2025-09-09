@@ -59,6 +59,9 @@
   #pasteText{height:120px;resize:vertical}
   /* 대비 경고 */
   .warn{display:none;font-size:12px;color:#b45309;background:#fff7ed;border:1px solid #fde68a;padding:8px 10px;border-radius:10px;margin-top:8px}
+
+  /* ★ UPDATED: 대회 정보 박스 카드 느낌 */
+  #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
 </style>
 </head>
 <body>
@@ -74,10 +77,12 @@
       <div>
         <label>대회 선택</label>
         <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
-        <div id="tourInfo" class="muted" style="display:none;margin-top:8px"></div>
+        <!-- ★ UPDATED: 선택 시 상세가 뜨도록 카드 스타일 + 초기는 숨김 -->
+        <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
         <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있게 자동 제한돼요.</div>
       </div>
-      <div class="nextbar">
+      <!-- ★ UPDATED: 초기에는 숨김, 선택 후에만 표시 -->
+      <div class="nextbar" id="nextbar0" style="display:none">
         <button class="next primary" data-next="#step1">다음 →</button>
       </div>
     </div>
@@ -120,8 +125,9 @@
       <div class="row row-2">
         <div>
           <label>대표자 연락처</label>
-          <input id="managerPhone" placeholder="010-0000-0000" inputmode="numeric" autocomplete="tel" />
-          <div class="error-note" id="errPhone" style="display:none">연락처 형식: 010-1234-5678</div>
+          <!-- ★ UPDATED: 보조 문구/입력 가이드 변경 + 숫자만 입력 유도 -->
+          <input id="managerPhone" placeholder="숫자만 입력(하이픈 없이)" inputmode="numeric" pattern="[0-9]*" maxlength="11" autocomplete="tel" />
+          <div class="error-note" id="errPhone" style="display:none">숫자만 입력(예: 01012345678)</div>
         </div>
       </div>
       <div class="nextbar">
@@ -263,7 +269,7 @@
   });
 
   /* ====== 대회 선택: 데이터 로드 & 바인딩 ====== */
-  let TOUR_MAP = {};      // { tourId: {name,status,start,end,url,divs:{cat:[div,..]}} }
+  let TOUR_MAP = {};      // { tourId: {...} }
   let currentTour = null; // 선택된 대회 객체
 
   async function loadTournaments() {
@@ -275,9 +281,11 @@
       sel.innerHTML = '<option value="">대회를 선택하세요</option>';
 
       (json.rows || []).forEach(t => {
-        TOUR_MAP[t.TourID] = t;
+        // ★ UPDATED: tourId/TourID 어느 쪽이든 대응
+        const key = t.TourID || t.tourId;
+        TOUR_MAP[key] = t;
         const opt = document.createElement('option');
-        opt.value = t.TourID;
+        opt.value = key;
         const period = (t.start||t.end) ? ` · ${formatDateK(t.start)}~${formatDateK(t.end)}` : '';
         opt.textContent = `${t.name}${t.status ? ' ('+t.status+')' : ''}${period}`;
         sel.appendChild(opt);
@@ -296,13 +304,29 @@
     } catch { return String(v); }
   }
 
+  // ★ UPDATED: 선택 시 정보 카드 + 다음버튼 제어
   function renderTourInfo(t){
     const box = document.getElementById('tourInfo');
-    if (!t) { box.style.display = 'none'; box.textContent=''; return; }
+    const nextbar = document.getElementById('nextbar0');
+    if (!t) {
+      box.style.display = 'none';
+      box.textContent = '';
+      nextbar.style.display = 'none';
+      return;
+    }
+    // places(배열/문자열) 처리
+    let placesText = '-';
+    try {
+      const raw = Array.isArray(t.places) ? t.places : JSON.parse(t.places||'[]');
+      const norm = (raw||[]).map(p => (typeof p==='string') ? p : (p && p.name) || '').filter(Boolean);
+      if (norm.length) placesText = norm.join(' · ');
+    } catch { /* ignore */ }
+
     const date = (t.start||t.end)? `${formatDateK(t.start)} ~ ${formatDateK(t.end)}` : '일정미정';
     const url = t.url ? ` · <a href="${t.url}" target="_blank" rel="noopener">안내</a>` : '';
-    box.innerHTML = `<b>${t.name}</b> · ${t.status||'상태미정'} · ${date}${url}`;
+    box.innerHTML = `<b>${t.name}</b> · ${t.status||'상태미정'} · ${date}${url}<br><span class="muted">장소: ${placesText}</span>`;
     box.style.display = 'block';
+    nextbar.style.display = 'flex';
   }
 
   // 종별/디비전 동기화 (대회에 맞게 제한)
@@ -557,20 +581,11 @@
     const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2400);
   }
 
-  /* ====== 전화번호 자동 하이픈 ====== */
-  function formatPhoneNumber(value) {
-    value = value.replace(/[^0-9]/g, '');
-    if (value.length < 4) return value;
-    if (value.length < 8) return value.replace(/(\d{3})(\d+)/, '$1-$2');
-    return value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
-  }
+  /* ====== ★ UPDATED: 연락처 숫자만 입력 + 검증 ====== */
   const phoneInput = document.getElementById('managerPhone');
   phoneInput.addEventListener('input', function () {
-    const caret = this.selectionStart;
-    const before = this.value;
-    this.value = formatPhoneNumber(this.value);
-    const diff = this.value.length - before.length;
-    this.selectionEnd = Math.max(0, (caret || 0) + diff);
+    // 숫자만 유지, 최대 11자리
+    this.value = (this.value || '').replace(/\D+/g,'').slice(0,11);
     saveDraftSoon();
   });
 
@@ -592,7 +607,8 @@
       const team = document.getElementById('teamName');
       const man  = document.getElementById('managerName');
       const ph   = document.getElementById('managerPhone');
-      const phOk = /^010-\d{4}-\d{4}$/.test(ph.value);
+      // ★ UPDATED: 10~11자리 숫자만 허용
+      const phOk = /^\d{10,11}$/.test(ph.value);
       setError(prov, 'errProvince', !prov.value);
       setError(city, 'errCity', !city.value);
       setError(team, 'errTeamName', !team.value.trim());
@@ -622,9 +638,10 @@
       if (!json.ok) { alert('수정 링크가 유효하지 않습니다.'); return; }
 
       // 대회 동기화
-      if (json.team.tourId && TOUR_MAP[json.team.tourId]) {
-        document.getElementById('tourSelect').value = json.team.tourId;
-        currentTour = TOUR_MAP[json.team.tourId];
+      const tId = json.team.tourId;
+      if (tId && TOUR_MAP[tId]) {
+        document.getElementById('tourSelect').value = tId;
+        currentTour = TOUR_MAP[tId];
         renderTourInfo(currentTour);
         fillCategoriesFromTour(currentTour);
         document.getElementById('category').value = json.team.category || '';
@@ -638,7 +655,8 @@
       setTimeout(()=>{ document.getElementById('city').value = json.team.city || ''; }, 0);
       document.getElementById('teamName').value = json.team.teamName || '';
       document.getElementById('managerName').value = json.team.managerName || '';
-      document.getElementById('managerPhone').value = formatPhoneNumber(json.team.managerPhone || '');
+      // ★ UPDATED: 숫자만 유지
+      document.getElementById('managerPhone').value = String(json.team.managerPhone || '').replace(/\D+/g,'');
 
       document.getElementById('uniformHome').value = json.team.uniformHome || '';
       document.getElementById('uniformAway').value = json.team.uniformAway || '';
@@ -741,7 +759,7 @@
       setTimeout(()=>{ document.getElementById('city').value = d.city || ''; }, 0);
       document.getElementById('teamName').value = d.teamName || '';
       document.getElementById('managerName').value = d.managerName || '';
-      document.getElementById('managerPhone').value = d.managerPhone || '';
+      document.getElementById('managerPhone').value = (d.managerPhone || '').replace(/\D+/g,''); // ★ UPDATED
       if (d.category){ document.getElementById('category').value = d.category; fillDivisions(d.category); }
       setTimeout(()=>{ if (d.division) document.getElementById('division').value = d.division; }, 0);
       document.getElementById('uniformHome').value = d.uniformHome || '';
@@ -793,7 +811,7 @@
       region,
       teamName: document.getElementById('teamName').value.trim(),
       managerName: document.getElementById('managerName').value.trim(),
-      managerPhone: document.getElementById('managerPhone').value.trim(),
+      managerPhone: (document.getElementById('managerPhone').value || '').replace(/\D+/g,''), // ★ UPDATED
       category: document.getElementById('category').value,
       division: document.getElementById('division').value,
       uniformHome: document.getElementById('uniformHome')?.value?.trim() || '',
@@ -869,6 +887,8 @@
     restoreDraft();
     // 수정 모드면 서버에서 다시 정확 값 로드(복구보다 우선)
     await preloadForEdit();
+    // 드래프트/수정모드로 값이 박혔을 때도 step0 버튼 상태 맞추기
+    renderTourInfo(TOUR_MAP[document.getElementById('tourSelect').value] || null); // ★ UPDATED
   })();
 </script>
 </body>
