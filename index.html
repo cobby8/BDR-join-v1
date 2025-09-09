@@ -60,8 +60,10 @@
   /* 대비 경고 */
   .warn{display:none;font-size:12px;color:#b45309;background:#fff7ed;border:1px solid #fde68a;padding:8px 10px;border-radius:10px;margin-top:8px}
 
-  /* ★ UPDATED: 대회 정보 박스 카드 느낌 */
+  /* ★ UPDATED: 대회 정보 박스(표 형태) */
   #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
+  #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
+  #tourInfo .kv b{color:#111}
 </style>
 </head>
 <body>
@@ -77,11 +79,11 @@
       <div>
         <label>대회 선택</label>
         <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
-        <!-- ★ UPDATED: 선택 시 상세가 뜨도록 카드 스타일 + 초기는 숨김 -->
+        <!-- ★ UPDATED: 선택 시 상세 표시 -->
         <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
         <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있게 자동 제한돼요.</div>
       </div>
-      <!-- ★ UPDATED: 초기에는 숨김, 선택 후에만 표시 -->
+      <!-- 선택 전 숨김 -->
       <div class="nextbar" id="nextbar0" style="display:none">
         <button class="next primary" data-next="#step1">다음 →</button>
       </div>
@@ -90,6 +92,8 @@
     <!-- 1) 팀 기본정보 -->
     <div class="step" id="step1">
       <div class="section-title">① 팀 기본정보</div>
+
+      <!-- 지역 -->
       <div class="row row-2">
         <div>
           <label>시도 선택</label>
@@ -110,26 +114,34 @@
           <div class="error-note" id="errCity" style="display:none">시군구를 선택해주세요</div>
         </div>
       </div>
+
+      <!-- ★ UPDATED: 팀명(한글/영문) 한 행 -->
       <div class="row row-2">
         <div>
-          <label>팀명</label>
-          <input id="teamName" placeholder="예: 슬로우" />
-          <div class="error-note" id="errTeamName" style="display:none">팀명을 입력해주세요</div>
+          <label>팀명(한글)</label>
+          <input id="teamNameKo" placeholder="예: 슬로우" />
+          <div class="error-note" id="errTeamNameKo" style="display:none">팀명(한글)을 입력해주세요</div>
         </div>
+        <div>
+          <label>팀명(영문) <span class="muted">(선택)</span></label>
+          <input id="teamNameEn" placeholder="예: SLOW" />
+        </div>
+      </div>
+
+      <!-- ★ UPDATED: 대표자 이름/연락처 한 행 & 연락처는 숫자만 -->
+      <div class="row row-2">
         <div>
           <label>대표자 이름</label>
           <input id="managerName" placeholder="이름" />
           <div class="error-note" id="errManagerName" style="display:none">대표자 이름을 입력해주세요</div>
         </div>
-      </div>
-      <div class="row row-2">
         <div>
           <label>대표자 연락처</label>
-          <!-- ★ UPDATED: 보조 문구/입력 가이드 변경 + 숫자만 입력 유도 -->
           <input id="managerPhone" placeholder="숫자만 입력(하이픈 없이)" inputmode="numeric" pattern="[0-9]*" maxlength="11" autocomplete="tel" />
           <div class="error-note" id="errPhone" style="display:none">숫자만 입력(예: 01012345678)</div>
         </div>
       </div>
+
       <div class="nextbar">
         <button class="next" data-next="#step0">← 이전</button>
         <button class="next primary" data-next="#step2">다음 →</button>
@@ -259,7 +271,6 @@
     btn.addEventListener('click', ()=>{
       const target = btn.getAttribute('data-next');
       if (!target) return;
-      // 현재 섹션 필수값 간단 검증
       const curr = btn.closest('.step');
       if (!validateStep(curr.id)) return;
       document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
@@ -269,8 +280,8 @@
   });
 
   /* ====== 대회 선택: 데이터 로드 & 바인딩 ====== */
-  let TOUR_MAP = {};      // { tourId: {...} }
-  let currentTour = null; // 선택된 대회 객체
+  let TOUR_MAP = {};
+  let currentTour = null;
 
   async function loadTournaments() {
     try {
@@ -281,8 +292,7 @@
       sel.innerHTML = '<option value="">대회를 선택하세요</option>';
 
       (json.rows || []).forEach(t => {
-        // ★ UPDATED: tourId/TourID 어느 쪽이든 대응
-        const key = t.TourID || t.tourId;
+        const key = t.TourID || t.tourId;   // 호환
         TOUR_MAP[key] = t;
         const opt = document.createElement('option');
         opt.value = key;
@@ -295,6 +305,7 @@
     }
   }
 
+  function pad2(n){ return String(n).padStart(2,'0'); }
   function formatDateK(v){
     if (!v) return '';
     try {
@@ -303,8 +314,35 @@
       return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`;
     } catch { return String(v); }
   }
+  // ★ UPDATED: 날짜+시간 표시(접수기간용)
+  function formatDateTimeK(v){
+    if (!v) return '';
+    try{
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    }catch{ return String(v); }
+  }
+  // ★ UPDATED: 종별 요약(예: 일반부: D1·D2 / 대학부: D3)
+  function summarizeDivs(divs){
+    try{
+      const obj = (typeof divs==='string') ? JSON.parse(divs||'{}') : (divs||{});
+      const parts = Object.keys(obj).map(cat=>{
+        const arr = Array.isArray(obj[cat]) ? obj[cat] : [];
+        return arr.length ? `${cat}: ${arr.join('·')}` : `${cat}`;
+      });
+      return parts.length ? parts.join(' / ') : '-';
+    }catch{ return '-'; }
+  }
+  function parsePlaces(p){
+    try{
+      const arr = Array.isArray(p) ? p : JSON.parse(p||'[]');
+      const names = (arr||[]).map(v => (typeof v==='string') ? v : (v && v.name) || '').filter(Boolean);
+      return names.length ? names.join(' · ') : '-';
+    }catch{ return '-'; }
+  }
 
-  // ★ UPDATED: 선택 시 정보 카드 + 다음버튼 제어
+  // ★ UPDATED: 선택 시 정보 카드 + 다음버튼 제어 (요청된 항목 순서)
   function renderTourInfo(t){
     const box = document.getElementById('tourInfo');
     const nextbar = document.getElementById('nextbar0');
@@ -314,22 +352,28 @@
       nextbar.style.display = 'none';
       return;
     }
-    // places(배열/문자열) 처리
-    let placesText = '-';
-    try {
-      const raw = Array.isArray(t.places) ? t.places : JSON.parse(t.places||'[]');
-      const norm = (raw||[]).map(p => (typeof p==='string') ? p : (p && p.name) || '').filter(Boolean);
-      if (norm.length) placesText = norm.join(' · ');
-    } catch { /* ignore */ }
-
+    const name = t.name || '-';
+    const divs = summarizeDivs(t.divs);
     const date = (t.start||t.end)? `${formatDateK(t.start)} ~ ${formatDateK(t.end)}` : '일정미정';
-    const url = t.url ? ` · <a href="${t.url}" target="_blank" rel="noopener">안내</a>` : '';
-    box.innerHTML = `<b>${t.name}</b> · ${t.status||'상태미정'} · ${date}${url}<br><span class="muted">장소: ${placesText}</span>`;
+    const places = parsePlaces(t.places);
+    const reg = (t.regStart||t.regEnd) ? `${formatDateTimeK(t.regStart)} ~ ${formatDateTimeK(t.regEnd)}` : '미정';
+    const urlLine = t.url ? `<div><b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div></div>` : '';
+
+    box.innerHTML = `
+      <div class="kv">
+        <b>대회명</b><div>${name}</div>
+        <b>종별</b><div>${divs}</div>
+        <b>일시</b><div>${date}</div>
+        <b>장소</b><div>${places}</div>
+        <b>접수기간</b><div>${reg}</div>
+        ${urlLine}
+      </div>
+    `;
     box.style.display = 'block';
     nextbar.style.display = 'flex';
   }
 
-  // 종별/디비전 동기화 (대회에 맞게 제한)
+  // 종별/디비전 동기화
   const categorySelect = document.getElementById('category');
   const divisionSelect = document.getElementById('division');
 
@@ -409,7 +453,7 @@
   bindColorSync('uniformHomePicker','uniformHome');
   bindColorSync('uniformAwayPicker','uniformAway');
 
-  /* 대비 계산(WCAG 간단버전) + 경고 */
+  /* 대비 계산 */
   function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
   function relLum({r,g,b}){ const c=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
   function contrastRatio(h1,h2){ try{const L1=relLum(hexToRgb(h1)); const L2=relLum(hexToRgb(h2)); const [a,b]=L1>L2?[L1,L2]:[L2,L1]; return (a+0.05)/(b+0.05);}catch{return 7}}
@@ -581,10 +625,9 @@
     const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2400);
   }
 
-  /* ====== ★ UPDATED: 연락처 숫자만 입력 + 검증 ====== */
+  /* ====== 연락처: 숫자만 입력 ====== */
   const phoneInput = document.getElementById('managerPhone');
   phoneInput.addEventListener('input', function () {
-    // 숫자만 유지, 최대 11자리
     this.value = (this.value || '').replace(/\D+/g,'').slice(0,11);
     saveDraftSoon();
   });
@@ -604,17 +647,16 @@
     if (stepId === 'step1') {
       const prov = document.getElementById('province');
       const city = document.getElementById('city');
-      const team = document.getElementById('teamName');
+      const teamKo = document.getElementById('teamNameKo');
       const man  = document.getElementById('managerName');
       const ph   = document.getElementById('managerPhone');
-      // ★ UPDATED: 10~11자리 숫자만 허용
-      const phOk = /^\d{10,11}$/.test(ph.value);
+      const phOk = /^\d{10,11}$/.test(ph.value); // 숫자 10~11자리
       setError(prov, 'errProvince', !prov.value);
       setError(city, 'errCity', !city.value);
-      setError(team, 'errTeamName', !team.value.trim());
+      setError(teamKo, 'errTeamNameKo', !teamKo.value.trim());
       setError(man, 'errManagerName', !man.value.trim());
       setError(ph, 'errPhone', !phOk);
-      ok = prov.value && city.value && team.value.trim() && man.value.trim() && phOk;
+      ok = prov.value && city.value && teamKo.value.trim() && man.value.trim() && phOk;
       if (!ok) showToast('필수 항목을 확인해 주세요');
     }
     if (stepId === 'step2') {
@@ -625,7 +667,6 @@
       ok = !!(cat.value && div.value);
       if (!ok) showToast('종별/디비전을 선택해 주세요');
     }
-    // step3은 대비 경고만, 필수 아님
     return ok;
   }
 
@@ -653,9 +694,12 @@
       document.getElementById('province').value = json.team.province || '';
       document.getElementById('province').dispatchEvent(new Event('change'));
       setTimeout(()=>{ document.getElementById('city').value = json.team.city || ''; }, 0);
-      document.getElementById('teamName').value = json.team.teamName || '';
+
+      // ★ UPDATED: 팀명 한/영
+      document.getElementById('teamNameKo').value = json.team.teamNameKo || json.team.teamName || '';
+      document.getElementById('teamNameEn').value = json.team.teamNameEn || '';
+
       document.getElementById('managerName').value = json.team.managerName || '';
-      // ★ UPDATED: 숫자만 유지
       document.getElementById('managerPhone').value = String(json.team.managerPhone || '').replace(/\D+/g,'');
 
       document.getElementById('uniformHome').value = json.team.uniformHome || '';
@@ -691,7 +735,6 @@
     const input = document.getElementById('editLinkInput');
     input.value = url;
     wrap.style.display = 'block';
-    // QR (간편: Google Chart API 사용)
     const qrBox = document.getElementById('qr');
     const img = qrBox.querySelector('img');
     img.src = 'https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl=' + encodeURIComponent(url);
@@ -732,7 +775,8 @@
       tourId: document.getElementById('tourSelect').value || '',
       province: document.getElementById('province').value || '',
       city: document.getElementById('city').value || '',
-      teamName: document.getElementById('teamName').value || '',
+      teamNameKo: document.getElementById('teamNameKo').value || '',
+      teamNameEn: document.getElementById('teamNameEn').value || '',
       managerName: document.getElementById('managerName').value || '',
       managerPhone: document.getElementById('managerPhone').value || '',
       category: document.getElementById('category').value || '',
@@ -757,9 +801,13 @@
       document.getElementById('province').value = d.province || '';
       document.getElementById('province').dispatchEvent(new Event('change'));
       setTimeout(()=>{ document.getElementById('city').value = d.city || ''; }, 0);
-      document.getElementById('teamName').value = d.teamName || '';
+
+      // ★ UPDATED: 팀명 한/영 복구(구버전 호환)
+      document.getElementById('teamNameKo').value = d.teamNameKo || d.teamName || '';
+      document.getElementById('teamNameEn').value = d.teamNameEn || '';
+
       document.getElementById('managerName').value = d.managerName || '';
-      document.getElementById('managerPhone').value = (d.managerPhone || '').replace(/\D+/g,''); // ★ UPDATED
+      document.getElementById('managerPhone').value = (d.managerPhone || '').replace(/\D+/g,'');
       if (d.category){ document.getElementById('category').value = d.category; fillDivisions(d.category); }
       setTimeout(()=>{ if (d.division) document.getElementById('division').value = d.division; }, 0);
       document.getElementById('uniformHome').value = d.uniformHome || '';
@@ -767,7 +815,6 @@
       const uhPicker = document.getElementById('uniformHomePicker'); if (uhPicker && d.uniformHome) uhPicker.value = d.uniformHome;
       const uaPicker = document.getElementById('uniformAwayPicker'); if (uaPicker && d.uniformAway) uaPicker.value = d.uniformAway;
       checkContrast();
-      // players
       if (Array.isArray(d.players) && d.players.length){
         playersDiv.innerHTML = '';
         d.players.forEach((pl, idx)=>{
@@ -792,7 +839,6 @@
   let submitting = false;
 
   submitBtn.addEventListener('click', async ()=>{
-    // 전체 필수 검증 한번 더
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
 
     if (submitting) return;
@@ -809,9 +855,12 @@
       tourId: (document.getElementById('tourSelect').value || '').trim(),
       tourName: (currentTour?.name || ''),
       region,
-      teamName: document.getElementById('teamName').value.trim(),
+      // ★ UPDATED: 팀명 한/영 + 호환용 teamName
+      teamNameKo: document.getElementById('teamNameKo').value.trim(),
+      teamNameEn: document.getElementById('teamNameEn').value.trim(),
+      teamName  : (document.getElementById('teamNameKo').value || '').trim() || (document.getElementById('teamNameEn').value || '').trim(),
       managerName: document.getElementById('managerName').value.trim(),
-      managerPhone: (document.getElementById('managerPhone').value || '').replace(/\D+/g,''), // ★ UPDATED
+      managerPhone: (document.getElementById('managerPhone').value || '').replace(/\D+/g,''),
       category: document.getElementById('category').value,
       division: document.getElementById('division').value,
       uniformHome: document.getElementById('uniformHome')?.value?.trim() || '',
@@ -828,7 +877,6 @@
       alert('선수는 최소 5명 이상 입력해 주세요.');
       submitBtn.disabled = false; submitBtn.textContent = originalText; submitting = false; return;
     }
-    // 등번호 중복 시, 해당 카드 하이라이트
     const numbers = players.map(p=>p.number).filter(Boolean);
     const dup = numbers.find((n,i)=> n && numbers.indexOf(n) !== i);
     if (dup){
@@ -868,7 +916,6 @@
           revealEditLink(urlFinal);
         }
         submitBtn.classList.add('done');
-        // 임시 저장 삭제
         localStorage.removeItem(DRAFT_KEY);
       } else {
         alert('오류: ' + (json.error||'unknown'));
@@ -883,12 +930,9 @@
   /* ====== 부트스트랩 ====== */
   (async function boot(){
     await loadTournaments();
-    // 초기에 자동 저장본 복구
     restoreDraft();
-    // 수정 모드면 서버에서 다시 정확 값 로드(복구보다 우선)
     await preloadForEdit();
-    // 드래프트/수정모드로 값이 박혔을 때도 step0 버튼 상태 맞추기
-    renderTourInfo(TOUR_MAP[document.getElementById('tourSelect').value] || null); // ★ UPDATED
+    renderTourInfo(TOUR_MAP[document.getElementById('tourSelect').value] || null);
   })();
 </script>
 </body>
