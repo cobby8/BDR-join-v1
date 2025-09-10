@@ -10,15 +10,15 @@
   :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:18px; --red:#ef4444; --muted:#6b7684 }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
-  .wrap{max-width:720px;margin:28px auto;padding:16px}
-  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;position:relative}
-  h1{font-size:20px;margin:0 0 14px}
-  .section-title{font-weight:700;margin:18px 0 8px}
-  label{display:block;font-weight:600;margin:14px 0 6px}
+  .wrap{max-width:980px;margin:28px auto;padding:16px}
+  .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:24px;position:relative}
+  h1{font-size:28px;margin:0 0 10px}
+  .section-title{font-weight:800;margin:18px 0 8px}
+  label{display:block;font-weight:700;margin:14px 0 6px}
   input,select,textarea{width:100%;padding:14px 12px;border:1px solid #e6ecf5;border-radius:14px;font-size:16px;outline:none;background:#fff}
   input:focus,select:focus,textarea:focus{border-color:var(--blue)}
   .row{display:grid;gap:12px}
-  @media(min-width:560px){ .row-2{grid-template-columns:1fr 1fr} .row-3{grid-template-columns:1fr 1fr 1fr} }
+  @media(min-width:720px){ .row-2{grid-template-columns:1fr 1fr} .row-3{grid-template-columns:1fr 1fr 1fr} }
   .muted{color:var(--muted);font-size:13px;margin-top:6px}
   .btn{margin-top:18px;width:100%;padding:14px;border:none;border-radius:14px;background:var(--blue);color:#fff;font-weight:700;font-size:17px;cursor:pointer}
   .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -27,7 +27,7 @@
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:3}
   .toast.show{opacity:1}
   .brand{position:absolute;right:30px;top:30px}
-  .brand img{height:24px;opacity:.95}
+  .brand img{height:31px;opacity:.95} /* 로고 30% 확대 */
 
   .step{display:none}.step.active{display:block}
   .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
@@ -41,19 +41,21 @@
   #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
   #tourInfo .kv b{color:#111}
 
-  /* 유니폼 컬러피커 + 스와치 */
-  .color-row{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:center}
-  .swatch{width:100%;height:44px;border-radius:12px;border:1px solid #e6ecf5}
-  .color-wrap{display:flex;gap:10px;align-items:center}
-  .hex{width:120px}
+  /* 색상 입력: 헥스 + 색상선택 버튼 + 미리보기 유니폼 */
+  .color-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+  .color-btn{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
+  .uniform-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+  .jersey-card{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fafcff}
+  .jersey-title{font-weight:700;margin-bottom:6px}
+  .jersey{width:100%;height:160px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="brand"><img src="BDR(배경없음).png" alt="BDR"></div>
+    <div class="brand"><img src="https://raw.githubusercontent.com/cobby8/assets/main/bdr-logo.png" alt="BDR"></div>
     <h1>BDR 참가신청서</h1>
-    <div class="muted">참가 대회 선택 → 팀 대표 정보 → 선수 명단 → 제출</div>
+    <div class="muted">참가 대회 선택 ➜ 팀 대표 정보 ➜ 선수 명단 ➜ 제출</div>
 
     <!-- 0) 대회 선택 -->
     <div class="step active" id="step0">
@@ -91,7 +93,6 @@
         </div>
       </div>
 
-      <!-- 팀명(한글/영문) 같은 행 - 둘 다 필수 -->
       <div class="row row-2">
         <div>
           <label>팀명(한글)</label>
@@ -105,7 +106,6 @@
         </div>
       </div>
 
-      <!-- 대표자 이름/연락처 한 행 (연락처 숫자만) -->
       <div class="row row-2">
         <div>
           <label>대표자 이름</label>
@@ -146,33 +146,43 @@
       </div>
     </div>
 
-    <!-- 3) 유니폼 색상 (컬러피커 + 스와치) -->
+    <!-- 3) 유니폼 색상 (헥스 + 색상선택 버튼 + 유니폼 미리보기) -->
     <div class="step" id="step3">
       <div class="section-title">③ 유니폼 색상</div>
 
-      <div class="color-row">
-        <div>
-          <label>홈 색상</label>
-          <div class="color-wrap">
-            <input type="color" id="uniformHomePicker" />
-            <input class="hex" id="uniformHome" placeholder="#1769ff" />
-          </div>
+      <div>
+        <label>홈 색상</label>
+        <div class="color-grid">
+          <input class="hex" id="uniformHome" placeholder="#ff0000" value="#ff0000" />
+          <button class="color-btn" id="homePickBtn" type="button">색상선택</button>
         </div>
-        <div><div id="swatchHome" class="swatch"></div></div>
       </div>
 
-      <div class="color-row">
-        <div>
-          <label>어웨이 색상</label>
-          <div class="color-wrap">
-            <input type="color" id="uniformAwayPicker" />
-            <input class="hex" id="uniformAway" placeholder="#000000" />
-          </div>
+      <div style="margin-top:8px">
+        <label>어웨이 색상</label>
+        <div class="color-grid">
+          <input class="hex" id="uniformAway" placeholder="#ffffff" value="#ffffff" />
+          <button class="color-btn" id="awayPickBtn" type="button">색상선택</button>
         </div>
-        <div><div id="swatchAway" class="swatch"></div></div>
       </div>
 
-      <div id="contrastWarn" class="muted" style="display:none;margin-top:6px">유니폼 색상 대비가 낮아 번호/이름 가독성이 떨어질 수 있어요.</div>
+      <!-- (보이지 않는) 네이티브 컬러 입력 -->
+      <input type="color" id="uniformHomePicker" style="position:absolute;left:-9999px" />
+      <input type="color" id="uniformAwayPicker" style="position:absolute;left:-9999px" />
+
+      <!-- 유니폼 미리보기 -->
+      <div class="uniform-row">
+        <div class="jersey-card">
+          <div class="jersey-title">홈</div>
+          <svg id="jerseyHome" class="jersey" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" aria-label="홈 유니폼"></svg>
+        </div>
+        <div class="jersey-card">
+          <div class="jersey-title">어웨이</div>
+          <svg id="jerseyAway" class="jersey" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" aria-label="어웨이 유니폼"></svg>
+        </div>
+      </div>
+
+      <div id="contrastWarn" class="muted" style="display:none;margin-top:8px">유니폼 색상 대비가 낮아 번호/이름 가독성이 떨어질 수 있어요.</div>
 
       <div class="nextbar">
         <button class="next" data-next="#step2" data-dir="prev">← 이전</button>
@@ -186,7 +196,6 @@
 
       <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-sm" id="addPlayerBtn" type="button">선수 추가 +</button>
-        <!-- 복원된 붙여넣기 + 샘플복사 -->
         <button class="btn-sm" id="togglePasteBtn" type="button">명단 붙여넣기</button>
         <button class="btn-sm" id="copySampleBtn" type="button">샘플복사</button>
       </div>
@@ -228,16 +237,16 @@
 </div>
 
 <script>
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
+  const WEB_APP_URL = '<<여기에_본인_GAS_WebApp_URL/exec_붙여넣기>>';
 
   const qs = new URLSearchParams(location.search);
   const editTeamId = qs.get('edit');
   const editCode   = qs.get('code');
 
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
-  function show(msg){ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+  const show = msg => { const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  /* ===== 단계 이동: 이전(prev)은 검증 없이, 다음만 검증 ===== */
+  /* ===== 단계 이동: 이전은 검증 없이, 다음만 검증 ===== */
   $$('.next').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const target = btn.getAttribute('data-next'); if (!target) return;
@@ -252,7 +261,7 @@
     });
   });
 
-  /* ===== 대회 목록 & 카드 ===== */
+  /* ===== 대회 목록/카드 ===== */
   let TOUR_MAP={}, currentTour=null;
 
   async function loadTournaments() {
@@ -315,8 +324,7 @@
   function fillCategoriesFromTour(t){
     categorySelect.innerHTML=''; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
     if(!t || !t.divs || !Object.keys(t.divs).length){ categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return; }
-    categorySelect.disabled=false;
-    categorySelect.appendChild(new Option('선택',''));
+    categorySelect.disabled=false; categorySelect.appendChild(new Option('선택',''));
     Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
   }
   categorySelect.addEventListener('change',e=>{
@@ -327,8 +335,7 @@
   });
 
   /* ===== 연락처 숫자만 ===== */
-  const phoneInput=$('#managerPhone');
-  phoneInput.addEventListener('input',()=>{ phoneInput.value=(phoneInput.value||'').replace(/\D+/g,'').slice(0,11); });
+  $('#managerPhone').addEventListener('input',e=>{ e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11); });
 
   /* ===== 시도/시군구 ===== */
   const regionMap={'서울특별시':['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
@@ -354,15 +361,40 @@
     else{ citySel.disabled=false; citySel.appendChild(new Option('선택','')); (regionMap[prov]||[]).forEach(c=>citySel.appendChild(new Option(c,c))); }
   });
 
-  /* ===== 유니폼 컬러피커 동기화 + 스와치 + 대비 경고 ===== */
-  function syncColor(pickerId, hexId, swatchId){
-    const picker=$(pickerId), hex=$(hexId), sw=$(swatchId);
-    const apply=(val)=>{ if(!val) return; const v=val.startsWith('#')?val:'#'+val; hex.value=v; picker.value=v; sw.style.background=v; checkContrast(); };
-    picker.addEventListener('input',()=>apply(picker.value));
-    hex.addEventListener('input',()=>{ const v=hex.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(v)) apply('#'+v); });
-    // 초기
-    apply(hex.value || picker.value || '#000000');
+  /* ===== 색상선택 버튼 + 히든 컬러피커 + 유니폼 SVG 렌더 ===== */
+  function applyColor(hexId, pickerId, btnId, jerseyId){
+    const hexEl=$(hexId), picker=$(pickerId), btn=$(btnId);
+    const jersey=$(jerseyId);
+
+    function renderJersey(hex){
+      // SVG 유니폼(간단형) - 외곽선/암홀/넥라인
+      jersey.innerHTML = `
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
+          </filter>
+        </defs>
+        <g filter="url(#shadow)">
+          <path d="M30 5 L48 5 L54 20 L66 20 L72 5 L90 5 L102 26 L88 38 L88 130 L32 130 L32 38 L18 26 Z"
+                fill="${hex}" stroke="#111" stroke-width="1.5"/>
+          <path d="M54 20 Q60 30 66 20" fill="none" stroke="#111" stroke-width="2"/> <!-- 넥라인 -->
+          <rect x="40" y="50" width="40" height="8" rx="4" fill="rgba(255,255,255,0.25)"/> <!-- 가슴바 -->
+        </g>`;
+    }
+
+    function apply(val){
+      if(!val) return;
+      let v = val.startsWith('#') ? val : ('#'+val);
+      if(!/^#[0-9A-Fa-f]{6}$/.test(v)) return;
+      hexEl.value = v; picker.value = v; renderJersey(v); checkContrast();
+    }
+    btn.addEventListener('click', ()=> { if (picker.showPicker) picker.showPicker(); else picker.click(); });
+    picker.addEventListener('input', ()=> apply(picker.value));
+    hexEl.addEventListener('input', ()=> { const raw=hexEl.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)) apply('#'+raw); });
+    // 초기 렌더
+    apply(hexEl.value || picker.value || '#000000');
   }
+
   function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
   function relLum({r,g,b}){ const c=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
   function contrastRatio(h1,h2){ try{const L1=relLum(hexToRgb(h1)); const L2=relLum(hexToRgb(h2)); const [a,b]=L1>L2?[L1,L2]:[L2,L1]; return (a+0.05)/(b+0.05);}catch{return 7}}
@@ -376,8 +408,9 @@
                  (ok2 && Math.max(contrastRatio(a,'#000000'), contrastRatio(a,'#ffffff')) < 4.5);
     warn.style.display=poor?'block':'none';
   }
-  syncColor('#uniformHomePicker','#uniformHome','#swatchHome');
-  syncColor('#uniformAwayPicker','#uniformAway','#swatchAway');
+
+  applyColor('#uniformHome','#uniformHomePicker','#homePickBtn','#jerseyHome');
+  applyColor('#uniformAway','#uniformAwayPicker','#awayPickBtn','#jerseyAway');
 
   /* ===== 선수 카드 ===== */
   function createPlayerCard(){
@@ -399,59 +432,38 @@
   const playersDiv=$('#players'); $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
   for(let i=0;i<5;i++) $('#addPlayerBtn').click();
 
-  /* ===== 붙여넣기 복원 + 샘플복사 ===== */
-  $('#togglePasteBtn').addEventListener('click', ()=>{
-    const p=$('#pastePanel');
-    p.style.display = p.style.display==='none' ? 'block' : 'none';
-  });
+  /* ===== 붙여넣기 + 샘플복사 ===== */
+  $('#togglePasteBtn').addEventListener('click', ()=> { const p=$('#pastePanel'); p.style.display = p.style.display==='none' ? 'block' : 'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
-
   const SAMPLE=`홍길동/7/G/010302/비선출
 김철수/11/F/000615/선출`;
   $('#copySampleBtn').addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText(SAMPLE); show('샘플이 복사되었습니다. 붙여넣기 후 적용을 누르세요.'); }
     catch(e){ const ta=document.createElement('textarea'); ta.value=SAMPLE; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); show('샘플이 복사되었습니다.'); }
-    $('#pastePanel').style.display='block';
-    $('#pasteText').focus();
+    $('#pastePanel').style.display='block'; $('#pasteText').focus();
   });
-
-  function yyToYYYY(yy){
-    const n = parseInt(yy,10);
-    if (isNaN(n)) return '2000';
-    // 기준: 50~99는 1900대, 00~49는 2000대
-    return (n>=50 ? '19' : '20') + (n<10 ? '0'+n : String(n));
-  }
+  function yyToYYYY(yy){ const n=parseInt(yy,10); if(isNaN(n)) return '2000'; return (n>=50?'19':'20') + (n<10?('0'+n):String(n)); }
   function normalizeBirth(s){
-    const v = (s||'').replace(/\D/g,'');
-    if (v.length===6){ // YYMMDD
-      const yy=v.slice(0,2), mm=v.slice(2,4), dd=v.slice(4,6);
-      return `${yyToYYYY(yy)}-${mm}-${dd}`;
-    }
-    if (v.length===8){ // YYYYMMDD
-      return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
-    }
+    const v=(s||'').replace(/\D/g,'');
+    if (v.length===6)  return `${yyToYYYY(v.slice(0,2))}-${v.slice(2,4)}-${v.slice(4,6)}`;
+    if (v.length===8)  return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     return '';
   }
   $('#pasteApplyBtn').addEventListener('click', ()=>{
     const text=$('#pasteText').value||''; if(!text.trim()) return;
     const lines=text.replace(/\r\n/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean);
-
-    // 기존에 비어있는 기본 카드(이름 등 공란)만 있다면 초기화
-    const allCards = $$('.player-card');
-    const allEmpty = allCards.length && allCards.every(c=>!c.querySelector('[data-key="name"]').value.trim());
-    if (allEmpty) playersDiv.innerHTML='';
-
+    const allCards=$$('.player-card'); const allEmpty=allCards.length && allCards.every(c=>!c.querySelector('[data-key="name"]').value.trim());
+    if(allEmpty) playersDiv.innerHTML='';
     lines.forEach(line=>{
-      const cols = line.split(/[\/,\t]| {2,}/).map(s=>s.trim()); // / , 탭, 2칸 이상 공백까지 허용
+      const cols=line.split(/[\/,\t]| {2,}/).map(s=>s.trim());
       const [name='', number='', position='', birthYY='', elite=''] = cols;
-      const card = createPlayerCard();
-      card.querySelector('[data-key="name"]').value = name;
-      card.querySelector('[data-key="number"]').value = number;
-      card.querySelector('[data-key="position"]').value = (position||'').toUpperCase();
-      const birth = normalizeBirth(birthYY);
-      card.querySelector('[data-key="birth"]').value = birth;
-      card.querySelector('[data-key="elite"]').value = elite;
+      const card=createPlayerCard();
+      card.querySelector('[data-key="name"]').value=name;
+      card.querySelector('[data-key="number"]').value=number;
+      card.querySelector('[data-key="position"]').value=(position||'').toUpperCase();
+      card.querySelector('[data-key="birth"]').value=normalizeBirth(birthYY);
+      card.querySelector('[data-key="elite"]').value=elite;
       playersDiv.appendChild(card);
     });
     show('붙여넣기 적용 완료');
@@ -487,10 +499,8 @@
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
     }).filter(p=>p.name);
   }
-
   $('#submitBtn').addEventListener('click', async ()=>{
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
-
     const province=$('#province').value.trim(), city=$('#city').value.trim();
     const team={
       tourId: $('#tourSelect').value.trim(),
@@ -499,15 +509,14 @@
       province, city,
       teamNameKo: $('#teamNameKo').value.trim(),
       teamNameEn: $('#teamNameEn').value.trim(),
-      teamName  : $('#teamNameKo').value.trim(), // 호환
+      teamName  : $('#teamNameKo').value.trim(),
       managerName: $('#managerName').value.trim(),
       managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
       category: $('#category').value,
       division: $('#division').value,
-      uniformHome: $('#uniformHome')?.value?.trim()||'',
-      uniformAway: $('#uniformAway')?.value?.trim()||''
+      uniformHome: $('#uniformHome').value.trim(),
+      uniformAway: $('#uniformAway').value.trim()
     };
-
     const players=collectPlayers();
     if (players.length < 5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return; }
     const numbers=players.map(p=>p.number).filter(Boolean);
@@ -518,9 +527,8 @@
     }
 
     const payload={team, players, base: location.origin + location.pathname};
-    // unknown path 방지: 항상 소문자 path 사용
     const isEdit = !!(editTeamId && editCode);
-    const url = `${WEB_APP_URL}?path=${isEdit ? 'updateteam' : 'registerteam'}`;
+    const url = `${WEB_APP_URL}?path=${isEdit ? 'updateteam' : 'registerteam'}`; // 소문자 path
     if (isEdit){ payload.teamId=editTeamId; payload.editCode=editCode; }
 
     const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
@@ -545,7 +553,7 @@
     catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
   });
 
-  /* ===== 초기화 ===== */
+  /* ===== 부트스트랩 ===== */
   (async function init(){
     await loadTournaments();
     renderTourInfo(TOUR_MAP[$('#tourSelect').value]||null);
