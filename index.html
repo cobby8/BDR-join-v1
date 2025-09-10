@@ -26,8 +26,9 @@
   .btn-sm{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer;margin-top:10px}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:3}
   .toast.show{opacity:1}
+
   .brand{position:absolute;right:30px;top:30px}
-  .brand img{height:31px;opacity:.95} /* 로고 30% 확대 */
+  .brand img{height:31px;opacity:.95} /* 30% 확대 */
 
   .step{display:none}.step.active{display:block}
   .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
@@ -36,24 +37,26 @@
   .error{border-color:var(--red)!important;background:#fff7f7}
   .error-note{color:var(--red);font-size:12px;margin-top:6px}
 
-  /* 대회 정보 카드 */
   #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
   #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
   #tourInfo .kv b{color:#111}
 
-  /* 색상 입력: 헥스 + 색상선택 버튼 + 미리보기 유니폼 */
+  /* 색상 입력 라인: 헥스 + 버튼(라벨) */
   .color-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
   .color-btn{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
+  .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .uniform-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
-  .jersey-card{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fafcff}
+  .jersey-card{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#f7fbff}
   .jersey-title{font-weight:700;margin-bottom:6px}
-  .jersey{width:100%;height:160px}
+  .jersey{width:100%;height:180px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="brand"><img src="https://raw.githubusercontent.com/cobby8/assets/main/bdr-logo.png" alt="BDR"></div>
+    <div class="brand">
+      <img id="bdrLogo" alt="BDR" src="BDR(배경없음).png">
+    </div>
     <h1>BDR 참가신청서</h1>
     <div class="muted">참가 대회 선택 ➜ 팀 대표 정보 ➜ 선수 명단 ➜ 제출</div>
 
@@ -146,7 +149,7 @@
       </div>
     </div>
 
-    <!-- 3) 유니폼 색상 (헥스 + 색상선택 버튼 + 유니폼 미리보기) -->
+    <!-- 3) 유니폼 색상 -->
     <div class="step" id="step3">
       <div class="section-title">③ 유니폼 색상</div>
 
@@ -154,23 +157,22 @@
         <label>홈 색상</label>
         <div class="color-grid">
           <input class="hex" id="uniformHome" placeholder="#ff0000" value="#ff0000" />
-          <button class="color-btn" id="homePickBtn" type="button">색상선택</button>
+          <label for="uniformHomePicker" class="color-btn">색상선택</label>
         </div>
       </div>
-
       <div style="margin-top:8px">
         <label>어웨이 색상</label>
         <div class="color-grid">
           <input class="hex" id="uniformAway" placeholder="#ffffff" value="#ffffff" />
-          <button class="color-btn" id="awayPickBtn" type="button">색상선택</button>
+          <label for="uniformAwayPicker" class="color-btn">색상선택</label>
         </div>
       </div>
 
-      <!-- (보이지 않는) 네이티브 컬러 입력 -->
-      <input type="color" id="uniformHomePicker" style="position:absolute;left:-9999px" />
-      <input type="color" id="uniformAwayPicker" style="position:absolute;left:-9999px" />
+      <!-- 접근성 보장: display:none 대신 시각적 숨김 -->
+      <input type="color" id="uniformHomePicker" class="visually-hidden" value="#ff0000" />
+      <input type="color" id="uniformAwayPicker" class="visually-hidden" value="#ffffff" />
 
-      <!-- 유니폼 미리보기 -->
+      <!-- 유니폼 미리보기(농구 상의) -->
       <div class="uniform-row">
         <div class="jersey-card">
           <div class="jersey-title">홈</div>
@@ -193,28 +195,25 @@
     <!-- 4) 선수 명단 -->
     <div class="step" id="step4">
       <div class="section-title">④ 선수 명단</div>
-
       <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-sm" id="addPlayerBtn" type="button">선수 추가 +</button>
         <button class="btn-sm" id="togglePasteBtn" type="button">명단 붙여넣기</button>
         <button class="btn-sm" id="copySampleBtn" type="button">샘플복사</button>
       </div>
-
       <div id="pastePanel" style="display:none;margin-top:8px">
-        <div class="muted">형식: <b>이름/백넘버/포지션/생년월일(YYMMDD)/선출 또는 비선출</b> — 줄바꿈으로 여러 명 입력</div>
-        <textarea id="pasteText" placeholder="예)
+        <div class="muted">형식: <b>이름/백넘버/포지션/생년월일(YYMMDD)/선출 또는 비선출</b></div>
+        <textarea id="pasteText" style="height:120px;resize:vertical" placeholder="예)
 홍길동/7/G/010302/비선출
-김철수/11/F/000615/선출" style="height:120px;resize:vertical"></textarea>
+김철수/11/F/000615/선출"></textarea>
         <div style="display:flex;gap:8px">
           <button class="btn-sm" id="pasteApplyBtn" type="button">붙여넣기 적용</button>
           <button class="btn-sm" id="pasteClearBtn" type="button">지우기</button>
         </div>
       </div>
-
       <div id="players"></div>
       <div class="muted">※ 최소 5명 권장. 팀 내 등번호 중복 없도록 확인해 주세요.</div>
-
       <button class="btn" id="submitBtn">신청서 제출</button>
+      <div class="nextbar"><button class="next" data-next="#step3" data-dir="prev">← 이전</button></div>
 
       <div id="editLinkWrap" style="display:none;margin-top:12px">
         <div class="muted" style="margin-bottom:6px;">수정 링크</div>
@@ -226,10 +225,6 @@
           <img alt="수정 링크 QR" style="width:140px;height:140px;border-radius:12px;border:1px solid #e6ecf5;background:#fff">
         </div>
       </div>
-
-      <div class="nextbar">
-        <button class="next" data-next="#step3" data-dir="prev">← 이전</button>
-      </div>
     </div>
 
     <div class="toast" id="toast">완료!</div>
@@ -237,81 +232,62 @@
 </div>
 
 <script>
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
-
-  const qs = new URLSearchParams(location.search);
-  const editTeamId = qs.get('edit');
-  const editCode   = qs.get('code');
-
+  const WEB_APP_URL = '<<여기에_본인_GAS_WebApp_URL/exec_붙여넣기>>';
+  const qs=new URLSearchParams(location.search); const editTeamId=qs.get('edit'); const editCode=qs.get('code');
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show = msg => { const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  /* ===== 단계 이동: 이전은 검증 없이, 다음만 검증 ===== */
+  /* 로고 폴백 체인 */
+  (function fixLogo(){
+    const el=$('#bdrLogo');
+    const fallback2='https://raw.githubusercontent.com/cobby8/assets/main/bdr-logo.png';
+    const inline='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="36"><rect width="120" height="36" fill="white"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-weight="700" font-family="sans-serif" fill="#111">BDR</text></svg>');
+    el.onerror=()=>{ if(el.dataset.fallback==='1'){ el.src=inline; } else { el.dataset.fallback='1'; el.src=fallback2; } };
+  })();
+
+  /* 단계 이동: 이전은 검증 없음 */
   $$('.next').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const target = btn.getAttribute('data-next'); if (!target) return;
-      const needValidate = btn.hasAttribute('data-validate');
-      if (needValidate){
-        const curr = btn.closest('.step');
-        if (!validateStep(curr.id)) return;
-      }
+      const target=btn.getAttribute('data-next'); if(!target) return;
+      const needValidate=btn.hasAttribute('data-validate');
+      if(needValidate){ const curr=btn.closest('.step'); if(!validateStep(curr.id)) return; }
       $$('.step').forEach(s=>s.classList.remove('active'));
       document.querySelector(target).classList.add('active');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({top:0,behavior:'smooth'});
     });
   });
 
-  /* ===== 대회 목록/카드 ===== */
+  /* 대회 목록/카드 */
   let TOUR_MAP={}, currentTour=null;
-
-  async function loadTournaments() {
-    const res = await fetch(`${WEB_APP_URL}?path=tournaments`);
-    const json = await res.json();
-    if (!json.ok) return;
-    const sel = $('#tourSelect'); sel.innerHTML = '<option value="">대회를 선택하세요</option>';
+  async function loadTournaments(){
+    const res=await fetch(`${WEB_APP_URL}?path=tournaments`);
+    const json=await res.json();
+    if(!json.ok) return;
+    const sel=$('#tourSelect'); sel.innerHTML='<option value="">대회를 선택하세요</option>';
     (json.rows||[]).forEach(t=>{
-      const key = t.TourID || t.tourId;
-      TOUR_MAP[key]=t;
-      const opt=document.createElement('option');
-      opt.value=key;
+      const key=t.TourID||t.tourId; TOUR_MAP[key]=t;
+      const opt=document.createElement('option'); opt.value=key;
       const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
-      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
-      sel.appendChild(opt);
+      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`; sel.appendChild(opt);
     });
   }
   function pad2(n){return String(n).padStart(2,'0');}
   function fmtDate(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; }
   function fmtDT(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
-  function summarizeDivs(divs){
-    try{
-      const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{});
-      const parts=Object.keys(obj).map(cat=>{
-        const arr=Array.isArray(obj[cat])?obj[cat]:[];
-        return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`;
-      });
-      return parts.length?parts.join(' / '):'-';
-    }catch{return '-';}
-  }
-  function parsePlaces(p){
-    try{
-      const arr=Array.isArray(p)?p:JSON.parse(p||'[]');
-      const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean);
-      return names.length?names.join(' · '):'-';
-    }catch{return '-';}
-  }
+  function summarizeDivs(divs){ try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`; }); return parts.length?parts.join(' / '):'-'; }catch{return '-';} }
+  function parsePlaces(p){ try{ const arr=Array.isArray(p)?p:JSON.parse(p||'[]'); const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean); return names.length?names.join(' · '):'-'; }catch{return '-';} }
   function renderTourInfo(t){
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
     if(!t){ box.style.display='none'; box.textContent=''; nextbar.style.display='none'; return; }
     const urlLine=t.url?`<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`:'';
-    box.innerHTML=`
-      <div class="kv">
-        <b>대회명</b><div>${t.name||'-'}</div>
-        <b>종별</b><div>${summarizeDivs(t.divs)}</div>
-        <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
-        <b>장소</b><div>${parsePlaces(t.places)}</div>
-        <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
-        ${urlLine}
-      </div>`;
+    box.innerHTML=`<div class="kv">
+      <b>대회명</b><div>${t.name||'-'}</div>
+      <b>종별</b><div>${summarizeDivs(t.divs)}</div>
+      <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
+      <b>장소</b><div>${parsePlaces(t.places)}</div>
+      <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
+      ${urlLine}
+    </div>`;
     box.style.display='block'; nextbar.style.display='flex';
   }
   $('#tourSelect').addEventListener('change',e=>{
@@ -319,13 +295,12 @@
     renderTourInfo(currentTour); fillCategoriesFromTour(currentTour);
   });
 
-  /* ===== 종별/디비전 제한 ===== */
+  /* 종별/디비전 제한 */
   const categorySelect=$('#category'), divisionSelect=$('#division');
   function fillCategoriesFromTour(t){
     categorySelect.innerHTML=''; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
     if(!t || !t.divs || !Object.keys(t.divs).length){ categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return; }
-    categorySelect.disabled=false; categorySelect.appendChild(new Option('선택',''));
-    Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
+    categorySelect.disabled=false; categorySelect.appendChild(new Option('선택','')); Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
   }
   categorySelect.addEventListener('change',e=>{
     const cat=e.target.value; divisionSelect.innerHTML='';
@@ -334,10 +309,10 @@
     divisionSelect.disabled=false; divisionSelect.appendChild(new Option('선택','')); arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
   });
 
-  /* ===== 연락처 숫자만 ===== */
+  /* 연락처 숫자만 */
   $('#managerPhone').addEventListener('input',e=>{ e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11); });
 
-  /* ===== 시도/시군구 ===== */
+  /* 시도/시군구 */
   const regionMap={'서울특별시':['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
   '부산광역시':['강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구','기장군'],
   '대구광역시':['남구','달서구','동구','북구','서구','수성구','중구','달성군','군위군'],
@@ -361,58 +336,54 @@
     else{ citySel.disabled=false; citySel.appendChild(new Option('선택','')); (regionMap[prov]||[]).forEach(c=>citySel.appendChild(new Option(c,c))); }
   });
 
-  /* ===== 색상선택 버튼 + 히든 컬러피커 + 유니폼 SVG 렌더 ===== */
-  function applyColor(hexId, pickerId, btnId, jerseyId){
-    const hexEl=$(hexId), picker=$(pickerId), btn=$(btnId);
-    const jersey=$(jerseyId);
-
-    function renderJersey(hex){
-      // SVG 유니폼(간단형) - 외곽선/암홀/넥라인
-      jersey.innerHTML = `
-        <defs>
-          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
-          </filter>
-        </defs>
-        <g filter="url(#shadow)">
-          <path d="M30 5 L48 5 L54 20 L66 20 L72 5 L90 5 L102 26 L88 38 L88 130 L32 130 L32 38 L18 26 Z"
-                fill="${hex}" stroke="#111" stroke-width="1.5"/>
-          <path d="M54 20 Q60 30 66 20" fill="none" stroke="#111" stroke-width="2"/> <!-- 넥라인 -->
-          <rect x="40" y="50" width="40" height="8" rx="4" fill="rgba(255,255,255,0.25)"/> <!-- 가슴바 -->
-        </g>`;
+  /* 색상 동기화 + 농구 저지 렌더 */
+  function renderJersey(svgEl, hex){
+    svgEl.innerHTML = `
+      <defs>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
+        </filter>
+      </defs>
+      <g filter="url(#shadow)">
+        <!-- 농구 상의(소매 없음) -->
+        <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z"
+              fill="${hex}" stroke="#111" stroke-width="1.5"/>
+        <!-- V넥 -->
+        <path d="M54 22 L60 28 L66 22" fill="none" stroke="#111" stroke-width="2"/>
+        <!-- 가슴바 -->
+        <rect x="38" y="60" width="44" height="8" rx="4" fill="rgba(255,255,255,0.25)"/>
+        <!-- 암홀 강조 -->
+        <path d="M35 34 L35 24" stroke="#111" stroke-width="1"/>
+        <path d="M85 34 L85 24" stroke="#111" stroke-width="1"/>
+      </g>`;
+  }
+  function syncColor(hexId, pickerId, jerseyId){
+    const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId);
+    function apply(v){
+      const val = v.startsWith('#')?v:'#'+v;
+      if(!/^#[0-9A-Fa-f]{6}$/.test(val)) return;
+      hexEl.value=val; picker.value=val; renderJersey(svg, val); checkContrast();
     }
-
-    function apply(val){
-      if(!val) return;
-      let v = val.startsWith('#') ? val : ('#'+val);
-      if(!/^#[0-9A-Fa-f]{6}$/.test(v)) return;
-      hexEl.value = v; picker.value = v; renderJersey(v); checkContrast();
-    }
-    btn.addEventListener('click', ()=> { if (picker.showPicker) picker.showPicker(); else picker.click(); });
-    picker.addEventListener('input', ()=> apply(picker.value));
-    hexEl.addEventListener('input', ()=> { const raw=hexEl.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)) apply('#'+raw); });
-    // 초기 렌더
+    picker.addEventListener('input', e=> apply(e.target.value));
+    hexEl.addEventListener('input', e=>{ const raw=e.target.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)) apply('#'+raw); });
+    // 초기
     apply(hexEl.value || picker.value || '#000000');
   }
-
   function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
   function relLum({r,g,b}){ const c=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
   function contrastRatio(h1,h2){ try{const L1=relLum(hexToRgb(h1)); const L2=relLum(hexToRgb(h2)); const [a,b]=L1>L2?[L1,L2]:[L2,L1]; return (a+0.05)/(b+0.05);}catch{return 7}}
   function checkContrast(){
-    const h=$('#uniformHome').value||'';
-    const a=$('#uniformAway').value||'';
-    const warn=$('#contrastWarn');
-    const ok1=/^#[0-9A-Fa-f]{6}$/.test(h), ok2=/^#[0-9A-Fa-f]{6}$/.test(a);
+    const h=$('#uniformHome').value||'', a=$('#uniformAway').value||'';
+    const warn=$('#contrastWarn'); const ok1=/^#[0-9A-Fa-f]{6}$/.test(h), ok2=/^#[0-9A-Fa-f]{6}$/.test(a);
     if(!ok1 && !ok2){ warn.style.display='none'; return; }
-    const poor = (ok1 && Math.max(contrastRatio(h,'#000000'), contrastRatio(h,'#ffffff')) < 4.5) ||
-                 (ok2 && Math.max(contrastRatio(a,'#000000'), contrastRatio(a,'#ffffff')) < 4.5);
+    const poor = (ok1 && Math.max(contrastRatio(h,'#000'), contrastRatio(h,'#fff')) < 4.5) ||
+                 (ok2 && Math.max(contrastRatio(a,'#000'), contrastRatio(a,'#fff')) < 4.5);
     warn.style.display=poor?'block':'none';
   }
+  syncColor('#uniformHome','#uniformHomePicker','#jerseyHome');
+  syncColor('#uniformAway','#uniformAwayPicker','#jerseyAway');
 
-  applyColor('#uniformHome','#uniformHomePicker','#homePickBtn','#jerseyHome');
-  applyColor('#uniformAway','#uniformAwayPicker','#awayPickBtn','#jerseyAway');
-
-  /* ===== 선수 카드 ===== */
+  /* 선수 카드 & 붙여넣기 */
   function createPlayerCard(){
     const div=document.createElement('div'); div.className='player-card';
     div.style.cssText='border:1px dashed #e6ecf5;border-radius:14px;padding:10px;margin-top:10px;background:#fafcff';
@@ -432,8 +403,7 @@
   const playersDiv=$('#players'); $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
   for(let i=0;i<5;i++) $('#addPlayerBtn').click();
 
-  /* ===== 붙여넣기 + 샘플복사 ===== */
-  $('#togglePasteBtn').addEventListener('click', ()=> { const p=$('#pastePanel'); p.style.display = p.style.display==='none' ? 'block' : 'none'; });
+  $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
   const SAMPLE=`홍길동/7/G/010302/비선출
 김철수/11/F/000615/선출`;
@@ -469,13 +439,11 @@
     show('붙여넣기 적용 완료');
   });
 
-  /* ===== 검증 ===== */
+  /* 검증 */
   function setErr(el,noteId,on){ if(!el) return; if(on){ el.classList.add('error'); if(noteId) $('#'+noteId).style.display='block'; } else { el.classList.remove('error'); if(noteId) $('#'+noteId).style.display='none'; } }
   function validateStep(stepId){
     let ok=true;
-    if(stepId==='step0'){
-      const v=$('#tourSelect').value; if(!v){ show('대회를 선택해 주세요'); ok=false; }
-    }
+    if(stepId==='step0'){ const v=$('#tourSelect').value; if(!v){ show('대회를 선택해 주세요'); ok=false; } }
     if(stepId==='step1'){
       const prov=$('#province'), city=$('#city'), tKo=$('#teamNameKo'), tEn=$('#teamNameEn'), man=$('#managerName'), ph=$('#managerPhone');
       const phOk=/^\d{10,11}$/.test(ph.value);
@@ -485,14 +453,11 @@
       ok = prov.value && city.value && tKo.value.trim() && tEn.value.trim() && man.value.trim() && phOk;
       if(!ok) show('필수 항목을 확인해 주세요');
     }
-    if(stepId==='step2'){
-      const cat=$('#category'), div=$('#division'); setErr(cat,'errCategory',!cat.value); setErr(div,'errDivision',!div.value);
-      ok = !!(cat.value && div.value); if(!ok) show('종별/디비전을 선택해 주세요');
-    }
+    if(stepId==='step2'){ const cat=$('#category'), div=$('#division'); setErr(cat,'errCategory',!cat.value); setErr(div,'errDivision',!div.value); ok=!!(cat.value&&div.value); if(!ok) show('종별/디비전을 선택해 주세요'); }
     return ok;
   }
 
-  /* ===== 제출 ===== */
+  /* 제출 */
   function collectPlayers(){
     return $$('.player-card').map(card=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
@@ -527,8 +492,8 @@
     }
 
     const payload={team, players, base: location.origin + location.pathname};
-    const isEdit = !!(editTeamId && editCode);
-    const url = `${WEB_APP_URL}?path=${isEdit ? 'updateteam' : 'registerteam'}`; // 소문자 path
+    const isEdit=!!(editTeamId && editCode);
+    const url=`${WEB_APP_URL}?path=${isEdit ? 'updateteam' : 'registerteam'}`; // 소문자 path
     if (isEdit){ payload.teamId=editTeamId; payload.editCode=editCode; }
 
     const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
@@ -553,7 +518,7 @@
     catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
   });
 
-  /* ===== 부트스트랩 ===== */
+  /* 초기화 */
   (async function init(){
     await loadTournaments();
     renderTourInfo(TOUR_MAP[$('#tourSelect').value]||null);
