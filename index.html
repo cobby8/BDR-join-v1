@@ -232,7 +232,7 @@
 </div>
 
 <script>
-  const WEB_APP_URL = '<<여기에_본인_GAS_WebApp_URL/exec_붙여넣기>>';
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
   const qs=new URLSearchParams(location.search); const editTeamId=qs.get('edit'); const editCode=qs.get('code');
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show = msg => { const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
