@@ -41,7 +41,6 @@
   #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
   #tourInfo .kv b{color:#111}
 
-  /* 색상 입력 라인: 헥스 + 버튼(라벨) */
   .color-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
   .color-btn{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
   .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
@@ -49,6 +48,9 @@
   .jersey-card{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#f7fbff}
   .jersey-title{font-weight:700;margin-bottom:6px}
   .jersey{width:100%;height:180px}
+
+  /* 본인인증 패널 */
+  .edit-panel{margin-top:14px;border:1px dashed #dbe5f3;background:#f7fbff;border-radius:14px;padding:12px}
 </style>
 </head>
 <body>
@@ -67,6 +69,32 @@
       <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
       <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
       <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있게 자동 제한돼요.</div>
+
+      <!-- 신청서 수정(본인인증) -->
+      <div class="edit-panel">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+          <div style="flex:1;min-width:220px">
+            <label>신청자 이름</label>
+            <input id="ownerName" placeholder="예: 홍길동">
+          </div>
+          <div style="flex:1;min-width:220px">
+            <label>신청자 연락처</label>
+            <input id="ownerPhone" placeholder="숫자만 입력" inputmode="numeric" maxlength="11">
+          </div>
+          <div>
+            <button class="btn-sm" id="ownerFindBtn" type="button">신청서 찾기</button>
+          </div>
+        </div>
+        <div id="ownerResult" style="display:none;margin-top:8px">
+          <label>내 신청서 선택</label>
+          <select id="ownerTeamSel"></select>
+          <div class="nextbar" style="justify-content:flex-start">
+            <button class="btn-sm" id="ownerLoadBtn" type="button">불러오기</button>
+          </div>
+        </div>
+        <div class="muted">※ 이름+전화번호로 본인 인증 후 기존 신청서를 불러와 수정할 수 있어요.</div>
+      </div>
+
       <div class="nextbar" id="nextbar0" style="display:none">
         <button class="next primary" data-next="#step1" data-validate="1">다음 →</button>
       </div>
@@ -168,11 +196,9 @@
         </div>
       </div>
 
-      <!-- 접근성 보장: display:none 대신 시각적 숨김 -->
       <input type="color" id="uniformHomePicker" class="visually-hidden" value="#ff0000" />
       <input type="color" id="uniformAwayPicker" class="visually-hidden" value="#ffffff" />
 
-      <!-- 유니폼 미리보기(농구 상의) -->
       <div class="uniform-row">
         <div class="jersey-card">
           <div class="jersey-title">홈</div>
@@ -237,7 +263,10 @@
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show = msg => { const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  /* 로고 폴백 체인 */
+  // 수정(본인인증) 상태 플래그
+  let ownerEdit = null; // {teamId, name, phone}
+
+  /* 로고 폴백 */
   (function fixLogo(){
     const el=$('#bdrLogo');
     const fallback2='https://raw.githubusercontent.com/cobby8/assets/main/bdr-logo.png';
@@ -245,7 +274,7 @@
     el.onerror=()=>{ if(el.dataset.fallback==='1'){ el.src=inline; } else { el.dataset.fallback='1'; el.src=fallback2; } };
   })();
 
-  /* 단계 이동: 이전은 검증 없음 */
+  /* 단계 이동 */
   $$('.next').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const target=btn.getAttribute('data-next'); if(!target) return;
@@ -310,7 +339,8 @@
   });
 
   /* 연락처 숫자만 */
-  $('#managerPhone').addEventListener('input',e=>{ e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11); });
+  $('#ownerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
+  $('#managerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
 
   /* 시도/시군구 */
   const regionMap={'서울특별시':['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
@@ -336,7 +366,7 @@
     else{ citySel.disabled=false; citySel.appendChild(new Option('선택','')); (regionMap[prov]||[]).forEach(c=>citySel.appendChild(new Option(c,c))); }
   });
 
-  /* 색상 동기화 + 농구 저지 렌더 */
+  /* 유니폼 SVG 렌더 */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
       <defs>
@@ -345,14 +375,10 @@
         </filter>
       </defs>
       <g filter="url(#shadow)">
-        <!-- 농구 상의(소매 없음) -->
         <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z"
               fill="${hex}" stroke="#111" stroke-width="1.5"/>
-        <!-- V넥 -->
         <path d="M54 22 L60 28 L66 22" fill="none" stroke="#111" stroke-width="2"/>
-        <!-- 가슴바 -->
         <rect x="38" y="60" width="44" height="8" rx="4" fill="rgba(255,255,255,0.25)"/>
-        <!-- 암홀 강조 -->
         <path d="M35 34 L35 24" stroke="#111" stroke-width="1"/>
         <path d="M85 34 L85 24" stroke="#111" stroke-width="1"/>
       </g>`;
@@ -366,7 +392,6 @@
     }
     picker.addEventListener('input', e=> apply(e.target.value));
     hexEl.addEventListener('input', e=>{ const raw=e.target.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)) apply('#'+raw); });
-    // 초기
     apply(hexEl.value || picker.value || '#000000');
   }
   function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
@@ -439,7 +464,7 @@
     show('붙여넣기 적용 완료');
   });
 
-  /* 검증 */
+  /* 인라인 검증 */
   function setErr(el,noteId,on){ if(!el) return; if(on){ el.classList.add('error'); if(noteId) $('#'+noteId).style.display='block'; } else { el.classList.remove('error'); if(noteId) $('#'+noteId).style.display='none'; } }
   function validateStep(stepId){
     let ok=true;
@@ -457,6 +482,69 @@
     return ok;
   }
 
+  /* 본인 신청서 찾기/불러오기 */
+  $('#ownerFindBtn').addEventListener('click', async ()=>{
+    const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
+    if(!name || phone.length<8){ show('이름과 연락처(숫자만)를 입력하세요'); return; }
+    try{
+      const res=await fetch(`${WEB_APP_URL}?path=findteam&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
+      const json=await res.json();
+      if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
+      const list=json.items||[];
+      if(list.length===0){ show('일치하는 신청서가 없습니다.'); $('#ownerResult').style.display='none'; return; }
+      const sel=$('#ownerTeamSel'); sel.innerHTML='';
+      list.forEach(it=>{
+        const txt=`${it.teamNameKo||'(팀명없음)'} / ${it.tourName||'-'} ${it.category?(' / '+it.category):''}${it.division?(' '+it.division):''}`;
+        sel.appendChild(new Option(txt, it.teamId));
+      });
+      $('#ownerResult').style.display='block';
+    }catch(e){ alert('네트워크 오류'); }
+  });
+
+  $('#ownerLoadBtn').addEventListener('click', async ()=>{
+    const teamId=$('#ownerTeamSel').value; const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
+    if(!teamId){ show('신청서를 선택하세요'); return; }
+    try{
+      const url=`${WEB_APP_URL}?path=getTeamByOwner&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&teamId=${encodeURIComponent(teamId)}`;
+      const res=await fetch(url); const json=await res.json();
+      if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
+      ownerEdit = {teamId, name, phone}; // 수정 모드 플래그
+      // 폼 채우기
+      const t=json.team||{}; const pls=json.players||[];
+      if (t.tourId && TOUR_MAP[t.tourId]) {
+        $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId];
+        renderTourInfo(currentTour); fillCategoriesFromTour(currentTour);
+      }
+      $('#province').value = t.province || '';
+      $('#province').dispatchEvent(new Event('change'));
+      setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
+      $('#teamNameKo').value = t.teamNameKo || '';
+      $('#teamNameEn').value = t.teamNameEn || '';
+      $('#managerName').value = t.managerName || '';
+      $('#managerPhone').value = (t.managerPhone||'').replace(/\D/g,'');
+      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if (t.division) $('#division').value = t.division; }, 0); }
+      $('#uniformHome').value = t.uniformHome || '#ff0000';
+      $('#uniformAway').value = t.uniformAway || '#ffffff';
+      $('#uniformHomePicker').value = $('#uniformHome').value;
+      $('#uniformAwayPicker').value = $('#uniformAway').value;
+      // 선수
+      const container=$('#players'); container.innerHTML='';
+      (pls||[]).forEach(pl=>{
+        const card=createPlayerCard();
+        card.querySelector('[data-key="name"]').value = pl.name || pl['선수이름'] || '';
+        card.querySelector('[data-key="number"]').value = pl.number || pl['등번호'] || '';
+        card.querySelector('[data-key="position"]').value = (pl.position || pl['포지션'] || '').toUpperCase();
+        card.querySelector('[data-key="birth"]').value = pl.birth || pl['생년월일'] || '';
+        card.querySelector('[data-key="elite"]').value = pl.elite || pl['선출여부'] || '';
+        container.appendChild(card);
+      });
+      show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
+      // 다음 단계로 이동
+      $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    }catch(e){ alert('네트워크 오류'); }
+  });
+
   /* 제출 */
   function collectPlayers(){
     return $$('.player-card').map(card=>{
@@ -464,6 +552,7 @@
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
     }).filter(p=>p.name);
   }
+
   $('#submitBtn').addEventListener('click', async ()=>{
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
     const province=$('#province').value.trim(), city=$('#city').value.trim();
@@ -491,21 +580,33 @@
       if(!confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`)) return;
     }
 
+    // 엔드포인트 결정: 링크 수정 / 본인인증 수정 / 신규
     const payload={team, players, base: location.origin + location.pathname};
-    const isEdit=!!(editTeamId && editCode);
-    const url=`${WEB_APP_URL}?path=${isEdit ? 'updateteam' : 'registerteam'}`; // 소문자 path
-    if (isEdit){ payload.teamId=editTeamId; payload.editCode=editCode; }
+    let url = `${WEB_APP_URL}?path=registerteam`;
+    if (ownerEdit && ownerEdit.teamId){
+      payload.teamId = ownerEdit.teamId;
+      payload.name   = ownerEdit.name;
+      payload.phone  = ownerEdit.phone;
+      url = `${WEB_APP_URL}?path=updateteambyowner`;
+    } else if (qs.get('edit') && qs.get('code')) {
+      payload.teamId  = qs.get('edit');
+      payload.editCode= qs.get('code');
+      url = `${WEB_APP_URL}?path=updateteam`;
+    }
 
     const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
     try{
       const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
       const json=await res.json();
       if(json.ok){
-        btn.textContent= isEdit ? '수정 완료' : '제출 완료';
-        btn.classList.add('done'); show(isEdit?'수정이 저장되었습니다.':'신청이 완료되었습니다.');
-        const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-        $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
-        const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
+        btn.textContent= ownerEdit ? '수정 완료' : (qs.get('edit') ? '수정 완료' : '제출 완료');
+        btn.classList.add('done'); show(ownerEdit || qs.get('edit') ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
+        // 완료 후 수정링크도 표시(선택)
+        if (!ownerEdit) {
+          const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+          $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
+          const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
+        }
       }else{
         alert('오류: '+(json.error||'unknown')); btn.disabled=false; btn.textContent=bak;
       }
