@@ -28,7 +28,7 @@
   .toast.show{opacity:1}
 
   .brand{position:absolute;right:30px;top:30px}
-  .brand img{height:31px;opacity:.95} /* 30% 확대 */
+  .brand img{height:31px;opacity:.95}
 
   .step{display:none}.step.active{display:block}
   .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
@@ -49,16 +49,13 @@
   .jersey-title{font-weight:700;margin-bottom:6px}
   .jersey{width:100%;height:180px}
 
-  /* 본인인증 패널 */
   .edit-panel{margin-top:14px;border:1px dashed #dbe5f3;background:#f7fbff;border-radius:14px;padding:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="brand">
-      <img id="bdrLogo" alt="BDR" src="BDR(배경없음).png">
-    </div>
+    <div class="brand"><img id="bdrLogo" alt="BDR" src="BDR(배경없음).png"></div>
     <h1>BDR 참가신청서</h1>
     <div class="muted">참가 대회 선택 ➜ 팀 대표 정보 ➜ 선수 명단 ➜ 제출</div>
 
@@ -200,14 +197,8 @@
       <input type="color" id="uniformAwayPicker" class="visually-hidden" value="#ffffff" />
 
       <div class="uniform-row">
-        <div class="jersey-card">
-          <div class="jersey-title">홈</div>
-          <svg id="jerseyHome" class="jersey" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" aria-label="홈 유니폼"></svg>
-        </div>
-        <div class="jersey-card">
-          <div class="jersey-title">어웨이</div>
-          <svg id="jerseyAway" class="jersey" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" aria-label="어웨이 유니폼"></svg>
-        </div>
+        <div class="jersey-card"><div class="jersey-title">홈</div><svg id="jerseyHome" class="jersey" viewBox="0 0 120 140"></svg></div>
+        <div class="jersey-card"><div class="jersey-title">어웨이</div><svg id="jerseyAway" class="jersey" viewBox="0 0 120 140"></svg></div>
       </div>
 
       <div id="contrastWarn" class="muted" style="display:none;margin-top:8px">유니폼 색상 대비가 낮아 번호/이름 가독성이 떨어질 수 있어요.</div>
@@ -258,15 +249,38 @@
 </div>
 
 <script>
+  /* ===== 설정 ===== */
   const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
-  const qs=new URLSearchParams(location.search); const editTeamId=qs.get('edit'); const editCode=qs.get('code');
+
+  /* ===== URL 파라미터(링크 수정 모드) ===== */
+  const qs=new URLSearchParams(location.search);
+  const editTeamId=qs.get('edit');
+  const editCode=qs.get('code');
+
+  /* ===== 도우미 ===== */
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
-  const show = msg => { const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
+  const show=msg=>{ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  // 수정(본인인증) 상태 플래그
-  let ownerEdit = null; // {teamId, name, phone}
+  /* ---- 제출 폴백 헬퍼(unknown path 대응) ---- */
+  function isOK(j){ return j && (j.ok===true || j.ok==='true' || j.rows!==undefined); }
+  function isUnknown(j){ return j && /unknown path/i.test(String(j.error||'')); }
+  async function postWithFallback(pathList, payload){
+    for (const p of pathList){
+      try{
+        const r=await fetch(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+        const j=await r.json(); if(isOK(j)) return j; if(!isUnknown(j)) throw new Error(j.error||'submit failed');
+      }catch(e){}
+    }
+    for (const p of pathList){
+      try{
+        const r=await fetch(WEB_APP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,path:p})});
+        const j=await r.json(); if(isOK(j)) return j; if(!isUnknown(j)) throw new Error(j.error||'submit failed');
+      }catch(e){}
+    }
+    throw new Error('unknown path');
+  }
 
-  /* 로고 폴백 */
+  /* ===== 로고 폴백 ===== */
   (function fixLogo(){
     const el=$('#bdrLogo');
     const fallback2='https://raw.githubusercontent.com/cobby8/assets/main/bdr-logo.png';
@@ -274,7 +288,7 @@
     el.onerror=()=>{ if(el.dataset.fallback==='1'){ el.src=inline; } else { el.dataset.fallback='1'; el.src=fallback2; } };
   })();
 
-  /* 단계 이동 */
+  /* ===== 단계 이동 ===== */
   $$('.next').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const target=btn.getAttribute('data-next'); if(!target) return;
@@ -286,7 +300,7 @@
     });
   });
 
-  /* 대회 목록/카드 */
+  /* ===== 대회 목록 ===== */
   let TOUR_MAP={}, currentTour=null;
   async function loadTournaments(){
     const res=await fetch(`${WEB_APP_URL}?path=tournaments`);
@@ -294,48 +308,37 @@
     if(!json.ok) return;
     const sel=$('#tourSelect'); sel.innerHTML='<option value="">대회를 선택하세요</option>';
     (json.rows||[]).forEach(t=>{
-      const key=t.TourID||t.tourId; TOUR_MAP[key]=t;
-      const opt=document.createElement('option'); opt.value=key;
+      TOUR_MAP[t.TourID||t.tourId]=t;
+      const opt=document.createElement('option');
+      opt.value=t.TourID||t.tourId;
       const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
-      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`; sel.appendChild(opt);
+      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
+      sel.appendChild(opt);
     });
   }
-  function pad2(n){return String(n).padStart(2,'0');}
-  function fmtDate(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; }
-  function fmtDT(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
-  function summarizeDivs(divs){ try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`; }); return parts.length?parts.join(' / '):'-'; }catch{return '-';} }
-  function parsePlaces(p){ try{ const arr=Array.isArray(p)?p:JSON.parse(p||'[]'); const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean); return names.length?names.join(' · '):'-'; }catch{return '-';} }
-  // 신청서의 renderTourInfo(t) 교체본
-function renderTourInfo(t){
-  const box = document.getElementById('tourInfo');
-  const nextbar = document.getElementById('nextbar0') || {style:{display:'none'}};
-  if (!t){ box.style.display='none'; box.innerHTML=''; nextbar.style.display='none'; return; }
-
-  const hasPoster = typeof t.url === 'string' && t.url.startsWith('data:image');
-  const posterHtml = hasPoster
-    ? `<div style="margin-top:8px"><img src="${t.url}" alt="포스터" style="max-width:220px;max-height:220px;border:1px solid #e6ecf5;border-radius:12px;object-fit:contain;background:#fff"></div>`
-    : (t.url ? `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>` : '');
-
-  const summarizeDivs = (divs) => {
-    try {
-      const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{});
-      const parts=Object.keys(obj).map(cat=>{
-        const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`;
-      });
-      return parts.length?parts.join(' / '):'-';
-    } catch { return '-'; }
-  };
-  const parsePlaces = (p) => {
-    try {
-      const arr=Array.isArray(p)?p:JSON.parse(p||'[]'); const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean);
-      return names.length?names.join(' · '):'-';
-    } catch { return '-'; }
-  };
   const pad2=n=>String(n).padStart(2,'0');
   const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
   const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 
-  box.innerHTML = `<div class="kv">
+  function summarizeDivs(divs){
+    try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`; }); return parts.length?parts.join(' / '):'-'; }
+    catch{ return '-'; }
+  }
+  function parsePlaces(p){
+    try{ const arr=Array.isArray(p)?p:JSON.parse(p||'[]'); const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean); return names.length?names.join(' · '):'-'; }
+    catch{ return '-'; }
+  }
+
+  function renderTourInfo(t){
+    const box=$('#tourInfo'), nextbar=$('#nextbar0');
+    if(!t){ box.style.display='none'; box.innerHTML=''; if(nextbar) nextbar.style.display='none'; return; }
+
+    const hasPoster = typeof t.url === 'string' && t.url.startsWith('data:image');
+    const posterHtml = hasPoster
+      ? `<div style="margin-top:8px"><img src="${t.url}" alt="포스터" style="max-width:220px;max-height:220px;border:1px solid #e6ecf5;border-radius:12px;object-fit:contain;background:#fff"></div>`
+      : (t.url ? `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>` : '');
+
+    box.innerHTML = `<div class="kv">
       <b>대회명</b><div>${t.name||'-'}</div>
       <b>종별</b><div>${summarizeDivs(t.divs)}</div>
       <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
@@ -343,63 +346,41 @@ function renderTourInfo(t){
       <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
       ${posterHtml}
     </div>`;
-  box.style.display='block'; nextbar.style.display='flex';
-}
+    box.style.display='block';
+    if(nextbar) nextbar.style.display='flex';
+  }
+
   $('#tourSelect').addEventListener('change',e=>{
     const id=e.target.value; currentTour=id?TOUR_MAP[id]:null;
-    renderTourInfo(currentTour); fillCategoriesFromTour(currentTour);
+    renderTourInfo(currentTour);
+    fillCategoriesFromTour(currentTour);
   });
 
-  /* 종별/디비전 제한 */
+  /* ===== 종별/디비전 제한 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
   function fillCategoriesFromTour(t){
     categorySelect.innerHTML=''; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
     if(!t || !t.divs || !Object.keys(t.divs).length){ categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return; }
-    categorySelect.disabled=false; categorySelect.appendChild(new Option('선택','')); Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
+    categorySelect.disabled=false;
+    categorySelect.appendChild(new Option('선택',''));
+    Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
   }
   categorySelect.addEventListener('change',e=>{
     const cat=e.target.value; divisionSelect.innerHTML='';
     if(!currentTour || !cat){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; return; }
-    const arr=currentTour.divs[cat]||[]; if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
-    divisionSelect.disabled=false; divisionSelect.appendChild(new Option('선택','')); arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
+    const arr=currentTour.divs[cat]||[];
+    if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
+    divisionSelect.disabled=false;
+    divisionSelect.appendChild(new Option('선택',''));
+    arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
   });
 
-  /* 연락처 숫자만 */
-  $('#ownerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
-  $('#managerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
-
-  /* 시도/시군구 */
-  const regionMap={'서울특별시':['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
-  '부산광역시':['강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구','기장군'],
-  '대구광역시':['남구','달서구','동구','북구','서구','수성구','중구','달성군','군위군'],
-  '인천광역시':['강화군','계양구','미추홀구','남동구','동구','부평구','서구','연수구','중구','옹진군'],
-  '광주광역시':['광산구','남구','동구','북구','서구'],
-  '대전광역시':['대덕구','동구','서구','유성구','중구'],
-  '울산광역시':['남구','동구','북구','중구','울주군'],
-  '세종특별자치시':['세종시'],
-  '경기도':['가평군','고양시','과천시','광명시','광주시','구리시','군포시','김포시','남양주시','동두천시','부천시','성남시','수원시','시흥시','안산시','안성시','안양시','양주시','양평군','여주시','연천군','오산시','용인시','의왕시','의정부시','이천시','파주시','평택시','포천시','하남시','화성시'],
-  '강원특별자치도':['강릉시','동해시','속초시','삼척시','원주시','춘천시','태백시','고성군','양구군','양양군','영월군','인제군','정선군','철원군','평창군','홍천군','화천군','횡성군'],
-  '충청북도':['제천시','청주시','충주시','괴산군','단양군','보은군','영동군','옥천군','음성군','증평군'],
-  '충청남도':['계룡시','공주시','논산시','당진시','보령시','서산시','아산시','천안시','금산군','부여군','서천군','예산군','청양군','태안군','홍성군'],
-  '전북특별자치도':['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','고창군','무주군','부안군','순창군','임실군','장수군','진안군'],
-  '전라남도':['광양시','나주시','목포시','순천시','여수시','강진군','고흥군','곡성군','구례군','담양군','무안군','보성군','신안군','영광군','영암군','완도군','장성군','장흥군','진도군','함평군','해남군','화순군'],
-  '경상북도':['경산시','경주시','구미시','김천시','문경시','상주시','안동시','영주시','영천시','포항시','고령군','군위군','봉화군','성주군','영덕군','영양군','예천군','울릉군','울진군','의성군','청도군','청송군','칠곡군'],
-  '경상남도':['거제시','김해시','밀양시','사천시','양산시','진주시','창원시','통영시','거창군','고성군','남해군','산청군','의령군','창녕군','하동군','함안군','함양군','합천군'],
-  '제주특별자치도':['제주시','서귀포시']};
-  $('#province').addEventListener('change',e=>{
-    const prov=e.target.value; const citySel=$('#city'); citySel.innerHTML='';
-    if(!prov){ citySel.disabled=true; citySel.innerHTML='<option value="">시도를 먼저 선택하세요</option>'; }
-    else{ citySel.disabled=false; citySel.appendChild(new Option('선택','')); (regionMap[prov]||[]).forEach(c=>citySel.appendChild(new Option(c,c))); }
-  });
-
-  /* 유니폼 SVG 렌더 */
+  /* ===== 유니폼 SVG ===== */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
-      <defs>
-        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
-        </filter>
-      </defs>
+      <defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
+      </filter></defs>
       <g filter="url(#shadow)">
         <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z"
               fill="${hex}" stroke="#111" stroke-width="1.5"/>
@@ -434,9 +415,36 @@ function renderTourInfo(t){
   syncColor('#uniformHome','#uniformHomePicker','#jerseyHome');
   syncColor('#uniformAway','#uniformAwayPicker','#jerseyAway');
 
-  /* 선수 카드 & 붙여넣기 */
+  /* ===== 연락처/지역 ===== */
+  $('#ownerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
+  $('#managerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
+  const regionMap={'서울특별시':['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+  '부산광역시':['강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구','기장군'],
+  '대구광역시':['남구','달서구','동구','북구','서구','수성구','중구','달성군','군위군'],
+  '인천광역시':['강화군','계양구','미추홀구','남동구','동구','부평구','서구','연수구','중구','옹진군'],
+  '광주광역시':['광산구','남구','동구','북구','서구'],
+  '대전광역시':['대덕구','동구','서구','유성구','중구'],
+  '울산광역시':['남구','동구','북구','중구','울주군'],
+  '세종특별자치시':['세종시'],
+  '경기도':['가평군','고양시','과천시','광명시','광주시','구리시','군포시','김포시','남양주시','동두천시','부천시','성남시','수원시','시흥시','안산시','안성시','안양시','양주시','양평군','여주시','연천군','오산시','용인시','의왕시','의정부시','이천시','파주시','평택시','포천시','하남시','화성시'],
+  '강원특별자치도':['강릉시','동해시','속초시','삼척시','원주시','춘천시','태백시','고성군','양구군','양양군','영월군','인제군','정선군','철원군','평창군','홍천군','화천군','횡성군'],
+  '충청북도':['제천시','청주시','충주시','괴산군','단양군','보은군','영동군','옥천군','음성군','증평군'],
+  '충청남도':['계룡시','공주시','논산시','당진시','보령시','서산시','아산시','천안시','금산군','부여군','서천군','예산군','청양군','태안군','홍성군'],
+  '전북특별자치도':['전주시','군산시','익산시','정읍시','남원시','김제시','완주군','고창군','무주군','부안군','순창군','임실군','장수군','진안군'],
+  '전라남도':['광양시','나주시','목포시','순천시','여수시','강진군','고흥군','곡성군','구례군','담양군','무안군','보성군','신안군','영광군','영암군','완도군','장성군','장흥군','진도군','함평군','해남군','화순군'],
+  '경상북도':['경산시','경주시','구미시','김천시','문경시','상주시','안동시','영주시','영천시','포항시','고령군','군위군','봉화군','성주군','영덕군','영양군','예천군','울릉군','울진군','의성군','청도군','청송군','칠곡군'],
+  '경상남도':['거제시','김해시','밀양시','사천시','양산시','진주시','창원시','통영시','거창군','고성군','남해군','산청군','의령군','창녕군','하동군','함안군','함양군','합천군'],
+  '제주특별자치도':['제주시','서귀포시']};
+  $('#province').addEventListener('change',e=>{
+    const prov=e.target.value; const citySel=$('#city'); citySel.innerHTML='';
+    if(!prov){ citySel.disabled=true; citySel.innerHTML='<option value="">시도를 먼저 선택하세요</option>'; }
+    else{ citySel.disabled=false; citySel.appendChild(new Option('선택','')); (regionMap[prov]||[]).forEach(c=>citySel.appendChild(new Option(c,c))); }
+  });
+
+  /* ===== 선수 카드 & 붙여넣기 ===== */
   function createPlayerCard(){
-    const div=document.createElement('div'); div.className='player-card';
+    const div=document.createElement('div');
+    div.className='player-card';
     div.style.cssText='border:1px dashed #e6ecf5;border-radius:14px;padding:10px;margin-top:10px;background:#fafcff';
     div.innerHTML = `<div class="row row-3">
       <div><label>선수 이름</label><input data-key="name" placeholder="이름"></div>
@@ -451,7 +459,8 @@ function renderTourInfo(t){
     div.querySelector('.remove').addEventListener('click',()=>div.remove());
     return div;
   }
-  const playersDiv=$('#players'); $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
+  const playersDiv=$('#players');
+  $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
   for(let i=0;i<5;i++) $('#addPlayerBtn').click();
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
@@ -490,7 +499,7 @@ function renderTourInfo(t){
     show('붙여넣기 적용 완료');
   });
 
-  /* 인라인 검증 */
+  /* ===== 검증 ===== */
   function setErr(el,noteId,on){ if(!el) return; if(on){ el.classList.add('error'); if(noteId) $('#'+noteId).style.display='block'; } else { el.classList.remove('error'); if(noteId) $('#'+noteId).style.display='none'; } }
   function validateStep(stepId){
     let ok=true;
@@ -508,7 +517,8 @@ function renderTourInfo(t){
     return ok;
   }
 
-  /* 본인 신청서 찾기/불러오기 */
+  /* ===== 본인 신청서 찾기/불러오기 ===== */
+  let ownerEdit=null; // {teamId,name,phone}
   $('#ownerFindBtn').addEventListener('click', async ()=>{
     const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
     if(!name || phone.length<8){ show('이름과 연락처(숫자만)를 입력하세요'); return; }
@@ -516,8 +526,7 @@ function renderTourInfo(t){
       const res=await fetch(`${WEB_APP_URL}?path=findteam&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
       const json=await res.json();
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
-      const list=json.items||[];
-      if(list.length===0){ show('일치하는 신청서가 없습니다.'); $('#ownerResult').style.display='none'; return; }
+      const list=json.items||[]; if(list.length===0){ show('일치하는 신청서가 없습니다.'); $('#ownerResult').style.display='none'; return; }
       const sel=$('#ownerTeamSel'); sel.innerHTML='';
       list.forEach(it=>{
         const txt=`${it.teamNameKo||'(팀명없음)'} / ${it.tourName||'-'} ${it.category?(' / '+it.category):''}${it.division?(' '+it.division):''}`;
@@ -532,55 +541,27 @@ function renderTourInfo(t){
     if(!teamId){ show('신청서를 선택하세요'); return; }
     try{
       const url=`${WEB_APP_URL}?path=getTeamByOwner&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&teamId=${encodeURIComponent(teamId)}`;
-      const res=await fetch(url); const json=await res.json();
+      const json=await (await fetch(url)).json();
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
-      ownerEdit = {teamId, name, phone}; // 수정 모드 플래그
-      // 폼 채우기
-      const t=json.team||{}; const pls=json.players||[];
-      if (t.tourId && TOUR_MAP[t.tourId]) {
-        $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId];
-        renderTourInfo(currentTour); fillCategoriesFromTour(currentTour);
-      }
-      $('#province').value = t.province || '';
-      $('#province').dispatchEvent(new Event('change'));
-      setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
-      $('#teamNameKo').value = t.teamNameKo || '';
-      $('#teamNameEn').value = t.teamNameEn || '';
-      $('#managerName').value = t.managerName || '';
-      $('#managerPhone').value = (t.managerPhone||'').replace(/\D/g,'');
-      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if (t.division) $('#division').value = t.division; }, 0); }
-      $('#uniformHome').value = t.uniformHome || '#ff0000';
-      $('#uniformAway').value = t.uniformAway || '#ffffff';
-      $('#uniformHomePicker').value = $('#uniformHome').value;
-      $('#uniformAwayPicker').value = $('#uniformAway').value;
-      // 선수
-      const container=$('#players'); container.innerHTML='';
-      (pls||[]).forEach(pl=>{
-        const card=createPlayerCard();
-        card.querySelector('[data-key="name"]').value = pl.name || pl['선수이름'] || '';
-        card.querySelector('[data-key="number"]').value = pl.number || pl['등번호'] || '';
-        card.querySelector('[data-key="position"]').value = (pl.position || pl['포지션'] || '').toUpperCase();
-        card.querySelector('[data-key="birth"]').value = pl.birth || pl['생년월일'] || '';
-        card.querySelector('[data-key="elite"]').value = pl.elite || pl['선출여부'] || '';
-        container.appendChild(card);
-      });
+      ownerEdit={teamId,name,phone};
+      const t=json.team||{}, pls=json.players||[];
+      if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId]; renderTourInfo(currentTour); fillCategoriesFromTour(currentTour); }
+      $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
+      $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
+      $('#managerName').value = t.managerName || ''; $('#managerPhone').value = String(t.managerPhone||'').replace(/\D/g,'');
+      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value=t.division; },0); }
+      $('#uniformHome').value = t.uniformHome || '#ff0000'; $('#uniformAway').value = t.uniformAway || '#ffffff';
+      $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
+      playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
-      // 다음 단계로 이동
-      $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active');
-      window.scrollTo({top:0,behavior:'smooth'});
+      $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
     }catch(e){ alert('네트워크 오류'); }
   });
 
-  /* 제출 */
-  function collectPlayers(){
-    return $$('.player-card').map(card=>{
-      const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
-      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
-    }).filter(p=>p.name);
-  }
-
+  /* ===== 제출 ===== */
   $('#submitBtn').addEventListener('click', async ()=>{
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
+
     const province=$('#province').value.trim(), city=$('#city').value.trim();
     const team={
       tourId: $('#tourSelect').value.trim(),
@@ -589,7 +570,7 @@ function renderTourInfo(t){
       province, city,
       teamNameKo: $('#teamNameKo').value.trim(),
       teamNameEn: $('#teamNameEn').value.trim(),
-      teamName  : $('#teamNameKo').value.trim(),
+      teamName  : $('#teamNameKo').value.trim(), // 호환
       managerName: $('#managerName').value.trim(),
       managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
       category: $('#category').value,
@@ -597,7 +578,12 @@ function renderTourInfo(t){
       uniformHome: $('#uniformHome').value.trim(),
       uniformAway: $('#uniformAway').value.trim()
     };
-    const players=collectPlayers();
+
+    const players=$$('.player-card').map(card=>{
+      const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
+      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
+    }).filter(p=>p.name);
+
     if (players.length < 5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return; }
     const numbers=players.map(p=>p.number).filter(Boolean);
     const dup=numbers.find((n,i)=> n && numbers.indexOf(n)!==i);
@@ -606,37 +592,37 @@ function renderTourInfo(t){
       if(!confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`)) return;
     }
 
-    // 엔드포인트 결정: 링크 수정 / 본인인증 수정 / 신규
     const payload={team, players, base: location.origin + location.pathname};
-    let url = `${WEB_APP_URL}?path=registerteam`;
+    let candidates = ['registerteam','registerTeam'];
+
     if (ownerEdit && ownerEdit.teamId){
-      payload.teamId = ownerEdit.teamId;
-      payload.name   = ownerEdit.name;
-      payload.phone  = ownerEdit.phone;
-      url = `${WEB_APP_URL}?path=updateteambyowner`;
-    } else if (qs.get('edit') && qs.get('code')) {
-      payload.teamId  = qs.get('edit');
-      payload.editCode= qs.get('code');
-      url = `${WEB_APP_URL}?path=updateteam`;
+      payload.teamId = ownerEdit.teamId; payload.name = ownerEdit.name; payload.phone = ownerEdit.phone;
+      candidates = ['updateteambyowner','updateTeamByOwner'];
+    } else if (editTeamId && editCode){
+      payload.teamId = editTeamId; payload.editCode = editCode;
+      candidates = ['updateteam','updateTeam'];
     }
 
     const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
     try{
-      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-      const json=await res.json();
+      const json = await postWithFallback(candidates, payload);
       if(json.ok){
-        btn.textContent= ownerEdit ? '수정 완료' : (qs.get('edit') ? '수정 완료' : '제출 완료');
-        btn.classList.add('done'); show(ownerEdit || qs.get('edit') ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
-        // 완료 후 수정링크도 표시(선택)
-        if (!ownerEdit) {
+        btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
+        btn.classList.add('done');
+        show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
+        if (!(ownerEdit || (editTeamId&&editCode))){
           const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
           $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
           const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
         }
       }else{
-        alert('오류: '+(json.error||'unknown')); btn.disabled=false; btn.textContent=bak;
+        alert('오류: '+(json.error||'unknown'));
+        btn.disabled=false; btn.textContent=bak;
       }
-    }catch(err){ alert('네트워크 오류\n'+err); btn.disabled=false; btn.textContent=bak; }
+    }catch(err){
+      alert('제출 실패: '+(err&&err.message||err));
+      btn.disabled=false; btn.textContent=bak;
+    }
   });
 
   $('#copyEditLinkBtn').addEventListener('click', async ()=>{
@@ -645,10 +631,29 @@ function renderTourInfo(t){
     catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
   });
 
-  /* 초기화 */
+  /* ===== 부트스트랩 ===== */
   (async function init(){
     await loadTournaments();
     renderTourInfo(TOUR_MAP[$('#tourSelect').value]||null);
+
+    // 링크 수정 모드일 때, 기존 값 미리 불러오기
+    if (editTeamId && editCode){
+      try{
+        const j=await (await fetch(`${WEB_APP_URL}?path=getTeam&teamId=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`)).json();
+        if(j.ok){
+          const t=j.team||{}, pls=j.players||[];
+          if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value=t.tourId; currentTour=TOUR_MAP[t.tourId]; renderTourInfo(currentTour); fillCategoriesFromTour(currentTour); }
+          $('#province').value=t.province||''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value=t.city||''; },0);
+          $('#teamNameKo').value=t.teamNameKo||''; $('#teamNameEn').value=t.teamNameEn||'';
+          $('#managerName').value=t.managerName||''; $('#managerPhone').value=String(t.managerPhone||'').replace(/\D/g,'');
+          if(t.category){ $('#category').value=t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value=t.division; },0); }
+          $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
+          $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
+          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
+          show('수정 링크로 불러온 신청서입니다.');
+        }
+      }catch(e){}
+    }
   })();
 </script>
 </body>
