@@ -261,21 +261,29 @@
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show=msg=>{ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  /* ---- 제출 폴백 헬퍼(unknown path 대응) ---- */
-  function isOK(j){ return j && (j.ok===true || j.ok==='true' || j.rows!==undefined); }
-  function isUnknown(j){ return j && /unknown path/i.test(String(j.error||'')); }
-  async function postWithFallback(pathList, payload){
-    for (const p of pathList){
-      try{
-        const r=await fetch(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-        const j=await r.json(); if(isOK(j)) return j; if(!isUnknown(j)) throw new Error(j.error||'submit failed');
-      }catch(e){}
+  /* ---- 제출 폴백 헬퍼(unknown path 대응: 모든 조합 재시도) ---- */
+  function ok(j){ return j && (j.ok===true || j.ok==='true' || j.rows!==undefined); }
+  function unknown(j){ return j && /unknown path/i.test(String(j.error||'')); }
+  async function postTry(url, body, type){
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':type},body:JSON.stringify(body)});
+    const text=await r.text(); try{ return JSON.parse(text); }catch{ return {ok:false,error:text}; }
+  }
+  async function postWithFallback(paths, payload){
+    // 1) 쿼리 path + JSON
+    for(const p of paths){
+      let j = await postTry(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`, payload, 'application/json;charset=utf-8');
+      if(ok(j)) return j; if(!unknown(j)) continue;
+
+      // 1b) 쿼리 path + text/plain
+      j = await postTry(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`, payload, 'text/plain;charset=utf-8');
+      if(ok(j)) return j;
     }
-    for (const p of pathList){
-      try{
-        const r=await fetch(WEB_APP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,path:p})});
-        const j=await r.json(); if(isOK(j)) return j; if(!isUnknown(j)) throw new Error(j.error||'submit failed');
-      }catch(e){}
+    // 2) body.path + JSON / text
+    for(const p of paths){
+      let j = await postTry(WEB_APP_URL, {...payload, path:p}, 'application/json;charset=utf-8');
+      if(ok(j)) return j; if(!unknown(j)) continue;
+      j = await postTry(WEB_APP_URL, {...payload, path:p}, 'text/plain;charset=utf-8');
+      if(ok(j)) return j;
     }
     throw new Error('unknown path');
   }
@@ -549,7 +557,7 @@
       $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
       $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
       $('#managerName').value = t.managerName || ''; $('#managerPhone').value = String(t.managerPhone||'').replace(/\D/g,'');
-      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value=t.division; },0); }
+      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value = t.division; }, 0); }
       $('#uniformHome').value = t.uniformHome || '#ff0000'; $('#uniformAway').value = t.uniformAway || '#ffffff';
       $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
       playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
@@ -570,7 +578,6 @@
       province, city,
       teamNameKo: $('#teamNameKo').value.trim(),
       teamNameEn: $('#teamNameEn').value.trim(),
-      teamName  : $('#teamNameKo').value.trim(), // 호환
       managerName: $('#managerName').value.trim(),
       managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
       category: $('#category').value,
@@ -636,7 +643,7 @@
     await loadTournaments();
     renderTourInfo(TOUR_MAP[$('#tourSelect').value]||null);
 
-    // 링크 수정 모드일 때, 기존 값 미리 불러오기
+    // 링크 수정 모드: 기존값 미리 불러오기
     if (editTeamId && editCode){
       try{
         const j=await (await fetch(`${WEB_APP_URL}?path=getTeam&teamId=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`)).json();
