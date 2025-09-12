@@ -305,20 +305,46 @@
   function fmtDT(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
   function summarizeDivs(divs){ try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`; }); return parts.length?parts.join(' / '):'-'; }catch{return '-';} }
   function parsePlaces(p){ try{ const arr=Array.isArray(p)?p:JSON.parse(p||'[]'); const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean); return names.length?names.join(' · '):'-'; }catch{return '-';} }
-  function renderTourInfo(t){
-    const box=$('#tourInfo'), nextbar=$('#nextbar0');
-    if(!t){ box.style.display='none'; box.textContent=''; nextbar.style.display='none'; return; }
-    const urlLine=t.url?`<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`:'';
-    box.innerHTML=`<div class="kv">
+  // 신청서의 renderTourInfo(t) 교체본
+function renderTourInfo(t){
+  const box = document.getElementById('tourInfo');
+  const nextbar = document.getElementById('nextbar0') || {style:{display:'none'}};
+  if (!t){ box.style.display='none'; box.innerHTML=''; nextbar.style.display='none'; return; }
+
+  const hasPoster = typeof t.url === 'string' && t.url.startsWith('data:image');
+  const posterHtml = hasPoster
+    ? `<div style="margin-top:8px"><img src="${t.url}" alt="포스터" style="max-width:220px;max-height:220px;border:1px solid #e6ecf5;border-radius:12px;object-fit:contain;background:#fff"></div>`
+    : (t.url ? `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>` : '');
+
+  const summarizeDivs = (divs) => {
+    try {
+      const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{});
+      const parts=Object.keys(obj).map(cat=>{
+        const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`;
+      });
+      return parts.length?parts.join(' / '):'-';
+    } catch { return '-'; }
+  };
+  const parsePlaces = (p) => {
+    try {
+      const arr=Array.isArray(p)?p:JSON.parse(p||'[]'); const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean);
+      return names.length?names.join(' · '):'-';
+    } catch { return '-'; }
+  };
+  const pad2=n=>String(n).padStart(2,'0');
+  const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
+  const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+
+  box.innerHTML = `<div class="kv">
       <b>대회명</b><div>${t.name||'-'}</div>
       <b>종별</b><div>${summarizeDivs(t.divs)}</div>
       <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
       <b>장소</b><div>${parsePlaces(t.places)}</div>
       <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
-      ${urlLine}
+      ${posterHtml}
     </div>`;
-    box.style.display='block'; nextbar.style.display='flex';
-  }
+  box.style.display='block'; nextbar.style.display='flex';
+}
   $('#tourSelect').addEventListener('change',e=>{
     const id=e.target.value; currentTour=id?TOUR_MAP[id]:null;
     renderTourInfo(currentTour); fillCategoriesFromTour(currentTour);
