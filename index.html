@@ -284,25 +284,23 @@
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':type},body:JSON.stringify(body)});
     const text=await r.text(); try{ return JSON.parse(text); }catch{ return {ok:false,error:text}; }
   }
-  async function postWithFallback(paths, payload){
-    // 1) 쿼리 path + JSON
-    for(const p of paths){
-      let j = await postTry(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`, payload, 'application/json;charset=utf-8');
-      if(ok(j)) return j; if(!unknown(j)) continue;
-
-      // 1b) 쿼리 path + text/plain
-      j = await postTry(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`, payload, 'text/plain;charset=utf-8');
-      if(ok(j)) return j;
+// 프런트 postWithFallback 보조 함수 교체
+async function postTry(url, body, type){
+  try{
+    const r = await fetch(url,{method:'POST',headers:{'Content-Type':type},body:JSON.stringify(body)});
+    const text = await r.text(); try{ return JSON.parse(text); }catch{ return {ok:false,error:text}; }
+  }catch(err){
+    // JSON POST가 preflight로 막히면 text/plain으로 재시도 (CORS 사전요청 회피)
+    if(type.startsWith('application/json')){
+      try{
+        const r2 = await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+        const t2 = await r2.text(); try{ return JSON.parse(t2); }catch{ return {ok:false,error:t2}; }
+      }catch(e2){ return {ok:false,error:String(e2&&e2.message||e2)}; }
     }
-    // 2) body.path + JSON / text
-    for(const p of paths){
-      let j = await postTry(WEB_APP_URL, {...payload, path:p}, 'application/json;charset=utf-8');
-      if(ok(j)) return j; if(!unknown(j)) continue;
-      j = await postTry(WEB_APP_URL, {...payload, path:p}, 'text/plain;charset=utf-8');
-      if(ok(j)) return j;
-    }
-    throw new Error('unknown path');
+    return {ok:false,error:String(err&&err.message||err)};
   }
+}
+
 
   /* ===== 로고 폴백 ===== */
   (function fixLogo(){
