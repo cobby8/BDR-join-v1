@@ -41,8 +41,14 @@
   #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
   #tourInfo .kv b{color:#111}
 
-  .color-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+  /* ===== 포스터 영역 ===== */
+  .poster-wrap{display:none;margin-top:8px;text-align:center}
+  .poster-wrap img{max-width:100%;max-height:420px;border:1px solid #e6ecf5;border-radius:14px;background:#fff;object-fit:contain;box-shadow:var(--shadow)}
+  .poster-wrap .caption{font-size:12px;color:var(--muted);margin-top:6px}
+
+  .color-grid{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
   .color-btn{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
+  .color-confirm{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700;display:none}
   .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .uniform-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
   .jersey-card{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#f7fbff}
@@ -64,6 +70,13 @@
       <div class="section-title">0) 참가희망 대회</div>
       <label>대회 선택</label>
       <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
+
+      <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
+      <div id="posterWrap" class="poster-wrap" aria-live="polite">
+        <img id="posterImg" alt="대회 포스터">
+        <div class="caption">대회 포스터</div>
+      </div>
+
       <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
       <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있게 자동 제한돼요.</div>
 
@@ -183,6 +196,7 @@
         <div class="color-grid">
           <input class="hex" id="uniformHome" placeholder="#ff0000" value="#ff0000" />
           <label for="uniformHomePicker" class="color-btn">색상선택</label>
+          <button class="color-confirm" id="uniformHomeConfirm" type="button">확인</button>
         </div>
       </div>
       <div style="margin-top:8px">
@@ -190,8 +204,10 @@
         <div class="color-grid">
           <input class="hex" id="uniformAway" placeholder="#ffffff" value="#ffffff" />
           <label for="uniformAwayPicker" class="color-btn">색상선택</label>
+          <button class="color-confirm" id="uniformAwayConfirm" type="button">확인</button>
         </div>
       </div>
+      <div class="muted">※ 컬러피커에서 색상을 고른 다음 <b>확인</b>을 눌러 적용하세요. (HEX를 직접 입력하면 즉시 적용됩니다.)</div>
 
       <input type="color" id="uniformHomePicker" class="visually-hidden" value="#ff0000" />
       <input type="color" id="uniformAwayPicker" class="visually-hidden" value="#ffffff" />
@@ -337,14 +353,58 @@
     catch{ return '-'; }
   }
 
+  /* ===== 포스터 표시 ===== */
+  function isImageUrl(u){
+    if(typeof u!=='string' || !u) return false;
+    if(/^data:image\//i.test(u)) return true;
+    return /\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u);
+  }
+  async function getPosterByTourId(tourId, posterId){
+    const paths=['poster','getPoster'];
+    for(const p of paths){
+      try{
+        const url = `${WEB_APP_URL}?path=${encodeURIComponent(p)}&tourId=${encodeURIComponent(tourId)}${posterId?`&posterId=${encodeURIComponent(posterId)}`:''}`;
+        const j=await (await fetch(url)).json();
+        const found=j?.url||j?.poster||j?.posterUrl||(j?.data&&j.data.url);
+        if((j?.ok===true || j?.ok==='true') && found) return found;
+        if(typeof j==='string' && isImageUrl(j)) return j;
+      }catch(e){}
+    }
+    return null;
+  }
+  async function resolvePosterUrlFromTourObj(t){
+    if(!t) return null;
+    const direct = t.posterUrl || t.poster || t.posterImage || t.posterBase64;
+    if(isImageUrl(direct)) return direct;
+    // 일부 케이스: url 필드가 포스터 이미지일 수 있음
+    if(isImageUrl(t.url)) return t.url;
+    // Drive/File ID로 저장된 경우
+    const pid = t.posterId || t.posterFileId || t.posterDriveId;
+    const url = await getPosterByTourId(t.TourID||t.tourId, pid);
+    return isImageUrl(url)?url:null;
+  }
+  async function renderPoster(t){
+    const wrap=$('#posterWrap'); const img=$('#posterImg');
+    if(!t){ wrap.style.display='none'; img.removeAttribute('src'); return; }
+    wrap.style.display='none'; img.removeAttribute('src');
+    try{
+      const url = await resolvePosterUrlFromTourObj(t);
+      if(url){
+        img.src=url;
+        img.onerror=()=>{ wrap.style.display='none'; img.removeAttribute('src'); };
+        wrap.style.display='block';
+      }else{
+        wrap.style.display='none';
+      }
+    }catch(e){ wrap.style.display='none'; }
+  }
+
   function renderTourInfo(t){
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
     if(!t){ box.style.display='none'; box.innerHTML=''; if(nextbar) nextbar.style.display='none'; return; }
 
-    const hasPoster = typeof t.url === 'string' && t.url.startsWith('data:image');
-    const posterHtml = hasPoster
-      ? `<div style="margin-top:8px"><img src="${t.url}" alt="포스터" style="max-width:220px;max-height:220px;border:1px solid #e6ecf5;border-radius:12px;object-fit:contain;background:#fff"></div>`
-      : (t.url ? `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>` : '');
+    // 포스터는 posterWrap에서 노출. 여기서는 안내정보만.
+    const infoLink = (!t.url || isImageUrl(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`;
 
     box.innerHTML = `<div class="kv">
       <b>대회명</b><div>${t.name||'-'}</div>
@@ -352,15 +412,16 @@
       <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
       <b>장소</b><div>${parsePlaces(t.places)}</div>
       <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
-      ${posterHtml}
+      ${infoLink}
     </div>`;
     box.style.display='block';
     if(nextbar) nextbar.style.display='flex';
   }
 
-  $('#tourSelect').addEventListener('change',e=>{
+  $('#tourSelect').addEventListener('change',async e=>{
     const id=e.target.value; currentTour=id?TOUR_MAP[id]:null;
     renderTourInfo(currentTour);
+    await renderPoster(currentTour);
     fillCategoriesFromTour(currentTour);
   });
 
@@ -398,17 +459,6 @@
         <path d="M85 34 L85 24" stroke="#111" stroke-width="1"/>
       </g>`;
   }
-  function syncColor(hexId, pickerId, jerseyId){
-    const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId);
-    function apply(v){
-      const val = v.startsWith('#')?v:'#'+v;
-      if(!/^#[0-9A-Fa-f]{6}$/.test(val)) return;
-      hexEl.value=val; picker.value=val; renderJersey(svg, val); checkContrast();
-    }
-    picker.addEventListener('input', e=> apply(e.target.value));
-    hexEl.addEventListener('input', e=>{ const raw=e.target.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)) apply('#'+raw); });
-    apply(hexEl.value || picker.value || '#000000');
-  }
   function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
   function relLum({r,g,b}){ const c=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
   function contrastRatio(h1,h2){ try{const L1=relLum(hexToRgb(h1)); const L2=relLum(hexToRgb(h2)); const [a,b]=L1>L2?[L1,L2]:[L2,L1]; return (a+0.05)/(b+0.05);}catch{return 7}}
@@ -420,8 +470,44 @@
                  (ok2 && Math.max(contrastRatio(a,'#000'), contrastRatio(a,'#fff')) < 4.5);
     warn.style.display=poor?'block':'none';
   }
-  syncColor('#uniformHome','#uniformHomePicker','#jerseyHome');
-  syncColor('#uniformAway','#uniformAwayPicker','#jerseyAway');
+
+  /* === 컬러피커: 확인 버튼 적용형 === */
+  function syncColor({hexId, pickerId, jerseyId, confirmId}){
+    const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId), confirmBtn=$(confirmId);
+    // 초기 적용
+    const initVal = /^#[0-9A-Fa-f]{6}$/.test(hexEl.value) ? hexEl.value : (picker.value || '#000000');
+    hexEl.value = initVal; picker.value = initVal; renderJersey(svg, initVal);
+
+    function normalizeHex(v){ const val = (v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val) ? val : ''; }
+
+    // 1) 컬러피커에서 고르는 동안은 미리보기만, [확인] 클릭 시 적용
+    picker.addEventListener('input', e=>{
+      const v = normalizeHex(e.target.value); if(!v) return;
+      renderJersey(svg, v);           // 미리보기
+      confirmBtn.style.display='inline-block'; // 적용 대기
+    });
+    confirmBtn.addEventListener('click', ()=>{
+      const v = normalizeHex(picker.value); if(!v) return;
+      hexEl.value = v;                // 실제 적용
+      renderJersey(svg, v);
+      confirmBtn.style.display='none';
+      checkContrast();
+    });
+
+    // 2) HEX 직접 입력은 바로 적용(기존 UX 유지)
+    hexEl.addEventListener('input', e=>{
+      const raw = e.target.value.replace('#','');
+      if(/^[0-9A-Fa-f]{6}$/.test(raw)){
+        const v = '#'+raw;
+        picker.value = v;
+        renderJersey(svg, v);
+        confirmBtn.style.display='none';
+        checkContrast();
+      }
+    });
+  }
+  syncColor({hexId:'#uniformHome', pickerId:'#uniformHomePicker', jerseyId:'#jerseyHome', confirmId:'#uniformHomeConfirm'});
+  syncColor({hexId:'#uniformAway', pickerId:'#uniformAwayPicker', jerseyId:'#jerseyAway', confirmId:'#uniformAwayConfirm'});
 
   /* ===== 연락처/지역 ===== */
   $('#ownerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
@@ -553,13 +639,16 @@
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
       ownerEdit={teamId,name,phone};
       const t=json.team||{}, pls=json.players||[];
-      if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId]; renderTourInfo(currentTour); fillCategoriesFromTour(currentTour); }
+      if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId]; renderTourInfo(currentTour); await renderPoster(currentTour); fillCategoriesFromTour(currentTour); }
       $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
       $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
       $('#managerName').value = t.managerName || ''; $('#managerPhone').value = String(t.managerPhone||'').replace(/\D/g,'');
       if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value = t.division; }, 0); }
       $('#uniformHome').value = t.uniformHome || '#ff0000'; $('#uniformAway').value = t.uniformAway || '#ffffff';
       $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
+      // 유니폼 즉시 반영
+      renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
+
       playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
       $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
@@ -641,7 +730,9 @@
   /* ===== 부트스트랩 ===== */
   (async function init(){
     await loadTournaments();
-    renderTourInfo(TOUR_MAP[$('#tourSelect').value]||null);
+    const initialTour = TOUR_MAP[$('#tourSelect').value]||null;
+    renderTourInfo(initialTour);
+    await renderPoster(initialTour);
 
     // 링크 수정 모드: 기존값 미리 불러오기
     if (editTeamId && editCode){
@@ -649,13 +740,14 @@
         const j=await (await fetch(`${WEB_APP_URL}?path=getTeam&teamId=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`)).json();
         if(j.ok){
           const t=j.team||{}, pls=j.players||[];
-          if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value=t.tourId; currentTour=TOUR_MAP[t.tourId]; renderTourInfo(currentTour); fillCategoriesFromTour(currentTour); }
+          if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value=t.tourId; currentTour=TOUR_MAP[t.tourId]; renderTourInfo(currentTour); await renderPoster(currentTour); fillCategoriesFromTour(currentTour); }
           $('#province').value=t.province||''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value=t.city||''; },0);
           $('#teamNameKo').value=t.teamNameKo||''; $('#teamNameEn').value=t.teamNameEn||'';
           $('#managerName').value=t.managerName||''; $('#managerPhone').value=String(t.managerPhone||'').replace(/\D/g,'');
           if(t.category){ $('#category').value=t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value=t.division; },0); }
           $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
           $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
+          renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
           playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
           show('수정 링크로 불러온 신청서입니다.');
         }
