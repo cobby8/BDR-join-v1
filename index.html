@@ -277,56 +277,50 @@
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show=msg=>{ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  /* ---- 제출 폴백 헬퍼(unknown path / CORS 대비) ---- */
-  function ok(j){ return j && (j.ok===true || j.ok==='true' || j.rows!==undefined); }
-  function unknown(j){ return j && /unknown path/i.test(String(j.error||'')); }
-
-  // [ADDED] 경로 변형 유틸 (대소문자/스네이크/케밥 모두 시도)
-  function pathVariants(path){
-    const base=String(path||'');
-    const low=base.toLowerCase();
-    const pascal=base.slice(0,1).toUpperCase()+base.slice(1);
-    const snake=base.replace(/([A-Z])/g,'_$1').replace(/^_/,'').toLowerCase();
-    const kebab=snake.replace(/_/g,'-');
-    const upper=low.toUpperCase();
-    return [...new Set([base,low,pascal,snake,kebab,upper])];
-  }
-
-  // [FIX] 단일 postTry + 재시도 래퍼
-  async function postTry(url, body, type){
+  /* ---- 제출 폴백 헬퍼(unknown path 대응: 모든 조합 재시도) ---- */
+  /** 단일 요청: JSON → 실패 시 text/plain로 자동 재시도 */
+  async function postTry(url, body){
     try{
-      const r = await fetch(url,{method:'POST',headers:{'Content-Type':type},body:JSON.stringify(body)});
-      const text = await r.text(); try{ return JSON.parse(text); }catch{ return {ok:false,error:text}; }
-    }catch(err){
-      // JSON POST preflight 이슈 시 text/plain 재시도
-      if(type.startsWith('application/json')){
-        try{
-          const r2 = await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
-          const t2 = await r2.text(); try{ return JSON.parse(t2); }catch{ return {ok:false,error:t2}; }
-        }catch(e2){ return {ok:false,error:String(e2&&e2.message||e2)}; }
+      const r = await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json;charset=utf-8'},
+        body: JSON.stringify(body)
+      });
+      const t = await r.text();
+      try{ return JSON.parse(t); }catch{ return {ok:false,error:t||'parse failed'}; }
+    }catch(e1){
+      try{
+        const r2 = await fetch(url,{
+          method:'POST',
+          headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body: JSON.stringify(body)
+        });
+        const t2 = await r2.text();
+        try{ return JSON.parse(t2); }catch{ return {ok:false,error:t2||'parse failed'}; }
+      }catch(e2){
+        return {ok:false,error:String(e2&&e2.message||e2)};
       }
-      return {ok:false,error:String(err&&err.message||err)};
     }
   }
 
-  // [ADDED] 누락되었던 함수: 후보 path × content-type 모두 시도
-  async function postWithFallback(paths, payload){
-    const types=['application/json;charset=utf-8','text/plain;charset=utf-8'];
-    const candidates=[...new Set(paths.flatMap(p=>pathVariants(p)))];
+  /** 여러 후보 경로를 순차 시도. (?path= + body.path/action/cmd 모두 채움) */
+  async function postWithFallback(candidates, payload){
+    const uniq = [...new Set((candidates||[]).map(s=>String(s||'').trim()).filter(Boolean))];
     let last=null;
-    for(const p of candidates){
-      const url = `${WEB_APP_URL}?path=${encodeURIComponent(p)}`;
-      for(const ct of types){
-        const j=await postTry(url, payload, ct);
-        last=j;
-        if(ok(j)) return j;
-        if(!unknown(j)) return j; // 알 수 있는 에러면 바로 반환
-      }
+    for(const p of uniq){
+      // 1) 쿼리스트링으로 path 지정
+      let j = await postTry(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`, {...payload, path:p, action:p, cmd:p});
+      if ((j && (j.ok===true || j.ok==='true')) || (j && j.rows!==undefined)) return j;
+      if (j && !/unknown path/i.test(String(j.error||''))) return j;
+
+      // 2) 바디에만 path 지정 (일부 배포 설정 호환)
+      j = await postTry(WEB_APP_URL, {...payload, path:p, action:p, cmd:p});
+      if ((j && (j.ok===true || j.ok==='true')) || (j && j.rows!==undefined)) return j;
+      if (j && !/unknown path/i.test(String(j.error||''))) return j;
+
+      last = j;
     }
-    // body만으로도 라우팅되는 백업 (registerteam는 path 없이도 처리)
-    const final=await postTry(WEB_APP_URL, payload, 'application/json;charset=utf-8');
-    if(ok(final)) return final;
-    return final || last || {ok:false,error:'submit failed'};
+    return last || {ok:false,error:'unknown path'};
   }
 
   /* ===== 로고 폴백 ===== */
@@ -401,9 +395,7 @@
     if(!t) return null;
     const direct = t.posterUrl || t.poster || t.posterImage || t.posterBase64;
     if(isImageUrl(direct)) return direct;
-    // 일부 케이스: url 필드가 포스터 이미지일 수 있음
-    if(isImageUrl(t.url)) return t.url;
-    // Drive/File ID로 저장된 경우
+    if(isImageUrl(t.url)) return t.url;           // 안내URL이 이미지일 수도 있음
     const pid = t.posterId || t.posterFileId || t.posterDriveId;
     const url = await getPosterByTourId(t.TourID||t.tourId, pid);
     return isImageUrl(url)?url:null;
@@ -428,7 +420,6 @@
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
     if(!t){ box.style.display='none'; box.innerHTML=''; if(nextbar) nextbar.style.display='none'; return; }
 
-    // 포스터는 posterWrap에서 노출. 여기서는 안내정보만.
     const infoLink = (!t.url || isImageUrl(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`;
 
     box.innerHTML = `<div class="kv">
@@ -499,7 +490,6 @@
   /* === 컬러피커: 확인 버튼 적용형 === */
   function syncColor({hexId, pickerId, jerseyId, confirmId}){
     const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId), confirmBtn=$(confirmId);
-    // 초기 적용
     const initVal = /^#[0-9A-Fa-f]{6}$/.test(hexEl.value) ? hexEl.value : (picker.value || '#000000');
     hexEl.value = initVal; picker.value = initVal; renderJersey(svg, initVal);
 
@@ -508,18 +498,18 @@
     // 1) 컬러피커에서 고르는 동안은 미리보기만, [확인] 클릭 시 적용
     picker.addEventListener('input', e=>{
       const v = normalizeHex(e.target.value); if(!v) return;
-      renderJersey(svg, v);           // 미리보기
-      confirmBtn.style.display='inline-block'; // 적용 대기
+      renderJersey(svg, v);
+      confirmBtn.style.display='inline-block';
     });
     confirmBtn.addEventListener('click', ()=>{
       const v = normalizeHex(picker.value); if(!v) return;
-      hexEl.value = v;                // 실제 적용
+      hexEl.value = v;
       renderJersey(svg, v);
       confirmBtn.style.display='none';
       checkContrast();
     });
 
-    // 2) HEX 직접 입력은 바로 적용(기존 UX 유지)
+    // 2) HEX 직접 입력은 바로 적용
     hexEl.addEventListener('input', e=>{
       const raw = e.target.value.replace('#','');
       if(/^[0-9A-Fa-f]{6}$/.test(raw)){
@@ -671,7 +661,6 @@
       if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value = t.division; }, 0); }
       $('#uniformHome').value = t.uniformHome || '#ff0000'; $('#uniformAway').value = t.uniformAway || '#ffffff';
       $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
-      // 유니폼 즉시 반영
       renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
 
       playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
@@ -726,7 +715,7 @@
 
     const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
     try{
-      const json = await postWithFallback(candidates, payload);     // [FIX] 누락 함수 사용
+      const json = await postWithFallback(candidates, payload);
       if(json.ok){
         btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
         btn.classList.add('done');
