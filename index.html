@@ -93,9 +93,9 @@
       <label>대회 선택</label>
       <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
 
-      <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
-      <div id="posterWrap" class="poster-wrap" aria-live="polite" style="display:none">
-        <img id="posterImg" alt="대회 포스터">
+      <!-- ▷ 포스터: 드롭다운 바로 아래 (없으면 자동 숨김) -->
+      <div id="posterWrap" class="poster-wrap" aria-live="polite">
+        <img id="posterImg" alt="대회 포스터" loading="lazy" decoding="async">
         <div class="caption">대회 포스터</div>
       </div>
 
@@ -390,31 +390,15 @@
     }catch{ return false; }
   }
 
-<script>
-// 1) 서버에서 포스터 URL 받아오기
-async function getPosterByTourId(tourId, posterId){
-  const u = `${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}${posterId?`&posterId=${encodeURIComponent(posterId)}`:''}`;
-  try{
-    const res = await fetch(u, {cache:'no-store'});
-    const j = await res.json();
-    // 백엔드가 표시가능한 최종 URL을 줍니다(Drive/확장자 무관)
-    return j && (j.url || j.dataUrl) ? (j.url || j.dataUrl) : null;
-  }catch(e){
-    return null;
+  // [FIX] 백엔드가 준 포스터 URL은 확장자 검사 없이 신뢰
+  async function getPosterByTourId(tourId, posterId){
+    const url = `${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}${posterId?`&posterId=${encodeURIComponent(posterId)}`:''}`;
+    try{
+      const j = await (await fetch(url)).json();
+      const found = j?.url || j?.poster || j?.posterUrl || (j?.data && j.data.url);
+      return found || null;
+    }catch{ return null; }
   }
-}
-
-// 2) 대회 객체에서 포스터 주소 결정(최우선: API)
-async function resolvePosterUrlFromTourObj(t){
-  if(!t) return null;
-  // 백엔드 API 사용 (posterId 전달은 선택)
-  const viaApi = await getPosterByTourId(t.TourID||t.tourId, t.posterId);
-  if (viaApi) return viaApi;
-
-  // 보조(구버전 호환): 시트에 직접 URL이 저장된 경우
-  if (t.posterUrl && typeof t.posterUrl === 'string') return t.posterUrl;
-  return null;
-}
 
   async function resolvePosterUrlFromTourObj(t){
     if(!t) return null;
@@ -429,30 +413,20 @@ async function resolvePosterUrlFromTourObj(t){
     return null;
   }
 
-  <script>
-async function renderPoster(t){
-  const wrap = document.getElementById('posterWrap');
-  const img  = document.getElementById('posterImg');
-  if (!wrap || !img){ return; }
-
-  // 초기화
-  wrap.style.display = 'none';
-  img.removeAttribute('src');
-
-  if (!t) return;        // 대회 선택 안된 상태
-
-  try{
-    const url = await resolvePosterUrlFromTourObj(t);
-    if (url){
-      img.src = url;
-      // 이미지 로딩 실패 시 박스 숨김
-      img.onerror = () => { wrap.style.display='none'; img.removeAttribute('src'); };
-      wrap.style.display = 'block';
-    }
-  }catch(e){
-    // 조용히 무시(포스터 없는 대회일 수 있음)
+  async function renderPoster(t){
+    const wrap=$('#posterWrap'), img=$('#posterImg');
+    wrap.style.display='none'; img.removeAttribute('src'); img.removeAttribute('alt');
+    if(!t) return;
+    try{
+      const url = await resolvePosterUrlFromTourObj(t);
+      if(url){
+        img.src=url;
+        img.alt=(t.name?`${t.name} 포스터`:'대회 포스터');
+        img.onerror=()=>{ wrap.style.display='none'; img.removeAttribute('src'); };
+        wrap.style.display='block';
+      }
+    }catch{ /* silent */ }
   }
-}
 
   function renderTourInfo(t){
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
