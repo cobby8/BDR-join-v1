@@ -37,9 +37,30 @@
   .error{border-color:var(--red)!important;background:#fff7f7}
   .error-note{color:var(--red);font-size:12px;margin-top:6px}
 
+  /* 대회 안내 카드 */
   #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
-  #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px}
+  #tourInfo .kv{
+    display:grid;
+    grid-template-columns:92px 1fr;
+    gap:6px 10px;
+    font-size:14px;
+  }
   #tourInfo .kv b{color:#111}
+  /* [FIX] 모바일 줄바꿈: grid 자식 폭 제한 & 긴 텍스트 강제 줄바꿈 */
+  #tourInfo .kv > div{
+    min-width:0;                 /* grid overflow 방지 핵심 */
+    overflow-wrap:anywhere;      /* 긴 URL 강제 줄바꿈 */
+    word-break:break-word;
+  }
+  #tourInfo .kv a{
+    display:inline-block;
+    max-width:100%;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+  @media (max-width:520px){
+    #tourInfo .kv{ grid-template-columns:84px 1fr; }
+  }
 
   /* ===== 포스터 영역 (드롭다운 바로 아래) ===== */
   .poster-wrap{display:none;margin-top:10px;text-align:center}
@@ -282,7 +303,6 @@
   function ok(j){ return j && (j.ok===true || j.ok==='true' || j.rows!==undefined); }
   function unknown(j){ return j && /unknown path/i.test(String(j.error||'')); }
   async function postWithFallback(paths, payload){
-    // 1) urlencoded(payload=JSON) → 2) text/plain → 3) application/json 순 시도
     const bodyStr = JSON.stringify(payload||{});
     const tryOnce = async (path, type, wrapPayload=false) => {
       const url = `${WEB_APP_URL}?path=${encodeURIComponent(path)}`;
@@ -353,30 +373,48 @@
   }
 
   /* ===== 포스터 표시 유틸 ===== */
-  function isImageUrl(u){ if(typeof u!=='string' || !u) return false; if(/^data:image\//i.test(u)) return true; return /\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u); }
+  // [FIX] 확장자 없는 이미지(Drive/CDN)도 처리
+  function looksLikeImage(u){
+    if(typeof u!=='string' || !u) return false;
+    if(/^data:image\//i.test(u)) return true;
+    if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u)) return true;
+    try{
+      const host = new URL(u).hostname;
+      if(/(^|\.)drive\.google\.com$/.test(host)) return true;
+      if(/(^|\.)googleusercontent\.com$/.test(host)) return true;
+      if(/(^|\.)ggpht\.com$/.test(host)) return true;
+      if(/(^|\.)kakaocdn\.net$/.test(host)) return true;
+      if(/(^|\.)daumcdn\.net$/.test(host)) return true;
+      if(/(^|\.)naver\.net$/.test(host)) return true;
+      return false;
+    }catch{ return false; }
+  }
 
+  // [FIX] 백엔드가 준 포스터 URL은 확장자 검사 없이 신뢰
   async function getPosterByTourId(tourId, posterId){
     const url = `${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}${posterId?`&posterId=${encodeURIComponent(posterId)}`:''}`;
     try{
       const j = await (await fetch(url)).json();
       const found = j?.url || j?.poster || j?.posterUrl || (j?.data && j.data.url);
-      return isImageUrl(found) ? found : null;
+      return found || null;
     }catch{ return null; }
   }
 
   async function resolvePosterUrlFromTourObj(t){
     if(!t) return null;
+    // 1) 서버에 질의(우선 신뢰)
+    const viaApi = await getPosterByTourId(t.TourID||t.tourId, t.posterId || t.posterFileId || t.posterDriveId);
+    if(viaApi) return viaApi;
+
+    // 2) 로컬 필드 보조 판단
     const direct = t.posterUrl || t.poster || t.posterImage || t.posterBase64;
-    if(isImageUrl(direct)) return direct;
-    if(isImageUrl(t.url)) return t.url;                 // 안내 URL이 이미지면 그 자체 사용
-    const pid = t.posterId || t.posterFileId || t.posterDriveId;
-    const viaApi = await getPosterByTourId(t.TourID||t.tourId, pid);
-    return viaApi;
+    if(looksLikeImage(direct)) return direct;
+    if(looksLikeImage(t.url)) return t.url; // 안내 URL이 실제 이미지일 때
+    return null;
   }
 
   async function renderPoster(t){
     const wrap=$('#posterWrap'), img=$('#posterImg');
-    // 초기 숨김
     wrap.style.display='none'; img.removeAttribute('src'); img.removeAttribute('alt');
     if(!t) return;
     try{
@@ -393,7 +431,7 @@
   function renderTourInfo(t){
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
     if(!t){ box.style.display='none'; box.innerHTML=''; if(nextbar) nextbar.style.display='none'; return; }
-    const infoLink = (!t.url || isImageUrl(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`;
+    const infoLink = (!t.url || looksLikeImage(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`;
     box.innerHTML = `<div class="kv">
       <b>대회명</b><div><b>${t.name||'-'}</b></div>
       <b>종별</b><div>${summarizeDivs(t.divs)}</div>
@@ -694,7 +732,7 @@
     await loadTournaments();
     const initialTour = TOUR_MAP[$('#tourSelect').value]||null;
     renderTourInfo(initialTour);
-    await renderPoster(initialTour);     // 초기(수정모드 미진입)에도 포스터 처리
+    await renderPoster(initialTour);     // 초기에도 포스터 처리
 
     // 링크 수정 모드: 기존값 미리 불러오기
     if (editTeamId && editCode){
