@@ -37,33 +37,13 @@
   .error{border-color:var(--red)!important;background:#fff7f7}
   .error-note{color:var(--red);font-size:12px;margin-top:6px}
 
-  /* 대회 안내 카드 */
   #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
-  #tourInfo .kv{
-    display:grid;
-    grid-template-columns:92px 1fr;
-    gap:6px 10px;
-    font-size:14px;
-  }
+  /* 모바일 줄바꿈 개선 */
+  #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px;word-break:break-word;overflow-wrap:anywhere}
   #tourInfo .kv b{color:#111}
-  /* [FIX] 모바일 줄바꿈: grid 자식 폭 제한 & 긴 텍스트 강제 줄바꿈 */
-  #tourInfo .kv > div{
-    min-width:0;                 /* grid overflow 방지 핵심 */
-    overflow-wrap:anywhere;      /* 긴 URL 강제 줄바꿈 */
-    word-break:break-word;
-  }
-  #tourInfo .kv a{
-    display:inline-block;
-    max-width:100%;
-    overflow-wrap:anywhere;
-    word-break:break-word;
-  }
-  @media (max-width:520px){
-    #tourInfo .kv{ grid-template-columns:84px 1fr; }
-  }
 
-  /* ===== 포스터 영역 (드롭다운 바로 아래) ===== */
-  .poster-wrap{display:none;margin-top:10px;text-align:center}
+  /* ===== 포스터 영역 ===== */
+  .poster-wrap{display:none;margin-top:8px;text-align:center}
   .poster-wrap img{max-width:100%;max-height:420px;border:1px solid #e6ecf5;border-radius:14px;background:#fff;object-fit:contain;box-shadow:var(--shadow)}
   .poster-wrap .caption{font-size:12px;color:var(--muted);margin-top:6px}
 
@@ -89,13 +69,12 @@
     <!-- 0) 대회 선택 -->
     <div class="step active" id="step0">
       <div class="section-title">0) 참가희망 대회</div>
-
       <label>대회 선택</label>
       <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
 
-      <!-- ▷ 포스터: 드롭다운 바로 아래 (없으면 자동 숨김) -->
+      <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
-        <img id="posterImg" alt="대회 포스터" loading="lazy" decoding="async">
+        <img id="posterImg" alt="대회 포스터">
         <div class="caption">대회 포스터</div>
       </div>
 
@@ -299,28 +278,39 @@
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show=msg=>{ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  /* ---- POST 폴백 유틸 ---- */
+  /* ---- 제출 폴백 헬퍼(unknown path 대응) ---- */
   function ok(j){ return j && (j.ok===true || j.ok==='true' || j.rows!==undefined); }
   function unknown(j){ return j && /unknown path/i.test(String(j.error||'')); }
-  async function postWithFallback(paths, payload){
-    const bodyStr = JSON.stringify(payload||{});
-    const tryOnce = async (path, type, wrapPayload=false) => {
-      const url = `${WEB_APP_URL}?path=${encodeURIComponent(path)}`;
-      const body = wrapPayload ? `payload=${encodeURIComponent(bodyStr)}` : bodyStr;
-      const headers = {'Content-Type': type};
-      const r = await fetch(url,{method:'POST',headers,body});
-      const t = await r.text(); try { return JSON.parse(t); } catch { return {ok:false,error:t}; }
-    };
-    let last=null;
-    for(const p of paths){
-      last = await tryOnce(p, 'application/x-www-form-urlencoded;charset=utf-8', true);
-      if(ok(last) || !unknown(last)) return last;
-      last = await tryOnce(p, 'text/plain;charset=utf-8', false);
-      if(ok(last) || !unknown(last)) return last;
-      last = await tryOnce(p, 'application/json;charset=utf-8', false);
-      if(ok(last) || !unknown(last)) return last;
+  async function postTry(url, body, type){
+    try{
+      const r = await fetch(url,{method:'POST',headers:{'Content-Type':type},body:JSON.stringify(body)});
+      const text = await r.text(); try{ return JSON.parse(text); }catch{ return {ok:false,error:text}; }
+    }catch(err){
+      // JSON preflight가 막히면 text/plain으로 재시도
+      if(type.startsWith('application/json')){
+        try{
+          const r2 = await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+          const t2 = await r2.text(); try{ return JSON.parse(t2); }catch{ return {ok:false,error:t2}; }
+        }catch(e2){ return {ok:false,error:String(e2&&e2.message||e2)}; }
+      }
+      return {ok:false,error:String(err&&err.message||err)};
     }
-    return last || {ok:false,error:'unknown'};
+  }
+  async function postWithFallback(paths, payload){
+    const candidates = Array.isArray(paths)?paths: [String(paths||'')];
+    for(const p of candidates){
+      const u = `${WEB_APP_URL}?path=${encodeURIComponent(p)}`;
+      let j = await postTry(u, payload, 'application/json;charset=utf-8');
+      if (ok(j) || !unknown(j)) return j;
+      // path 이름 대소/스네이크/카멜 다양한 변형 재시도
+      const vars = [p, p.toLowerCase(), p.toUpperCase(), p.replace(/([A-Z])/g,'_$1').toLowerCase(), p.replace(/([A-Z])/g,'-$1').toLowerCase()];
+      for(const v of vars){
+        const u2 = `${WEB_APP_URL}?path=${encodeURIComponent(v)}`;
+        j = await postTry(u2, payload, 'application/json;charset=utf-8');
+        if (ok(j) || !unknown(j)) return j;
+      }
+    }
+    return {ok:false,error:'unknown path'};
   }
 
   /* ===== 로고 폴백 ===== */
@@ -354,7 +344,7 @@
       TOUR_MAP[t.TourID||t.tourId]=t;
       const opt=document.createElement('option');
       opt.value=t.TourID||t.tourId;
-      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:''; 
+      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
       opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
       sel.appendChild(opt);
     });
@@ -372,68 +362,64 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시 유틸 ===== */
-  // [FIX] 확장자 없는 이미지(Drive/CDN)도 처리
-  function looksLikeImage(u){
-    if(typeof u!=='string' || !u) return false;
-    if(/^data:image\//i.test(u)) return true;
-    if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u)) return true;
-    try{
-      const host = new URL(u).hostname;
-      if(/(^|\.)drive\.google\.com$/.test(host)) return true;
-      if(/(^|\.)googleusercontent\.com$/.test(host)) return true;
-      if(/(^|\.)ggpht\.com$/.test(host)) return true;
-      if(/(^|\.)kakaocdn\.net$/.test(host)) return true;
-      if(/(^|\.)daumcdn\.net$/.test(host)) return true;
-      if(/(^|\.)naver\.net$/.test(host)) return true;
-      return false;
-    }catch{ return false; }
+  /* ===== 포스터 표시 =====
+     1) 백엔드 /poster 를 우선 사용 (표시에 적합한 최종 URL을 반환)
+     2) 혹시 백엔드가 구버전이거나 빈값일 때를 대비해, 프런트에서 drive 링크/ID를 정규화(보조) */
+  const DRIVE_ID_RE = /\/d\/([A-Za-z0-9_-]{10,})|[?&]id=([A-Za-z0-9_-]{10,})|\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/;
+  function extractDriveIdFront(u){
+    if(!u) return '';
+    const s=String(u).trim();
+    if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;
+    const m = s.match(DRIVE_ID_RE); if(!m) return ''; return m[1]||m[2]||m[3]||'';
   }
+  function buildDriveViewUrl(id){ return 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id); }
 
-  // [FIX] 백엔드가 준 포스터 URL은 확장자 검사 없이 신뢰
   async function getPosterByTourId(tourId, posterId){
-    const url = `${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}${posterId?`&posterId=${encodeURIComponent(posterId)}`:''}`;
+    const u = `${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}${posterId?`&posterId=${encodeURIComponent(posterId)}`:''}`;
     try{
-      const j = await (await fetch(url)).json();
-      const found = j?.url || j?.poster || j?.posterUrl || (j?.data && j.data.url);
-      return found || null;
-    }catch{ return null; }
-  }
-
-  async function resolvePosterUrlFromTourObj(t){
-    if(!t) return null;
-    // 1) 서버에 질의(우선 신뢰)
-    const viaApi = await getPosterByTourId(t.TourID||t.tourId, t.posterId || t.posterFileId || t.posterDriveId);
-    if(viaApi) return viaApi;
-
-    // 2) 로컬 필드 보조 판단
-    const direct = t.posterUrl || t.poster || t.posterImage || t.posterBase64;
-    if(looksLikeImage(direct)) return direct;
-    if(looksLikeImage(t.url)) return t.url; // 안내 URL이 실제 이미지일 때
+      const res = await fetch(u, {cache:'no-store'});
+      const j = await res.json();
+      if (j && (j.url || j.dataUrl)) return j.url || j.dataUrl;
+    }catch(e){}
     return null;
   }
+  async function resolvePosterUrlFromTourObj(t){
+    if(!t) return null;
+    // 1) 백엔드 API 우선
+    const viaApi = await getPosterByTourId(t.TourID||t.tourId, t.posterId);
+    if (viaApi) return viaApi;
 
+    // 2) 프런트 보조 정규화
+    const pid = extractDriveIdFront(t.posterId) || extractDriveIdFront(t.posterUrl);
+    if (pid) return buildDriveViewUrl(pid);
+
+    // 3) 최후: posterUrl이 일반 이미지면 그대로
+    if (typeof t.posterUrl==='string' && t.posterUrl) return t.posterUrl;
+
+    return null;
+  }
   async function renderPoster(t){
-    const wrap=$('#posterWrap'), img=$('#posterImg');
-    wrap.style.display='none'; img.removeAttribute('src'); img.removeAttribute('alt');
+    const wrap=$('#posterWrap'); const img=$('#posterImg');
+    if(!wrap || !img) return;
+    wrap.style.display='none'; img.removeAttribute('src');
     if(!t) return;
+
     try{
       const url = await resolvePosterUrlFromTourObj(t);
       if(url){
         img.src=url;
-        img.alt=(t.name?`${t.name} 포스터`:'대회 포스터');
         img.onerror=()=>{ wrap.style.display='none'; img.removeAttribute('src'); };
         wrap.style.display='block';
       }
-    }catch{ /* silent */ }
+    }catch(e){ /* 무시 */ }
   }
 
   function renderTourInfo(t){
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
     if(!t){ box.style.display='none'; box.innerHTML=''; if(nextbar) nextbar.style.display='none'; return; }
-    const infoLink = (!t.url || looksLikeImage(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`;
+    const infoLink = (!t.url || /^data:image\//i.test(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`;
     box.innerHTML = `<div class="kv">
-      <b>대회명</b><div><b>${t.name||'-'}</b></div>
+      <b>대회명</b><div>${t.name||'-'}</div>
       <b>종별</b><div>${summarizeDivs(t.divs)}</div>
       <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
       <b>장소</b><div>${parsePlaces(t.places)}</div>
@@ -444,10 +430,10 @@
     if(nextbar) nextbar.style.display='flex';
   }
 
-  $('#tourSelect').addEventListener('change', async e=>{
+  $('#tourSelect').addEventListener('change',async e=>{
     const id=e.target.value; currentTour=id?TOUR_MAP[id]:null;
     renderTourInfo(currentTour);
-    await renderPoster(currentTour);           // ← 선택 즉시 포스터 표시
+    await renderPoster(currentTour);             // ← 포스터 갱신
     fillCategoriesFromTour(currentTour);
   });
 
@@ -455,9 +441,7 @@
   const categorySelect=$('#category'), divisionSelect=$('#division');
   function fillCategoriesFromTour(t){
     categorySelect.innerHTML=''; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
-    if(!t || !t.divs || !Object.keys(t.divs).length){
-      categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return;
-    }
+    if(!t || !t.divs || !Object.keys(t.divs).length){ categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return; }
     categorySelect.disabled=false;
     categorySelect.appendChild(new Option('선택',''));
     Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
@@ -498,14 +482,31 @@
                  (ok2 && Math.max(contrastRatio(a,'#000'), contrastRatio(a,'#fff')) < 4.5);
     warn.style.display=poor?'block':'none';
   }
+
+  /* === 컬러피커: 확인 버튼 적용형 === */
   function syncColor({hexId, pickerId, jerseyId, confirmId}){
     const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId), confirmBtn=$(confirmId);
     const initVal = /^#[0-9A-Fa-f]{6}$/.test(hexEl.value) ? hexEl.value : (picker.value || '#000000');
     hexEl.value = initVal; picker.value = initVal; renderJersey(svg, initVal);
-    const normalizeHex=v=>{ const val=(v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val)?val:''; };
-    picker.addEventListener('input', e=>{ const v=normalizeHex(e.target.value); if(!v) return; renderJersey(svg,v); confirmBtn.style.display='inline-block'; });
-    confirmBtn.addEventListener('click', ()=>{ const v=normalizeHex(picker.value); if(!v) return; hexEl.value=v; renderJersey(svg,v); confirmBtn.style.display='none'; checkContrast(); });
-    hexEl.addEventListener('input', e=>{ const raw=e.target.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)){ const v='#'+raw; picker.value=v; renderJersey(svg,v); confirmBtn.style.display='none'; checkContrast(); }});
+
+    function normalizeHex(v){ const val = (v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val) ? val : ''; }
+
+    picker.addEventListener('input', e=>{
+      const v = normalizeHex(e.target.value); if(!v) return;
+      renderJersey(svg, v);
+      confirmBtn.style.display='inline-block';
+    });
+    confirmBtn.addEventListener('click', ()=>{
+      const v = normalizeHex(picker.value); if(!v) return;
+      hexEl.value = v; renderJersey(svg, v); confirmBtn.style.display='none'; checkContrast();
+    });
+
+    hexEl.addEventListener('input', e=>{
+      const raw = e.target.value.replace('#','');
+      if(/^[0-9A-Fa-f]{6}$/.test(raw)){
+        const v = '#'+raw; picker.value = v; renderJersey(svg, v); confirmBtn.style.display='none'; checkContrast();
+      }
+    });
   }
   syncColor({hexId:'#uniformHome', pickerId:'#uniformHomePicker', jerseyId:'#jerseyHome', confirmId:'#uniformHomeConfirm'});
   syncColor({hexId:'#uniformAway', pickerId:'#uniformAwayPicker', jerseyId:'#jerseyAway', confirmId:'#uniformAwayConfirm'});
@@ -732,8 +733,7 @@
     await loadTournaments();
     const initialTour = TOUR_MAP[$('#tourSelect').value]||null;
     renderTourInfo(initialTour);
-    await renderPoster(initialTour);     // 초기에도 포스터 처리
-
+    await renderPoster(initialTour);   // ← 초기 포스터
     // 링크 수정 모드: 기존값 미리 불러오기
     if (editTeamId && editCode){
       try{
@@ -751,7 +751,7 @@
           playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
           show('수정 링크로 불러온 신청서입니다.');
         }
-      }catch(e){ /* silent */ }
+      }catch(e){}
     }
   })();
 </script>
