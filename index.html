@@ -71,7 +71,7 @@
       <label>대회 선택</label>
       <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
 
-      <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
+      <!-- ▶ 포스터 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
         <img id="posterImg" alt="대회 포스터">
         <div class="caption">대회 포스터</div>
@@ -277,48 +277,27 @@
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show=msg=>{ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  /* ---- 제출 폴백 헬퍼(unknown path 대응: 모든 조합 재시도) ---- */
-  /** 단일 요청: JSON → 실패 시 text/plain로 자동 재시도 */
-  async function postTry(url, body){
+  /* ---- 통신 폴백(unknown path 방지) ---- */
+  function isSuccess(j){ return j && (j.ok===true || j.ok==='true' || j.rows!==undefined); }
+  function isUnknown(j){ return j && /unknown path/i.test(String(j.error||'')); }
+  const pathVariants=(p)=>[p, p.toLowerCase(), p.toUpperCase(), p.replace(/([A-Z])/g,'_$1').replace(/^_/,'').toLowerCase(), p.replace(/([A-Z])/g,'-$1').replace(/^-/, '').toLowerCase()];
+  async function postOnce(url, body){
     try{
-      const r = await fetch(url,{
-        method:'POST',
-        headers:{'Content-Type':'application/json;charset=utf-8'},
-        body: JSON.stringify(body)
-      });
-      const t = await r.text();
-      try{ return JSON.parse(t); }catch{ return {ok:false,error:t||'parse failed'}; }
-    }catch(e1){
-      try{
-        const r2 = await fetch(url,{
-          method:'POST',
-          headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body: JSON.stringify(body)
-        });
-        const t2 = await r2.text();
-        try{ return JSON.parse(t2); }catch{ return {ok:false,error:t2||'parse failed'}; }
-      }catch(e2){
-        return {ok:false,error:String(e2&&e2.message||e2)};
-      }
-    }
+      const r = await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+      const t = await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false,error:t}; }
+    }catch(err){ return {ok:false,error:String(err&&err.message||err)}; }
   }
-
-  /** 여러 후보 경로를 순차 시도. (?path= + body.path/action/cmd 모두 채움) */
   async function postWithFallback(candidates, payload){
-    const uniq = [...new Set((candidates||[]).map(s=>String(s||'').trim()).filter(Boolean))];
+    const cmds=[...new Set(candidates.flatMap(pathVariants))];
     let last=null;
-    for(const p of uniq){
-      // 1) 쿼리스트링으로 path 지정
-      let j = await postTry(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`, {...payload, path:p, action:p, cmd:p});
-      if ((j && (j.ok===true || j.ok==='true')) || (j && j.rows!==undefined)) return j;
-      if (j && !/unknown path/i.test(String(j.error||''))) return j;
-
-      // 2) 바디에만 path 지정 (일부 배포 설정 호환)
-      j = await postTry(WEB_APP_URL, {...payload, path:p, action:p, cmd:p});
-      if ((j && (j.ok===true || j.ok==='true')) || (j && j.rows!==undefined)) return j;
-      if (j && !/unknown path/i.test(String(j.error||''))) return j;
-
-      last = j;
+    for(const cmd of cmds){
+      // 1) 쿼리로 path
+      let j=await postOnce(`${WEB_APP_URL}?path=${encodeURIComponent(cmd)}`, {...payload, path:cmd, action:cmd, cmd});
+      if(isSuccess(j) || (j && !isUnknown(j))) return j;
+      // 2) body로 path
+      j=await postOnce(WEB_APP_URL, {...payload, path:cmd, action:cmd, cmd});
+      if(isSuccess(j) || (j && !isUnknown(j))) return j;
+      last=j;
     }
     return last || {ok:false,error:'unknown path'};
   }
@@ -395,7 +374,7 @@
     if(!t) return null;
     const direct = t.posterUrl || t.poster || t.posterImage || t.posterBase64;
     if(isImageUrl(direct)) return direct;
-    if(isImageUrl(t.url)) return t.url;           // 안내URL이 이미지일 수도 있음
+    if(isImageUrl(t.url)) return t.url;
     const pid = t.posterId || t.posterFileId || t.posterDriveId;
     const url = await getPosterByTourId(t.TourID||t.tourId, pid);
     return isImageUrl(url)?url:null;
@@ -453,8 +432,7 @@
   categorySelect.addEventListener('change',e=>{
     const cat=e.target.value; divisionSelect.innerHTML='';
     if(!currentTour || !cat){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; return; }
-    const arr=currentTour.divs[cat]||[];
-    if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
+    const arr=currentTour.divs[cat]||[]; if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
     divisionSelect.disabled=false;
     divisionSelect.appendChild(new Option('선택',''));
     arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
@@ -495,7 +473,6 @@
 
     function normalizeHex(v){ const val = (v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val) ? val : ''; }
 
-    // 1) 컬러피커에서 고르는 동안은 미리보기만, [확인] 클릭 시 적용
     picker.addEventListener('input', e=>{
       const v = normalizeHex(e.target.value); if(!v) return;
       renderJersey(svg, v);
@@ -509,7 +486,6 @@
       checkContrast();
     });
 
-    // 2) HEX 직접 입력은 바로 적용
     hexEl.addEventListener('input', e=>{
       const raw = e.target.value.replace('#','');
       if(/^[0-9A-Fa-f]{6}$/.test(raw)){
@@ -615,7 +591,7 @@
     if(stepId==='step0'){ const v=$('#tourSelect').value; if(!v){ show('대회를 선택해 주세요'); ok=false; } }
     if(stepId==='step1'){
       const prov=$('#province'), city=$('#city'), tKo=$('#teamNameKo'), tEn=$('#teamNameEn'), man=$('#managerName'), ph=$('#managerPhone');
-      const phOk=/^\d{10,11}$/.test(ph.value);
+      const phOk=/^\d{10,11}$/.test((ph.value||'').replace(/\D/g,''));
       setErr(prov,'errProvince',!prov.value); setErr(city,'errCity',!city.value);
       setErr(tKo,'errTeamNameKo',!tKo.value.trim()); setErr(tEn,'errTeamNameEn',!tEn.value.trim());
       setErr(man,'errManagerName',!man.value.trim()); setErr(ph,'errPhone',!phOk);
@@ -663,7 +639,8 @@
       $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
       renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
 
-      playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
+      const playersDiv=$('#players'); playersDiv.innerHTML='';
+      (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
       $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
     }catch(e){ alert('네트워크 오류'); }
@@ -703,14 +680,14 @@
     }
 
     const payload={team, players, base: location.origin + location.pathname};
-    let candidates = ['registerteam','registerTeam'];
+    let candidates = ['registerteam','registerTeam','register_team'];
 
     if (ownerEdit && ownerEdit.teamId){
       payload.teamId = ownerEdit.teamId; payload.name = ownerEdit.name; payload.phone = ownerEdit.phone;
-      candidates = ['updateteambyowner','updateTeamByOwner'];
+      candidates = ['updateteambyowner','updateTeamByOwner','update_team_by_owner'];
     } else if (editTeamId && editCode){
       payload.teamId = editTeamId; payload.editCode = editCode;
-      candidates = ['updateteam','updateTeam'];
+      candidates = ['updateteam','updateTeam','update_team'];
     }
 
     const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
