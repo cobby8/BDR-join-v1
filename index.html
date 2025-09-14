@@ -37,12 +37,12 @@
   .error{border-color:var(--red)!important;background:#fff7f7}
   .error-note{color:var(--red);font-size:12px;margin-top:6px}
 
-  /* 대회 정보 카드(자동 줄바꿈/오버플로우 방지) */
+  /* 대회 정보 카드 */
   #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
   #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px;word-break:break-word;overflow-wrap:anywhere;white-space:normal}
   #tourInfo .kv b{color:#111}
 
-  /* ===== 포스터 영역 ===== */
+  /* 포스터 */
   .poster-wrap{display:none;margin-top:8px;text-align:center}
   .poster-wrap img{max-width:100%;max-height:420px;border:1px solid #e6ecf5;border-radius:14px;background:#fff;object-fit:contain;box-shadow:var(--shadow)}
   .poster-wrap .caption{font-size:12px;color:var(--muted);margin-top:6px}
@@ -72,9 +72,9 @@
       <label>대회 선택</label>
       <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
 
-      <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
+      <!-- ▶ 포스터 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
-        <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer" loading="lazy" decoding="async">
+        <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer">
         <div class="caption">대회 포스터</div>
       </div>
 
@@ -346,7 +346,7 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시 (posterId/posterUrl 기반, /poster 사용 안 함) ===== */
+  /* ===== 포스터 표시: posterId/posterUrl만 사용 ===== */
   function extractDriveId(u){
     const s=String(u||'').trim();
     if(!s) return '';
@@ -376,18 +376,12 @@
     const wrap=$('#posterWrap'), img=$('#posterImg');
     wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null; img.onload=null;
     if(!tourId) return;
-
-    const t = TOUR_MAP[tourId];
-    if (!t) return;
-
-    // posterId/Url만 사용해 최종 표시 URL 생성
+    const t = TOUR_MAP[tourId]; if(!t) return;
     const url = normalizePosterFromFields(t.posterUrl, t.posterId);
     if(url){
       img.onerror = () => { wrap.style.display='none'; img.removeAttribute('src'); };
       img.onload  = () => { wrap.style.display='block'; };
       img.src     = url;
-      // 캐시 즉시 로드 대비: onload가 이미 지나간 경우 처리
-      setTimeout(()=>{ if(img.naturalWidth>0) wrap.style.display='block'; }, 50);
     }
   }
 
@@ -429,7 +423,7 @@
     divisionSelect.disabled=false; divisionSelect.appendChild(new Option('선택','')); arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
   });
 
-  /* ===== 유니폼 SVG ===== */
+  /* ===== 유니폼 SVG/색상 ===== */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
       <defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -455,38 +449,14 @@
                  (ok2 && Math.max(contrastRatio(a,'#000'), contrastRatio(a,'#fff')) < 4.5);
     warn.style.display=poor?'block':'none';
   }
-
-  /* === 컬러피커: 확인 버튼 적용형 === */
   function syncColor({hexId, pickerId, jerseyId, confirmId}){
     const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId), confirmBtn=$(confirmId);
     const initVal = /^#[0-9A-Fa-f]{6}$/.test(hexEl.value) ? hexEl.value : (picker.value || '#000000');
     hexEl.value = initVal; picker.value = initVal; renderJersey(svg, initVal);
-
-    function normalizeHex(v){ const val = (v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val) ? val : ''; }
-
-    picker.addEventListener('input', e=>{
-      const v = normalizeHex(e.target.value); if(!v) return;
-      renderJersey(svg, v);
-      confirmBtn.style.display='inline-block';
-    });
-    confirmBtn.addEventListener('click', ()=>{
-      const v = normalizeHex(picker.value); if(!v) return;
-      hexEl.value = v;
-      renderJersey(svg, v);
-      confirmBtn.style.display='none';
-      checkContrast();
-    });
-
-    hexEl.addEventListener('input', e=>{
-      const raw = e.target.value.replace('#','');
-      if(/^[0-9A-Fa-f]{6}$/.test(raw)){
-        const v = '#'+raw;
-        picker.value = v;
-        renderJersey(svg, v);
-        confirmBtn.style.display='none';
-        checkContrast();
-      }
-    });
+    const normalizeHex=v=>{ const val=(v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val)?val:''; }
+    picker.addEventListener('input', e=>{ const v=normalizeHex(e.target.value); if(!v) return; renderJersey(svg,v); confirmBtn.style.display='inline-block'; });
+    confirmBtn.addEventListener('click', ()=>{ const v=normalizeHex(picker.value); if(!v) return; hexEl.value=v; renderJersey(svg,v); confirmBtn.style.display='none'; checkContrast(); });
+    hexEl.addEventListener('input', e=>{ const raw=e.target.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)){ const v='#'+raw; picker.value=v; renderJersey(svg,v); confirmBtn.style.display='none'; checkContrast(); }});
   }
   syncColor({hexId:'#uniformHome', pickerId:'#uniformHomePicker', jerseyId:'#jerseyHome', confirmId:'#uniformHomeConfirm'});
   syncColor({hexId:'#uniformAway', pickerId:'#uniformAwayPicker', jerseyId:'#jerseyAway', confirmId:'#uniformAwayConfirm'});
@@ -730,8 +700,7 @@
           $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
           $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
           renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
-          const playersDiv=document.getElementById('players'); playersDiv.innerHTML='';
-          (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
+          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
           show('수정 링크로 불러온 신청서입니다.');
         }
       }catch(e){}
