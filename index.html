@@ -75,7 +75,7 @@
       <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
         <img id="posterImg" alt="대회 포스터">
-        <div class="caption">대회 포스터 (이미지가 보이지 않으면 파일 권한을 확인해 주세요)</div>
+        <div class="caption">대회 포스터</div>
       </div>
 
       <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
@@ -320,16 +320,15 @@
   /* ===== 대회 목록 ===== */
   let TOUR_MAP={}, currentTour=null;
   async function loadTournaments(){
-    const res=await fetch(`${WEB_APP_URL}?path=tournaments`, {cache:'no-store'});
+    const res=await fetch(`${WEB_APP_URL}?path=tournaments`);
     const json=await res.json();
     if(!json.ok) return;
     const sel=$('#tourSelect'); sel.innerHTML='<option value="">대회를 선택하세요</option>';
     (json.rows||[]).forEach(t=>{
-      const id=t.TourID||t.tourId;
-      TOUR_MAP[id]=t; /* posterUrl/posterId 포함 */
-      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
+      TOUR_MAP[t.TourID||t.tourId]=t;
       const opt=document.createElement('option');
-      opt.value=id;
+      opt.value=t.TourID||t.tourId;
+      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
       opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
       sel.appendChild(opt);
     });
@@ -347,61 +346,47 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시 (강화판) ===== */
-
-  /* 드라이브 파일 ID 추출 + view URL 생성 */
+  /* ===== 포스터 표시 (posterId/posterUrl 기반) ===== */
   function extractDriveId(u){
-    if(!u) return '';
-    const s=String(u).trim();
-    if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;           // 이미 ID만 온 경우
-    let m=s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];                      // .../file/d/<ID>/view
-    m=s.match(/[?&]id=([A-Za-z0-9_-]{10,})/); if(m) return m[1];                        // ...?id=<ID>
-    m=s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];         // /uc?id=<ID>
+    const s=String(u||'').trim();
+    if(!s) return '';
+    if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;
+    let m = s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];
+    m = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);   if(m) return m[1];
+    m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     return '';
   }
-  function makeDriveViewUrl(id){
-    return 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(id);
+  function buildDriveViewUrl(id){
+    return 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
   }
-
-  /* 1) /poster 호출(+캐시버스터) → 2) 실패 시 목록의 posterId/posterUrl 폴백 → 모두 실패 시 null */
-  async function fetchPosterUrl(tourId){
-    if(!tourId) return null;
+  function normalizePosterFromFields(posterUrl, posterId){
+    const id = extractDriveId(posterId) || extractDriveId(posterUrl);
+    if (id) return buildDriveViewUrl(id);
+    const u = String(posterUrl||'');
+    if (/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u)) return u;
     try{
-      const resp = await fetch(`${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}&t=${Date.now()}`, {cache:'no-store'});
-      const j = await resp.json();
-      if ((j?.ok===true || j?.ok==='true') && typeof j.url==='string' && j.url.trim()){
-        return j.url.trim();
-      }
-    }catch(e){ /* ignore */ }
-
-    // ▼ 폴백: 목록 데이터에서 재생성
-    const t = TOUR_MAP[tourId];
-    if (t){
-      if (t.posterId){ return makeDriveViewUrl(String(t.posterId).trim()); }
-      if (t.posterUrl){
-        const id=extractDriveId(t.posterUrl);
-        return id ? makeDriveViewUrl(id) : String(t.posterUrl).trim();
-      }
-    }
-    return null;
+      const host = new URL(u).hostname;
+      if (/(^|\.)drive\.google\.com$/.test(host)) return u;
+      if (/(^|\.)googleusercontent\.com$/.test(host)) return u;
+      if (/(^|\.)ggpht\.com$/.test(host)) return u;
+    }catch(e){}
+    return '';
   }
-
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
     wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null;
+    if(!tourId) return;
 
-    if(!tourId){ return; }
-    const rawUrl = await fetchPosterUrl(tourId);
-    if(!rawUrl){ return; }
+    const t = TOUR_MAP[tourId];
+    if (!t) return;
 
-    // 이미지 캐시 무효화 파라미터 부착
-    let finalUrl = rawUrl;
-    try{ const u = new URL(rawUrl); u.searchParams.set('tt', Date.now()); finalUrl = u.toString(); }
-    catch{ finalUrl = rawUrl + (rawUrl.includes('?')?'&':'?') + 'tt=' + Date.now(); }
-
-    img.onerror = ()=>{ wrap.style.display='none'; img.removeAttribute('src'); };
-    img.src = finalUrl;
-    wrap.style.display='block';
+    // posterId/Url만 사용해 최종 표시 URL 생성
+    const url = normalizePosterFromFields(t.posterUrl, t.posterId);
+    if(url){
+      img.src = url;
+      img.onerror = () => { wrap.style.display='none'; img.removeAttribute('src'); };
+      wrap.style.display = 'block';
+    }
   }
 
   function renderTourInfo(t){
@@ -438,17 +423,16 @@
   categorySelect.addEventListener('change',e=>{
     const cat=e.target.value; divisionSelect.innerHTML='';
     if(!currentTour || !cat){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; return; }
-    const arr=currentTour.divs[cat]||[];
-    if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
-    divisionSelect.disabled=false;
-    divisionSelect.appendChild(new Option('선택',''));
-    arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
+    const arr=currentTour.divs[cat]||[]; if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
+    divisionSelect.disabled=false; divisionSelect.appendChild(new Option('선택','')); arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
   });
 
   /* ===== 유니폼 SVG ===== */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
-      <defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow></filter></defs>
+      <defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
+      </filter></defs>
       <g filter="url(#shadow)">
         <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z"
               fill="${hex}" stroke="#111" stroke-width="1.5"/>
