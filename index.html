@@ -74,7 +74,7 @@
 
       <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
-        <img id="posterImg" alt="대회 포스터">
+        <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer" loading="lazy" decoding="async">
         <div class="caption">대회 포스터</div>
       </div>
 
@@ -346,7 +346,7 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시 (posterId/posterUrl 기반) ===== */
+  /* ===== 포스터 표시 (posterId/posterUrl 기반, /poster 사용 안 함) ===== */
   function extractDriveId(u){
     const s=String(u||'').trim();
     if(!s) return '';
@@ -374,7 +374,7 @@
   }
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
-    wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null;
+    wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null; img.onload=null;
     if(!tourId) return;
 
     const t = TOUR_MAP[tourId];
@@ -383,9 +383,11 @@
     // posterId/Url만 사용해 최종 표시 URL 생성
     const url = normalizePosterFromFields(t.posterUrl, t.posterId);
     if(url){
-      img.src = url;
       img.onerror = () => { wrap.style.display='none'; img.removeAttribute('src'); };
-      wrap.style.display = 'block';
+      img.onload  = () => { wrap.style.display='block'; };
+      img.src     = url;
+      // 캐시 즉시 로드 대비: onload가 이미 지나간 경우 처리
+      setTimeout(()=>{ if(img.naturalWidth>0) wrap.style.display='block'; }, 50);
     }
   }
 
@@ -728,7 +730,8 @@
           $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
           $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
           renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
-          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
+          const playersDiv=document.getElementById('players'); playersDiv.innerHTML='';
+          (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
           show('수정 링크로 불러온 신청서입니다.');
         }
       }catch(e){}
