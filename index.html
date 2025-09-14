@@ -346,7 +346,8 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시: posterId/posterUrl만 사용 ===== */
+  /* ===== 포스터 표시(강화): posterId/posterUrl → 다중 후보 & 폴백 로딩 ===== */
+
   function extractDriveId(u){
     const s=String(u||'').trim();
     if(!s) return '';
@@ -356,33 +357,39 @@
     m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     return '';
   }
-  function buildDriveViewUrl(id){
-    return 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
-  }
-  function normalizePosterFromFields(posterUrl, posterId){
+  const buildView = id => 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
+  const buildDown = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
+  const buildThumb= id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000';
+
+  function computePosterVariants(posterUrl, posterId){
+    const variants=[];
     const id = extractDriveId(posterId) || extractDriveId(posterUrl);
-    if (id) return buildDriveViewUrl(id);
-    const u = String(posterUrl||'');
-    if (/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u)) return u;
-    try{
-      const host = new URL(u).hostname;
-      if (/(^|\.)drive\.google\.com$/.test(host)) return u;
-      if (/(^|\.)googleusercontent\.com$/.test(host)) return u;
-      if (/(^|\.)ggpht\.com$/.test(host)) return u;
-    }catch(e){}
-    return '';
+    if(id){
+      variants.push(buildView(id));
+      variants.push(buildDown(id));
+      variants.push(buildThumb(id));
+    }
+    const u = String(posterUrl||'').trim();
+    if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u) && !variants.includes(u)) variants.push(u);
+    // 마지막으로 원본 URL(허용 호스트)도 후보에 포함
+    if(/^https?:\/\//i.test(u) && !variants.includes(u)) variants.push(u);
+    return variants;
   }
+
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
     wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null; img.onload=null;
     if(!tourId) return;
     const t = TOUR_MAP[tourId]; if(!t) return;
-    const url = normalizePosterFromFields(t.posterUrl, t.posterId);
-    if(url){
-      img.onerror = () => { wrap.style.display='none'; img.removeAttribute('src'); };
-      img.onload  = () => { wrap.style.display='block'; };
-      img.src     = url;
-    }
+
+    const urls = computePosterVariants(t.posterUrl, t.posterId);
+    if(!urls.length) return;
+
+    let idx=0;
+    const tryNext=()=>{ if(idx>=urls.length){ wrap.style.display='none'; img.removeAttribute('src'); return; } img.src = urls[idx++]; };
+    img.onload = ()=>{ wrap.style.display='block'; };
+    img.onerror= tryNext;
+    tryNext();
   }
 
   function renderTourInfo(t){
