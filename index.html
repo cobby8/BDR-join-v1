@@ -75,7 +75,7 @@
       <!-- ▶ 포스터: 대회정보 박스 위에 노출 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
         <img id="posterImg" alt="대회 포스터">
-        <div class="caption">대회 포스터</div>
+        <div class="caption">대회 포스터 (이미지가 보이지 않으면 파일 권한을 확인해 주세요)</div>
       </div>
 
       <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
@@ -320,15 +320,16 @@
   /* ===== 대회 목록 ===== */
   let TOUR_MAP={}, currentTour=null;
   async function loadTournaments(){
-    const res=await fetch(`${WEB_APP_URL}?path=tournaments`);
+    const res=await fetch(`${WEB_APP_URL}?path=tournaments`, {cache:'no-store'});
     const json=await res.json();
     if(!json.ok) return;
     const sel=$('#tourSelect'); sel.innerHTML='<option value="">대회를 선택하세요</option>';
     (json.rows||[]).forEach(t=>{
-      TOUR_MAP[t.TourID||t.tourId]=t;
-      const opt=document.createElement('option');
-      opt.value=t.TourID||t.tourId;
+      const id=t.TourID||t.tourId;
+      TOUR_MAP[id]=t; /* posterUrl/posterId 포함 */
       const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
+      const opt=document.createElement('option');
+      opt.value=id;
       opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
       sel.appendChild(opt);
     });
@@ -346,25 +347,61 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시 (단일 규칙) ===== */
+  /* ===== 포스터 표시 (강화판) ===== */
+
+  /* 드라이브 파일 ID 추출 + view URL 생성 */
+  function extractDriveId(u){
+    if(!u) return '';
+    const s=String(u).trim();
+    if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;           // 이미 ID만 온 경우
+    let m=s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];                      // .../file/d/<ID>/view
+    m=s.match(/[?&]id=([A-Za-z0-9_-]{10,})/); if(m) return m[1];                        // ...?id=<ID>
+    m=s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];         // /uc?id=<ID>
+    return '';
+  }
+  function makeDriveViewUrl(id){
+    return 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(id);
+  }
+
+  /* 1) /poster 호출(+캐시버스터) → 2) 실패 시 목록의 posterId/posterUrl 폴백 → 모두 실패 시 null */
   async function fetchPosterUrl(tourId){
     if(!tourId) return null;
     try{
-      const j = await (await fetch(`${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}`)).json();
-      if ((j?.ok===true || j?.ok==='true') && typeof j.url==='string' && j.url) return j.url;
-    }catch(e){}
+      const resp = await fetch(`${WEB_APP_URL}?path=poster&tourId=${encodeURIComponent(tourId)}&t=${Date.now()}`, {cache:'no-store'});
+      const j = await resp.json();
+      if ((j?.ok===true || j?.ok==='true') && typeof j.url==='string' && j.url.trim()){
+        return j.url.trim();
+      }
+    }catch(e){ /* ignore */ }
+
+    // ▼ 폴백: 목록 데이터에서 재생성
+    const t = TOUR_MAP[tourId];
+    if (t){
+      if (t.posterId){ return makeDriveViewUrl(String(t.posterId).trim()); }
+      if (t.posterUrl){
+        const id=extractDriveId(t.posterUrl);
+        return id ? makeDriveViewUrl(id) : String(t.posterUrl).trim();
+      }
+    }
     return null;
   }
+
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
     wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null;
+
     if(!tourId){ return; }
-    const url = await fetchPosterUrl(tourId);
-    if(url){
-      img.src = url;
-      img.onerror = () => { wrap.style.display='none'; img.removeAttribute('src'); };
-      wrap.style.display = 'block';
-    }
+    const rawUrl = await fetchPosterUrl(tourId);
+    if(!rawUrl){ return; }
+
+    // 이미지 캐시 무효화 파라미터 부착
+    let finalUrl = rawUrl;
+    try{ const u = new URL(rawUrl); u.searchParams.set('tt', Date.now()); finalUrl = u.toString(); }
+    catch{ finalUrl = rawUrl + (rawUrl.includes('?')?'&':'?') + 'tt=' + Date.now(); }
+
+    img.onerror = ()=>{ wrap.style.display='none'; img.removeAttribute('src'); };
+    img.src = finalUrl;
+    wrap.style.display='block';
   }
 
   function renderTourInfo(t){
@@ -411,9 +448,7 @@
   /* ===== 유니폼 SVG ===== */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
-      <defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
-      </filter></defs>
+      <defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow></filter></defs>
       <g filter="url(#shadow)">
         <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z"
               fill="${hex}" stroke="#111" stroke-width="1.5"/>
@@ -438,27 +473,24 @@
   /* === 컬러피커: 확인 버튼 적용형 === */
   function syncColor({hexId, pickerId, jerseyId, confirmId}){
     const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId), confirmBtn=$(confirmId);
-    // 초기 적용
     const initVal = /^#[0-9A-Fa-f]{6}$/.test(hexEl.value) ? hexEl.value : (picker.value || '#000000');
     hexEl.value = initVal; picker.value = initVal; renderJersey(svg, initVal);
 
     function normalizeHex(v){ const val = (v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val) ? val : ''; }
 
-    // 1) 컬러피커에서 고르는 동안은 미리보기만, [확인] 클릭 시 적용
     picker.addEventListener('input', e=>{
       const v = normalizeHex(e.target.value); if(!v) return;
-      renderJersey(svg, v);           // 미리보기
-      confirmBtn.style.display='inline-block'; // 적용 대기
+      renderJersey(svg, v);
+      confirmBtn.style.display='inline-block';
     });
     confirmBtn.addEventListener('click', ()=>{
       const v = normalizeHex(picker.value); if(!v) return;
-      hexEl.value = v;                // 실제 적용
+      hexEl.value = v;
       renderJersey(svg, v);
       confirmBtn.style.display='none';
       checkContrast();
     });
 
-    // 2) HEX 직접 입력은 바로 적용(기존 UX 유지)
     hexEl.addEventListener('input', e=>{
       const raw = e.target.value.replace('#','');
       if(/^[0-9A-Fa-f]{6}$/.test(raw)){
@@ -610,7 +642,6 @@
       if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value = t.division; }, 0); }
       $('#uniformHome').value = t.uniformHome || '#ff0000'; $('#uniformAway').value = t.uniformAway || '#ffffff';
       $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
-      // 유니폼 즉시 반영
       renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
 
       playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
@@ -692,7 +723,6 @@
   });
 
   /* ===== 부트스트랩 ===== */
-  const pad2l=n=>String(n).padStart(2,'0');
   (async function init(){
     await loadTournaments();
     const initialId = $('#tourSelect').value || '';
