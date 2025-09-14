@@ -24,7 +24,7 @@
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .btn.done{background:#2ebf6f}
   .btn-sm{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer;margin-top:10px}
-  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:3}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:100}
   .toast.show{opacity:1}
 
   .brand{position:absolute;right:30px;top:30px}
@@ -47,9 +47,9 @@
   .poster-wrap img{max-width:100%;max-height:420px;border:1px solid #e6ecf5;border-radius:14px;background:#fff;object-fit:contain;box-shadow:var(--shadow)}
   .poster-wrap .caption{font-size:12px;color:var(--muted);margin-top:6px}
 
-  .color-grid{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
+  /* 유니폼 색상 영역 */
+  .color-grid{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
   .color-btn{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
-  .color-confirm{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700;display:none}
   .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .uniform-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
   .jersey-card{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#f7fbff}
@@ -57,6 +57,27 @@
   .jersey{width:100%;height:180px}
 
   .edit-panel{margin-top:14px;border:1px dashed #dbe5f3;background:#f7fbff;border-radius:14px;padding:12px}
+
+  /* ▼ 모바일 컬러피커 바텀시트 */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.35);
+    display:none; z-index:90;
+  }
+  .picker-sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:91;
+    background:#fff; border-top-left-radius:16px; border-top-right-radius:16px;
+    box-shadow:0 -12px 36px rgba(0,0,0,.18);
+    padding:16px; display:none;
+  }
+  .picker-sheet .sheet-title{font-weight:800; text-align:center; margin:2px 0 12px}
+  .picker-sheet .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:12px}
+  .picker-sheet .confirm{border:1px solid var(--blue); background:var(--blue); color:#fff}
+  .picker-sheet input[type="color"]{
+    width:100%; height:56px; padding:0; border:1px solid #e6ecf5; border-radius:12px; background:#fff;
+  }
+  @media(min-width:720px){
+    .picker-sheet{max-width:420px; left:50%; right:auto; transform:translateX(-50%); bottom:24px}
+  }
 </style>
 </head>
 <body>
@@ -196,20 +217,19 @@
         <label>홈 색상</label>
         <div class="color-grid">
           <input class="hex" id="uniformHome" placeholder="#ff0000" value="#ff0000" />
-          <label for="uniformHomePicker" class="color-btn">색상선택</label>
-          <button class="color-confirm" id="uniformHomeConfirm" type="button">확인</button>
+          <button class="color-btn" id="uniformHomeOpen" type="button" aria-label="홈 색상 선택">색상선택</button>
         </div>
       </div>
       <div style="margin-top:8px">
         <label>어웨이 색상</label>
         <div class="color-grid">
           <input class="hex" id="uniformAway" placeholder="#ffffff" value="#ffffff" />
-          <label for="uniformAwayPicker" class="color-btn">색상선택</label>
-          <button class="color-confirm" id="uniformAwayConfirm" type="button">확인</button>
+          <button class="color-btn" id="uniformAwayOpen" type="button" aria-label="어웨이 색상 선택">색상선택</button>
         </div>
       </div>
       <div class="muted">※ 컬러피커에서 색상을 고른 다음 <b>확인</b>을 눌러 적용하세요. (HEX를 직접 입력하면 즉시 적용됩니다.)</div>
 
+      <!-- 기존 히든 컬러 입력(호환 유지용, 실제 선택은 바텀시트 사용) -->
       <input type="color" id="uniformHomePicker" class="visually-hidden" value="#ff0000" />
       <input type="color" id="uniformAwayPicker" class="visually-hidden" value="#ffffff" />
 
@@ -262,6 +282,17 @@
     </div>
 
     <div class="toast" id="toast">완료!</div>
+  </div>
+</div>
+
+<!-- ▼ 모바일 컬러피커 바텀시트 -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="picker-sheet" id="pickerSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-title" id="sheetTitle">색상 선택</div>
+  <input type="color" id="sheetColor" value="#ff0000" aria-label="유니폼 색상 선택기">
+  <div class="actions">
+    <button class="btn-sm" id="sheetCancel" type="button">취소</button>
+    <button class="btn-sm confirm" id="sheetConfirm" type="button">확인</button>
   </div>
 </div>
 
@@ -346,8 +377,7 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시(강화): posterId/posterUrl → 다중 후보 & 폴백 로딩 ===== */
-
+  /* ===== 포스터 표시(강화) ===== */
   function extractDriveId(u){
     const s=String(u||'').trim();
     if(!s) return '';
@@ -371,7 +401,6 @@
     }
     const u = String(posterUrl||'').trim();
     if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u) && !variants.includes(u)) variants.push(u);
-    // 마지막으로 원본 URL(허용 호스트)도 후보에 포함
     if(/^https?:\/\//i.test(u) && !variants.includes(u)) variants.push(u);
     return variants;
   }
@@ -456,17 +485,80 @@
                  (ok2 && Math.max(contrastRatio(a,'#000'), contrastRatio(a,'#fff')) < 4.5);
     warn.style.display=poor?'block':'none';
   }
-  function syncColor({hexId, pickerId, jerseyId, confirmId}){
-    const hexEl=$(hexId), picker=$(pickerId), svg=$(jerseyId), confirmBtn=$(confirmId);
-    const initVal = /^#[0-9A-Fa-f]{6}$/.test(hexEl.value) ? hexEl.value : (picker.value || '#000000');
-    hexEl.value = initVal; picker.value = initVal; renderJersey(svg, initVal);
-    const normalizeHex=v=>{ const val=(v||'').startsWith('#')?v:'#'+(v||''); return /^#[0-9A-Fa-f]{6}$/.test(val)?val:''; }
-    picker.addEventListener('input', e=>{ const v=normalizeHex(e.target.value); if(!v) return; renderJersey(svg,v); confirmBtn.style.display='inline-block'; });
-    confirmBtn.addEventListener('click', ()=>{ const v=normalizeHex(picker.value); if(!v) return; hexEl.value=v; renderJersey(svg,v); confirmBtn.style.display='none'; checkContrast(); });
-    hexEl.addEventListener('input', e=>{ const raw=e.target.value.replace('#',''); if(/^[0-9A-Fa-f]{6}$/.test(raw)){ const v='#'+raw; picker.value=v; renderJersey(svg,v); confirmBtn.style.display='none'; checkContrast(); }});
+
+  /* === 색상 정규화 & 상태 관리 === */
+  function toHex6(v, fallback='#000000'){
+    const s=String(v||'').trim();
+    if(!s){ return fallback; }
+    // #RRGGBB or RRGGBB
+    let m = s.match(/^#?([0-9A-Fa-f]{6})$/);
+    if(m) return '#'+m[1].toLowerCase();
+    // #RGB or RGB
+    m = s.match(/^#?([0-9A-Fa-f]{3})$/);
+    if(m){ const t=m[1]; return '#'+t.split('').map(c=>c+c).join('').toLowerCase(); }
+    return fallback;
   }
-  syncColor({hexId:'#uniformHome', pickerId:'#uniformHomePicker', jerseyId:'#jerseyHome', confirmId:'#uniformHomeConfirm'});
-  syncColor({hexId:'#uniformAway', pickerId:'#uniformAwayPicker', jerseyId:'#jerseyAway', confirmId:'#uniformAwayConfirm'});
+  const colorState = { home:'#ff0000', away:'#ffffff' };
+
+  function setUniform(side, hex, {updateInputs=true, previewOnly=false}={}){
+    const h = toHex6(hex, colorState[side]);
+    colorState[side]=h;
+    const svg = side==='home' ? $('#jerseyHome') : $('#jerseyAway');
+    if(updateInputs){
+      if(side==='home'){ $('#uniformHome').value=h; $('#uniformHomePicker').value=h; }
+      else{ $('#uniformAway').value=h; $('#uniformAwayPicker').value=h; }
+    }
+    renderJersey(svg, h);
+    if(!previewOnly) checkContrast();
+  }
+
+  function initColorControls(){
+    // 초기 렌더
+    setUniform('home', $('#uniformHome').value || '#ff0000');
+    setUniform('away', $('#uniformAway').value || '#ffffff');
+
+    // HEX 직접 입력 즉시 적용
+    $('#uniformHome').addEventListener('input', e=>{
+      const raw=(e.target.value||'').trim().replace(/^#/,'');
+      if(raw.length===3 || raw.length===6){ setUniform('home', '#'+raw); }
+    });
+    $('#uniformAway').addEventListener('input', e=>{
+      const raw=(e.target.value||'').trim().replace(/^#/,'');
+      if(raw.length===3 || raw.length===6){ setUniform('away', '#'+raw); }
+    });
+
+    // 바텀시트 오픈
+    $('#uniformHomeOpen').addEventListener('click', ()=>openSheet('home'));
+    $('#uniformAwayOpen').addEventListener('click', ()=>openSheet('away'));
+  }
+
+  /* === 바텀시트 컬러피커 === */
+  let currentSide='home', beforePreviewHex='#ff0000';
+  function openSheet(side){
+    currentSide=side;
+    beforePreviewHex = colorState[side];
+    $('#sheetTitle').textContent = side==='home' ? '홈 색상 선택' : '어웨이 색상 선택';
+    $('#sheetColor').value = colorState[side];
+    $('#sheetBackdrop').style.display='block';
+    $('#pickerSheet').style.display='block';
+    document.body.style.overflow='hidden';
+  }
+  function closeSheet(revert=false){
+    $('#pickerSheet').style.display='none';
+    $('#sheetBackdrop').style.display='none';
+    document.body.style.overflow='';
+    if(revert){ setUniform(currentSide, beforePreviewHex, {updateInputs:true}); }
+  }
+  $('#sheetColor').addEventListener('input', e=>{
+    setUniform(currentSide, e.target.value, {updateInputs:false, previewOnly:true});
+  });
+  $('#sheetConfirm').addEventListener('click', ()=>{
+    const v=$('#sheetColor').value;
+    setUniform(currentSide, v, {updateInputs:true});
+    closeSheet(false);
+  });
+  $('#sheetCancel').addEventListener('click', ()=>closeSheet(true));
+  $('#sheetBackdrop').addEventListener('click', ()=>closeSheet(true));
 
   /* ===== 연락처/지역 ===== */
   $('#ownerPhone').addEventListener('input',e=> e.target.value=(e.target.value||'').replace(/\D+/g,'').slice(0,11));
@@ -558,7 +650,7 @@
     let ok=true;
     if(stepId==='step0'){ const v=$('#tourSelect').value; if(!v){ show('대회를 선택해 주세요'); ok=false; } }
     if(stepId==='step1'){
-      const prov=$('#province'), city=$('#city'), tKo=$('#teamNameKo'), tEn=$('#teamNameEn'), man=$('#managerName'), ph=$('#managerPhone');
+      const prov=$('#province'), city=$('#city'), tKo=$('#teamNameKo'), tEn=$('#teamNameEn'), man=$('#managerName'), ph=$('#managerPhone']);
       const phOk=/^\d{10,11}$/.test(ph.value);
       setErr(prov,'errProvince',!prov.value); setErr(city,'errCity',!city.value);
       setErr(tKo,'errTeamNameKo',!tKo.value.trim()); setErr(tEn,'errTeamNameEn',!tEn.value.trim());
@@ -602,12 +694,23 @@
       $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
       $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
       $('#managerName').value = t.managerName || ''; $('#managerPhone').value = String(t.managerPhone||'').replace(/\D/g,'');
-      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value = t.division; }, 0); }
-      $('#uniformHome').value = t.uniformHome || '#ff0000'; $('#uniformAway').value = t.uniformAway || '#ffffff';
-      $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
-      renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
 
-      playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
+      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value = t.division; }, 0); }
+
+      // ▼ 색상 로딩 시 정규화 적용 (화이트 초기화 방지)
+      setUniform('home', toHex6(t.uniformHome, '#ff0000'));
+      setUniform('away', toHex6(t.uniformAway, '#ffffff'));
+
+      playersDiv.innerHTML='';
+      (pls||[]).forEach(pl=>{
+        const c=createPlayerCard();
+        c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||'';
+        c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||'';
+        c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase();
+        c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||'';
+        c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||'';
+        playersDiv.appendChild(c);
+      });
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
       $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
     }catch(e){ alert('네트워크 오류'); }
@@ -618,6 +721,10 @@
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
 
     const province=$('#province').value.trim(), city=$('#city').value.trim();
+    // 최종 저장 직전에도 색상 정규화 (이중 안전장치)
+    const uniformHome = toHex6($('#uniformHome').value.trim(), '#ff0000');
+    const uniformAway = toHex6($('#uniformAway').value.trim(), '#ffffff');
+
     const team={
       tourId: $('#tourSelect').value.trim(),
       tourName: (currentTour&&currentTour.name)||'',
@@ -629,8 +736,7 @@
       managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
       category: $('#category').value,
       division: $('#division').value,
-      uniformHome: $('#uniformHome').value.trim(),
-      uniformAway: $('#uniformAway').value.trim()
+      uniformHome, uniformAway
     };
 
     const players=$$('.player-card').map(card=>{
@@ -693,6 +799,9 @@
     renderTourInfo(initialTour);
     if (initialId) await renderPosterStrict(initialId);
 
+    // 색상 컨트롤 초기화
+    initColorControls();
+
     // 링크 수정 모드: 기존값 미리 불러오기
     if (editTeamId && editCode){
       try{
@@ -704,10 +813,21 @@
           $('#teamNameKo').value=t.teamNameKo||''; $('#teamNameEn').value=t.teamNameEn||'';
           $('#managerName').value=t.managerName||''; $('#managerPhone').value=String(t.managerPhone||'').replace(/\D/g,'');
           if(t.category){ $('#category').value=t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value=t.division; },0); }
-          $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
-          $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
-          renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
-          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
+
+          // ▼ 색상 로딩 시 정규화 적용 (화이트 초기화 방지)
+          setUniform('home', toHex6(t.uniformHome, '#ff0000'));
+          setUniform('away', toHex6(t.uniformAway, '#ffffff'));
+
+          playersDiv.innerHTML='';
+          (pls||[]).forEach(pl=>{
+            const c=createPlayerCard();
+            c.querySelector('[data-key="name"]').value=pl.name||'';
+            c.querySelector('[data-key="number"]').value=pl.number||'';
+            c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase();
+            c.querySelector('[data-key="birth"]').value=pl.birth||'';
+            c.querySelector('[data-key="elite"]').value=pl.elite||'';
+            playersDiv.appendChild(c);
+          });
           show('수정 링크로 불러온 신청서입니다.');
         }
       }catch(e){}
