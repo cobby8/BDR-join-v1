@@ -188,7 +188,8 @@
         <label>연령 (U7 ~ U18)</label>
         <select id="youthAge"><option value="">연령 선택</option></select>
         <div class="error-note" id="errYouthAge" style="display:none">연령을 선택해주세요</div>
-        <div class="muted">※ 유소년의 하모니 / i1~i4는 연령을 함께 선택해야 합니다. (예: i1 U10)</div>
+        <!-- ★ 안내 문구 업데이트: 하모니w / i1w~i4w 추가 -->
+        <div class="muted">※ 유소년의 <b>하모니·하모니w</b> / <b>i1~i4·i1w~i4w</b>는 연령을 함께 선택해야 합니다. (예: i1 U10, i2w U12)</div>
       </div>
 
       <div class="nextbar">
@@ -433,11 +434,14 @@
   }
 
   function isYouthCategory(cat){ return String(cat||'')==='유소년' || /유소년/i.test(String(cat||'')); }
+
+  // ★ 변경점: 하모니w + i1w~i4w 추가 (i1~i4는 유지)
   function requiresYouthAge(cat, div){
     if(!isYouthCategory(cat)) return false;
     const base=String(div||'').trim();
-    return base==='하모니' || /^i[1-4]$/i.test(base);
+    return base==='하모니' || base==='하모니w' || /^i[1-4]w?$/i.test(base);
   }
+
   function splitYouthDivision(div){
     const m = String(div||'').trim().match(/^(\S+)\s+(U(?:7|8|9|1[0-8]))$/i);
     if(m) return { base:m[1], age:m[2].toUpperCase() };
