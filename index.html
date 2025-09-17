@@ -182,6 +182,15 @@
           <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
         </div>
       </div>
+
+      <!-- ★ 유소년 연령 선택 (U7~U18) -->
+      <div id="youthAgeWrap" style="display:none;margin-top:8px">
+        <label>연령 (U7 ~ U18)</label>
+        <select id="youthAge"><option value="">연령 선택</option></select>
+        <div class="error-note" id="errYouthAge" style="display:none">연령을 선택해주세요</div>
+        <div class="muted">※ 유소년의 하모니 / i1~i4는 연령을 함께 선택해야 합니다. (예: i1 U10)</div>
+      </div>
+
       <div class="nextbar">
         <button class="next" data-next="#step1" data-dir="prev">← 이전</button>
         <button class="next primary" data-next="#step3" data-validate="1">다음 →</button>
@@ -346,8 +355,7 @@
     catch{ return '-'; }
   }
 
-  /* ===== 포스터 표시(강화): posterId/posterUrl → 다중 후보 & 폴백 로딩 ===== */
-
+  /* ===== 포스터 표시(강화) ===== */
   function extractDriveId(u){
     const s=String(u||'').trim();
     if(!s) return '';
@@ -359,7 +367,7 @@
   }
   const buildView = id => 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
   const buildDown = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
-  const buildThumb= id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000';
+  const buildThumb= id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+' &sz=w2000';
 
   function computePosterVariants(posterUrl, posterId){
     const variants=[];
@@ -371,7 +379,6 @@
     }
     const u = String(posterUrl||'').trim();
     if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u) && !variants.includes(u)) variants.push(u);
-    // 마지막으로 원본 URL(허용 호스트)도 후보에 포함
     if(/^https?:\/\//i.test(u) && !variants.includes(u)) variants.push(u);
     return variants;
   }
@@ -414,20 +421,84 @@
     fillCategoriesFromTour(currentTour);
   });
 
-  /* ===== 종별/디비전 제한 ===== */
+  /* ===== 종별/디비전 제한 + 유소년 연령 로직 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
+  const youthAgeWrap = $('#youthAgeWrap'), youthAgeSelect = $('#youthAge');
+
+  function populateYouthAges(){
+    const frag=document.createDocumentFragment();
+    const first=new Option('연령 선택',''); frag.appendChild(first);
+    for(let u=7; u<=18; u++){ frag.appendChild(new Option('U'+u, 'U'+u)); }
+    youthAgeSelect.innerHTML=''; youthAgeSelect.appendChild(frag);
+  }
+
+  function isYouthCategory(cat){ return String(cat||'')==='유소년' || /유소년/i.test(String(cat||'')); }
+  function requiresYouthAge(cat, div){
+    if(!isYouthCategory(cat)) return false;
+    const base=String(div||'').trim();
+    return base==='하모니' || /^i[1-4]$/i.test(base);
+  }
+  function splitYouthDivision(div){
+    const m = String(div||'').trim().match(/^(\S+)\s+(U(?:7|8|9|1[0-8]))$/i);
+    if(m) return { base:m[1], age:m[2].toUpperCase() };
+    return { base:String(div||'').trim(), age:'' };
+  }
+  function buildFinalDivision(){
+    const cat=categorySelect.value, base=divisionSelect.value;
+    if(requiresYouthAge(cat, base)){
+      const age=youthAgeSelect.value;
+      return age ? `${base} ${age}` : base;
+    }
+    return base;
+  }
+
+  function resetYouthAgeUI(){
+    youthAgeWrap.style.display='none';
+    populateYouthAges();
+  }
+
   function fillCategoriesFromTour(t){
-    categorySelect.innerHTML=''; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
-    if(!t || !t.divs || !Object.keys(t.divs).length){ categorySelect.disabled=true; categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>'; return; }
+    categorySelect.innerHTML='';
+    divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>';
+    divisionSelect.disabled=true;
+    resetYouthAgeUI();
+    if(!t || !t.divs || !Object.keys(t.divs).length){
+      categorySelect.disabled=true;
+      categorySelect.innerHTML='<option value="">대회에 종별/디비전 설정이 없습니다</option>';
+      return;
+    }
     categorySelect.disabled=false;
     categorySelect.appendChild(new Option('선택',''));
     Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
   }
+
   categorySelect.addEventListener('change',e=>{
-    const cat=e.target.value; divisionSelect.innerHTML='';
-    if(!currentTour || !cat){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; return; }
-    const arr=currentTour.divs[cat]||[]; if(!arr.length){ divisionSelect.disabled=true; divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>'; return; }
-    divisionSelect.disabled=false; divisionSelect.appendChild(new Option('선택','')); arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
+    const cat=e.target.value;
+    resetYouthAgeUI();
+    divisionSelect.innerHTML='';
+    if(!currentTour || !cat){
+      divisionSelect.disabled=true;
+      divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>';
+      return;
+    }
+    const arr=currentTour.divs[cat]||[];
+    if(!arr.length){
+      divisionSelect.disabled=true;
+      divisionSelect.innerHTML='<option value="">해당 종별의 디비전 없음</option>';
+      return;
+    }
+    divisionSelect.disabled=false;
+    divisionSelect.appendChild(new Option('선택',''));
+    arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
+  });
+
+  divisionSelect.addEventListener('change',()=>{
+    const cat=categorySelect.value, div=divisionSelect.value;
+    if(requiresYouthAge(cat, div)){
+      youthAgeWrap.style.display='block';
+    }else{
+      resetYouthAgeUI();
+    }
   });
 
   /* ===== 유니폼 SVG/색상 ===== */
@@ -566,7 +637,20 @@
       ok = prov.value && city.value && tKo.value.trim() && tEn.value.trim() && man.value.trim() && phOk;
       if(!ok) show('필수 항목을 확인해 주세요');
     }
-    if(stepId==='step2'){ const cat=$('#category'), div=$('#division'); setErr(cat,'errCategory',!cat.value); setErr(div,'errDivision',!div.value); ok=!!(cat.value&&div.value); if(!ok) show('종별/디비전을 선택해 주세요'); }
+    if(stepId==='step2'){
+      const cat=$('#category'), div=$('#division');
+      setErr(cat,'errCategory',!cat.value); setErr(div,'errDivision',!div.value);
+      ok=!!(cat.value&&div.value);
+      if(ok && requiresYouthAge(cat.value, div.value)){
+        const need = !$('#youthAge').value;
+        setErr($('#youthAge'),'errYouthAge',need);
+        ok = !need;
+        if(!ok) show('유소년 디비전은 연령(U7~U18)을 함께 선택하세요.');
+      }else{
+        $('#errYouthAge').style.display='none'; $('#youthAge').classList.remove('error');
+      }
+      if(!ok) { if(!cat.value||!div.value) show('종별/디비전을 선택해 주세요'); }
+    }
     return ok;
   }
 
@@ -598,16 +682,45 @@
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
       ownerEdit={teamId,name,phone};
       const t=json.team||{}, pls=json.players||[];
-      if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId]; renderTourInfo(currentTour); await renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour); }
+      if (t.tourId && TOUR_MAP[t.tourId]) {
+        $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId];
+        renderTourInfo(currentTour); await renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour);
+      }
       $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
       $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
       $('#managerName').value = t.managerName || ''; $('#managerPhone').value = String(t.managerPhone||'').replace(/\D/g,'');
-      if (t.category){ $('#category').value = t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value = t.division; }, 0); }
+
+      if (t.category){
+        $('#category').value = t.category;
+        $('#category').dispatchEvent(new Event('change'));
+        setTimeout(()=>{ 
+          if(t.division){
+            const {base, age} = splitYouthDivision(t.division);
+            $('#division').value = base;
+            $('#division').dispatchEvent(new Event('change'));
+            setTimeout(()=>{
+              if(requiresYouthAge(t.category, base)){
+                if(age){ $('#youthAge').value = age; youthAgeWrap.style.display='block'; }
+              }
+            },0);
+          }
+        }, 0);
+      }
+
       $('#uniformHome').value = t.uniformHome || '#ff0000'; $('#uniformAway').value = t.uniformAway || '#ffffff';
       $('#uniformHomePicker').value = $('#uniformHome').value; $('#uniformAwayPicker').value = $('#uniformAway').value;
       renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
 
-      playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||''; c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||''; c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||''; c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||''; playersDiv.appendChild(c); });
+      playersDiv.innerHTML='';
+      (pls||[]).forEach(pl=>{
+        const c=createPlayerCard();
+        c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||'';
+        c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||'';
+        c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase();
+        c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||'';
+        c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||'';
+        playersDiv.appendChild(c);
+      });
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
       $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
     }catch(e){ alert('네트워크 오류'); }
@@ -618,6 +731,10 @@
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
 
     const province=$('#province').value.trim(), city=$('#city').value.trim();
+
+    // ★ division 최종값 조립 (유소년이면 '기본 + 공백 + Uxx')
+    const finalDivision = buildFinalDivision();
+
     const team={
       tourId: $('#tourSelect').value.trim(),
       tourName: (currentTour&&currentTour.name)||'',
@@ -628,7 +745,7 @@
       managerName: $('#managerName').value.trim(),
       managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
       category: $('#category').value,
-      division: $('#division').value,
+      division: finalDivision,
       uniformHome: $('#uniformHome').value.trim(),
       uniformAway: $('#uniformAway').value.trim()
     };
@@ -687,6 +804,7 @@
 
   /* ===== 부트스트랩 ===== */
   (async function init(){
+    populateYouthAges(); // U7~U18 세팅
     await loadTournaments();
     const initialId = $('#tourSelect').value || '';
     const initialTour = initialId ? TOUR_MAP[initialId] : null;
@@ -699,11 +817,23 @@
         const j=await (await fetch(`${WEB_APP_URL}?path=getTeam&teamId=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`)).json();
         if(j.ok){
           const t=j.team||{}, pls=j.players||[];
-          if (t.tourId && TOUR_MAP[t.tourId]) { $('#tourSelect').value=t.tourId; currentTour=TOUR_MAP[t.tourId]; renderTourInfo(currentTour); await renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour); }
+          if (t.tourId && TOUR_MAP[t.tourId]) {
+            $('#tourSelect').value=t.tourId; currentTour=TOUR_MAP[t.tourId];
+            renderTourInfo(currentTour); await renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour);
+          }
           $('#province').value=t.province||''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value=t.city||''; },0);
           $('#teamNameKo').value=t.teamNameKo||''; $('#teamNameEn').value=t.teamNameEn||'';
           $('#managerName').value=t.managerName||''; $('#managerPhone').value=String(t.managerPhone||'').replace(/\D/g,'');
-          if(t.category){ $('#category').value=t.category; $('#category').dispatchEvent(new Event('change')); setTimeout(()=>{ if(t.division) $('#division').value=t.division; },0); }
+          if(t.category){
+            $('#category').value=t.category; $('#category').dispatchEvent(new Event('change'));
+            setTimeout(()=>{ 
+              if(t.division){
+                const {base, age} = splitYouthDivision(t.division);
+                $('#division').value=base; $('#division').dispatchEvent(new Event('change'));
+                setTimeout(()=>{ if(requiresYouthAge(t.category, base) && age){ $('#youthAge').value=age; youthAgeWrap.style.display='block'; } },0);
+              }
+            },0);
+          }
           $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
           $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
           renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
