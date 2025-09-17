@@ -74,7 +74,7 @@
 
       <!-- ▶ 포스터 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
-        <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer">
+        <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer" loading="lazy">
         <div class="caption">대회 포스터</div>
       </div>
 
@@ -188,7 +188,6 @@
         <label>연령 (U7 ~ U18)</label>
         <select id="youthAge"><option value="">연령 선택</option></select>
         <div class="error-note" id="errYouthAge" style="display:none">연령을 선택해주세요</div>
-        <!-- ★ 안내 문구 업데이트: 하모니w / i1w~i4w 추가 -->
         <div class="muted">※ 유소년의 <b>하모니·하모니w</b> / <b>i1~i4·i1w~i4w</b>는 연령을 함께 선택해야 합니다. (예: i1 U10, i2w U12)</div>
       </div>
 
@@ -278,6 +277,7 @@
 <script>
   /* ===== 설정 ===== */
   const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
+  const DEBUG_POSTER = false; // 필요시 true로 바꾸면 시도 URL이 콘솔에 출력됩니다.
 
   /* ===== URL 파라미터(링크 수정 모드) ===== */
   const qs=new URLSearchParams(location.search);
@@ -360,27 +360,37 @@
   function extractDriveId(u){
     const s=String(u||'').trim();
     if(!s) return '';
+    // 이미 ID 문자열인 경우
     if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;
+    // /d/ID/ 패턴
     let m = s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];
+    // ?id=ID 패턴
     m = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);   if(m) return m[1];
+    // /uc?id=ID 패턴
     m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     return '';
   }
-  const buildView = id => 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
-  const buildDown = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
-  const buildThumb= id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+' &sz=w2000';
+  const buildView  = id => 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
+  const buildDown  = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
+  const buildPlain = id => 'https://drive.google.com/uc?id='+encodeURIComponent(id);
+  const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000'; // ← 공백 제거
 
-  function computePosterVariants(posterUrl, posterId){
+  // posterUrl, posterId, poster(레거시) 모두 지원 + data:image 도 표시
+  function computePosterVariants(posterUrl, posterId, posterLegacy){
     const variants=[];
-    const id = extractDriveId(posterId) || extractDriveId(posterUrl);
+    const candidates=[posterId, posterUrl, posterLegacy].filter(v=>typeof v==='string' && v.trim());
+    // 1) Drive ID 우선
+    const id=candidates.map(extractDriveId).find(Boolean);
     if(id){
-      variants.push(buildView(id));
-      variants.push(buildDown(id));
-      variants.push(buildThumb(id));
+      [buildView(id), buildDown(id), buildPlain(id), buildThumb(id)].forEach(u=>{ if(!variants.includes(u)) variants.push(u); });
     }
-    const u = String(posterUrl||'').trim();
-    if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(u) && !variants.includes(u)) variants.push(u);
-    if(/^https?:\/\//i.test(u) && !variants.includes(u)) variants.push(u);
+    // 2) data:image 또는 직접 이미지 URL
+    candidates.forEach(u=>{
+      const s=String(u).trim();
+      if(/^data:image\//i.test(s)){ if(!variants.includes(s)) variants.push(s); return; }
+      if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(s) && !variants.includes(s)) variants.push(s);
+      if(/^https?:\/\//i.test(s) && !variants.includes(s)) variants.push(s);
+    });
     return variants;
   }
 
@@ -390,13 +400,23 @@
     if(!tourId) return;
     const t = TOUR_MAP[tourId]; if(!t) return;
 
-    const urls = computePosterVariants(t.posterUrl, t.posterId);
+    const urls = computePosterVariants(t.posterUrl, t.posterId, t.poster);
+    if(DEBUG_POSTER) console.debug('[Poster] variants:', urls, t);
+
     if(!urls.length) return;
 
     let idx=0;
-    const tryNext=()=>{ if(idx>=urls.length){ wrap.style.display='none'; img.removeAttribute('src'); return; } img.src = urls[idx++]; };
-    img.onload = ()=>{ wrap.style.display='block'; };
-    img.onerror= tryNext;
+    const tryNext=()=>{
+      if(idx>=urls.length){
+        if(DEBUG_POSTER) console.debug('[Poster] all variants failed');
+        wrap.style.display='none'; img.removeAttribute('src'); return;
+      }
+      const nextUrl=urls[idx++];
+      if(DEBUG_POSTER) console.debug('[Poster] try:', nextUrl);
+      img.src = nextUrl;
+    };
+    img.onload = ()=>{ if(DEBUG_POSTER) console.debug('[Poster] loaded:', img.src); wrap.style.display='block'; };
+    img.onerror= ()=>{ if(DEBUG_POSTER) console.debug('[Poster] error:', img.src); tryNext(); };
     tryNext();
   }
 
@@ -435,7 +455,7 @@
 
   function isYouthCategory(cat){ return String(cat||'')==='유소년' || /유소년/i.test(String(cat||'')); }
 
-  // ★ 변경점: 하모니w + i1w~i4w 추가 (i1~i4는 유지)
+  // 하모니w + i1w~i4w 포함
   function requiresYouthAge(cat, div){
     if(!isYouthCategory(cat)) return false;
     const base=String(div||'').trim();
@@ -593,8 +613,8 @@
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
-  const SAMPLE=`홍길동/7/G/010302/비선출
-김철수/11/F/000615/선출`;
+  const SAMPLE=`홍길동/7/G/010302
+김철수/11/F/000615`;
   $('#copySampleBtn').addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText(SAMPLE); show('샘플이 복사되었습니다. 붙여넣기 후 적용을 누르세요.'); }
     catch(e){ const ta=document.createElement('textarea'); ta.value=SAMPLE; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); show('샘플이 복사되었습니다.'); }
@@ -615,13 +635,12 @@
     if(allEmpty) playersDiv.innerHTML='';
     lines.forEach(line=>{
       const cols=line.split(/[\/,\t]| {2,}/).map(s=>s.trim());
-      const [name='', number='', position='', birthYY='', elite=''] = cols;
+      const [name='', number='', position='', birthYY=''] = cols;
       const card=createPlayerCard();
       card.querySelector('[data-key="name"]').value=name;
       card.querySelector('[data-key="number"]').value=number;
       card.querySelector('[data-key="position"]').value=(position||'').toUpperCase();
       card.querySelector('[data-key="birth"]').value=normalizeBirth(birthYY);
-      card.querySelector('[data-key="elite"]').value=elite;
       playersDiv.appendChild(card);
     });
     show('붙여넣기 적용 완료');
@@ -722,7 +741,6 @@
         c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||'';
         c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase();
         c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||'';
-        c.querySelector('[data-key="elite"]').value=pl.elite||pl['선출여부']||'';
         playersDiv.appendChild(c);
       });
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
@@ -736,7 +754,7 @@
 
     const province=$('#province').value.trim(), city=$('#city').value.trim();
 
-    // ★ division 최종값 조립 (유소년이면 '기본 + 공백 + Uxx')
+    // division 최종값 조립 (유소년이면 '기본 + 공백 + Uxx')
     const finalDivision = buildFinalDivision();
 
     const team={
@@ -756,7 +774,7 @@
 
     const players=$$('.player-card').map(card=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
-      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
+      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth') };
     }).filter(p=>p.name);
 
     if (players.length < 5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return; }
@@ -841,7 +859,7 @@
           $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
           $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
           renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
-          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
+          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; playersDiv.appendChild(c); });
           show('수정 링크로 불러온 신청서입니다.');
         }
       }catch(e){}
