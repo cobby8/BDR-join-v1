@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BDR TeamViewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#1769ff; --bg:#f6f8fb; --card:#fff; --ink:#1f2937; --muted:#6b7280;
+    --green:#16a34a; --red:#ef4444; --shadow:0 10px 30px #1769ff22; --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',system-ui,-apple-system,sans-serif;color:var(--ink)}
+
+  .wrap{max-width:1100px;margin:18px auto;padding:0 12px 56px}
+  header{position:sticky;top:0;z-index:100;background:linear-gradient(180deg, #f6f8fb 0%, #f6f8fbdd 70%, #f6f8fb00 100%);backdrop-filter:saturate(1.2) blur(8px)}
+  .head{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 4px}
+  h1{font-size:20px;margin:0 8px 0 0;font-weight:700;letter-spacing:0.2px}
+  .badge{font-size:12px; padding:4px 8px; background:#e9efff;border-radius:999px;color:#2b53c4;font-weight:600}
+
+  .panel{display:grid;grid-template-columns:1fr 1fr; gap:10px; margin:8px 0 10px}
+  @media (max-width:760px){ .panel{grid-template-columns:1fr} }
+
+  .select, .input{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--card);border-radius:14px;box-shadow:var(--shadow)}
+  .select label, .input label{font-size:12px;color:var(--muted);white-space:nowrap}
+  select, input[type="text"]{all:unset;font-size:14px;flex:1}
+  select{cursor:pointer}
+  .btns{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{border:1px solid #e5e7eb;background:#fff;padding:10px 12px;border-radius:12px;cursor:pointer;font-size:13px}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:#1f5eff;color:#fff;border-color:#1f5eff}
+  .btn.ghost{background:#fff}
+
+  .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:18px;margin-top:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-size:12px;color:#374151}
+  .chip.green{background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+  .chip.blue{background:#eef2ff;border-color:#c7d2fe;color:#3730a3}
+  .chip.red{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+  .teamname{font-size:20px;font-weight:700;margin-right:6px}
+  .sub{color:var(--muted);font-size:13px}
+
+  .tablewrap{overflow:auto;border:1px solid #e5e7eb;border-radius:16px;margin-top:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:left;white-space:nowrap;font-weight:700}
+  tbody td{border-bottom:1px solid #f3f4f6;padding:10px 8px;white-space:nowrap}
+  tbody tr:hover{background:#fafafa}
+  .muted{color:var(--muted)}
+  .right{margin-left:auto}
+  .skeleton{height:12px;background:linear-gradient(90deg,#f3f4f6 0%,#eef0f3 40%,#f3f4f6 80%);border-radius:6px;animation:sh 1.4s infinite}
+  @keyframes sh{0%{background-position:-100px 0}100%{background-position:100px 0}}
+  .helper{font-size:12px;color:var(--muted);margin-top:6px}
+
+  @media print{
+    header, .panel, .btns, .helper{display:none !important}
+    .card{box-shadow:none;border:none;padding:0;margin:0}
+    .wrap{max-width:100%;padding:0}
+    body{background:#fff}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="head">
+        <div class="row">
+          <h1>TeamViewer</h1>
+          <span class="badge">mobile-first</span>
+        </div>
+        <div class="btns">
+          <button class="btn ghost" id="shareBtn">공유링크</button>
+          <button class="btn ghost" id="csvBtn">CSV 다운로드</button>
+          <button class="btn ghost" id="printBtn">인쇄</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="select">
+          <label>대회</label>
+          <select id="tourSelect" aria-label="대회 선택"></select>
+        </div>
+        <div class="select">
+          <label>팀</label>
+          <select id="teamSelect" aria-label="팀 선택"></select>
+        </div>
+        <div class="input">
+          <label>팀 검색</label>
+          <input id="teamSearch" type="text" placeholder="팀 이름 일부로 검색" />
+        </div>
+        <div class="row" style="align-items:center">
+          <label class="chip">
+            <input type="checkbox" id="hidePhone" style="margin-right:6px" checked>
+            전화번호 숨김
+          </label>
+          <span class="helper">개인정보 보호를 위해 기본값은 숨김입니다.</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="card" id="metaCard" style="display:none">
+      <div class="row">
+        <div class="teamname" id="teamName">-</div>
+        <span class="chip blue" id="divChip" style="display:none"></span>
+        <span class="chip" id="divSetChip" style="display:none"></span>
+        <span class="right sub" id="updatedAt"></span>
+      </div>
+      <div class="row" style="margin-top:8px;gap:10px">
+        <span class="chip" id="managerChip" style="display:none"></span>
+        <a class="chip" id="phoneChip" style="display:none" href="#"></a>
+        <span class="chip green" id="homeUniChip" style="display:none"></span>
+        <span class="chip" id="awayUniChip" style="display:none"></span>
+      </div>
+    </section>
+
+    <section class="card" id="tableCard" style="display:none">
+      <div class="tablewrap">
+        <table id="rosterTable" aria-label="선수 명단 표">
+          <thead><tr id="theadRow"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="helper" id="countText"></div>
+    </section>
+
+    <section class="card" id="emptyCard" style="display:none">
+      <div class="row">
+        <div style="width:180px" class="skeleton"></div>
+      </div>
+      <p class="muted">선수 명단이 없거나 아직 불러오지 못했어요.</p>
+    </section>
+  </div>
+
+<script>
+(() => {
+  // ★★★ 연결할 GAS 웹앱 URL로 교체하세요 ★★★
+  const API_BASE = 'https://script.google.com/macros/s/PASTE_YOUR_DEPLOYMENT_ID/exec';
+
+  // ---------- 상태 ----------
+  let INIT = null;           // {tournaments, teamsByTour, ...}
+  let CURRENT = { tourId:'', teamId:'', teamObj:null, headers:[], players:[] };
+  let LAST_PLAYERS_JSON = null; // CSV용
+
+  const els = {
+    tourSelect: document.getElementById('tourSelect'),
+    teamSelect: document.getElementById('teamSelect'),
+    teamSearch: document.getElementById('teamSearch'),
+    hidePhone: document.getElementById('hidePhone'),
+    metaCard: document.getElementById('metaCard'),
+    tableCard: document.getElementById('tableCard'),
+    emptyCard: document.getElementById('emptyCard'),
+    teamName: document.getElementById('teamName'),
+    divChip: document.getElementById('divChip'),
+    divSetChip: document.getElementById('divSetChip'),
+    managerChip: document.getElementById('managerChip'),
+    phoneChip: document.getElementById('phoneChip'),
+    homeUniChip: document.getElementById('homeUniChip'),
+    awayUniChip: document.getElementById('awayUniChip'),
+    updatedAt: document.getElementById('updatedAt'),
+    theadRow: document.getElementById('theadRow'),
+    tbody: document.getElementById('tbody'),
+    countText: document.getElementById('countText'),
+  };
+
+  // ---------- 유틸 ----------
+  const qs = (obj={}) => new URLSearchParams(obj).toString();
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const toKST = ts => {
+    const d = new Date(ts);
+    return isNaN(d) ? '' :
+      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
+  const normalize = s => (s||'').toString().trim().toLowerCase();
+  const looksPhoneHeader = h => /phone|전화|연락/g.test(h.toLowerCase());
+
+  // local cache (세션 캐시) — 새로고침 유지, 탭 닫으면 삭제
+  const cache = {
+    get: k => {
+      try{
+        const v = sessionStorage.getItem(k);
+        if(!v) return null;
+        const o = JSON.parse(v);
+        if(Date.now() > o.exp) return null;
+        return o.val;
+      }catch{return null}
+    },
+    set: (k,val,sec=300) => {
+      try{
+        sessionStorage.setItem(k, JSON.stringify({exp:Date.now()+sec*1000, val}));
+      }catch{}
+    }
+  };
+
+  async function GET(path, params={}, {ttl=300, signal}={}) {
+    const url = `${API_BASE}?${qs({path, ...params, t:Date.now()})}`;
+    const key = `tv:${path}:${JSON.stringify(params)}`;
+    const cached = cache.get(key);
+    if(cached) return cached;
+
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 12000); // 12s hard timeout
+    try{
+      const res = await fetch(url, {signal: signal || ctrl.signal});
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if(!json || json.ok === false) throw new Error(json && json.error || 'Unknown error');
+      cache.set(key, json, ttl);
+      return json;
+    } finally { clearTimeout(to); }
+  }
+
+  // ---------- 초기화 ----------
+  async function init() {
+    // URL 파라미터(deep link) 지원: ?tourId=...&teamId=...
+    const urlp = new URLSearchParams(location.search);
+    const qTour = urlp.get('tourId') || urlp.get('tour') || '';
+    const qTeam = urlp.get('teamId') || urlp.get('team') || '';
+
+    const data = await GET('teamviewer.init', {});
+    INIT = data;
+    buildTourSelect(data.tournaments, qTour);
+
+    // tour 미리 선택 → 팀 목록 구성
+    const firstTour = qTour || (data.tournaments[0] && data.tournaments[0].tourId) || '';
+    if(firstTour) {
+      els.tourSelect.value = firstTour;
+      buildTeamSelect(firstTour, qTeam);
+    }
+
+    // deep link에 teamId 있으면 즉시 로드
+    if(firstTour && qTeam) {
+      els.teamSelect.value = qTeam;
+      await loadPlayers(firstTour, qTeam);
+    }
+
+    bindEvents();
+  }
+
+  function buildTourSelect(tournaments, preselect='') {
+    els.tourSelect.innerHTML = '';
+    tournaments
+      .slice().sort((a,b)=> (a.start||'').localeCompare(b.start||''))
+      .reverse() // 최신 대회가 위로
+      .forEach(t=>{
+        const opt = document.createElement('option');
+        opt.value = t.tourId;
+        const d = t.start ? ` (${t.start?.slice(5)})` : '';
+        opt.textContent = `${t.name || t.tourId}${d}`;
+        if(t.tourId === preselect) opt.selected = true;
+        els.tourSelect.appendChild(opt);
+      });
+  }
+
+  function buildTeamSelect(tourId, preselect='') {
+    const teams = (INIT.teamsByTour && INIT.teamsByTour[tourId]) || [];
+    const q = normalize(els.teamSearch.value);
+    const filtered = q ? teams.filter(t=>{
+      const dn = (t.displayName||'') + ' ' + (t.teamNameKo||'') + ' ' + (t.teamNameEn||'');
+      return normalize(dn).includes(q);
+    }) : teams;
+
+    els.teamSelect.innerHTML = '';
+    filtered
+      .slice()
+      .sort((a,b)=> (a.displayName||'').localeCompare(b.displayName||'', 'ko-KR'))
+      .forEach(t=>{
+        const opt = document.createElement('option');
+        opt.value = t.teamId;
+        let name = t.displayName || t.teamNameKo || t.teamNameEn || t.teamId;
+        if(t.division) name += ` · ${t.division}`;
+        opt.textContent = name;
+        if(t.teamId === preselect) opt.selected = true;
+        els.teamSelect.appendChild(opt);
+      });
+  }
+
+  function bindEvents(){
+    els.tourSelect.addEventListener('change', ()=>{
+      buildTeamSelect(els.tourSelect.value);
+      els.tbody.innerHTML = '';
+      els.tableCard.style.display = 'none';
+      els.metaCard.style.display = 'none';
+      els.emptyCard.style.display = 'block';
+      updateShareLink();
+    });
+
+    els.teamSelect.addEventListener('change', ()=>{
+      const tourId = els.tourSelect.value;
+      const teamId = els.teamSelect.value;
+      if(tourId && teamId) loadPlayers(tourId, teamId);
+      updateShareLink();
+    });
+
+    let searchTimer = null;
+    els.teamSearch.addEventListener('input', ()=>{
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(()=>{
+        buildTeamSelect(els.tourSelect.value, '');
+      }, 200);
+    });
+
+    els.hidePhone.addEventListener('change', ()=>{
+      renderTable(CURRENT.headers, CURRENT.players);
+    });
+
+    document.getElementById('shareBtn').addEventListener('click', copyShareLink);
+    document.getElementById('csvBtn').addEventListener('click', downloadCSV);
+    document.getElementById('printBtn').addEventListener('click', ()=>window.print());
+  }
+
+  function updateShareLink(){
+    const tourId = els.tourSelect.value || '';
+    const teamId = els.teamSelect.value || '';
+    const u = new URL(location.href);
+    if(tourId) u.searchParams.set('tourId', tourId); else u.searchParams.delete('tourId');
+    if(teamId) u.searchParams.set('teamId', teamId); else u.searchParams.delete('teamId');
+    history.replaceState({}, '', u.toString());
+  }
+
+  async function loadPlayers(tourId, teamId){
+    // 스켈레톤/플레이스홀더
+    els.emptyCard.style.display = 'none';
+    els.metaCard.style.display = 'block';
+    els.tableCard.style.display = 'block';
+    els.theadRow.innerHTML = '';
+    els.tbody.innerHTML = '';
+    for(let i=0;i<8;i++){
+      const tr = document.createElement('tr');
+      for(let j=0;j<6;j++){
+        const td = document.createElement('td');
+        const sk = document.createElement('div'); sk.className='skeleton';
+        sk.style.width = (60+Math.random()*90)+'px';
+        td.appendChild(sk); tr.appendChild(td);
+      }
+      els.tbody.appendChild(tr);
+    }
+
+    const json = await GET('teamviewer.players', {tourId, teamId}, {ttl:60});
+    LAST_PLAYERS_JSON = json;
+
+    CURRENT.tourId = tourId; CURRENT.teamId = teamId;
+    CURRENT.teamObj = json.team || null;
+    CURRENT.headers = json.headers || [];
+    CURRENT.players = json.players || [];
+
+    // 상단 메타
+    const T = json.team||{};
+    const dispName = T.displayName || T.teamNameKo || T.teamNameEn || T.teamName || T.teamId || '-';
+    els.teamName.textContent = dispName;
+
+    setChip(els.divChip, T.division, true);
+    setChip(els.divSetChip, T.divisionSet, true);
+    setChip(els.managerChip, T.manager ? `매니저: ${T.manager}` : '', true);
+    if(T.phone){
+      els.phoneChip.style.display = '';
+      els.phoneChip.textContent = `연락처: ${T.phone}`;
+      els.phoneChip.href = `tel:${T.phone.replace(/[^\d+]/g,'')}`;
+    } else { els.phoneChip.style.display = 'none'; }
+
+    setChip(els.homeUniChip, T.uniformHome ? `홈 유니폼: ${T.uniformHome}` : '', true);
+    setChip(els.awayUniChip, T.uniformAway ? `원정 유니폼: ${T.uniformAway}` : '', true);
+
+    els.updatedAt.textContent = json.meta?.generatedAt ? `불러온 시각 ${toKST(json.meta.generatedAt)}` : '';
+
+    // 표 렌더
+    renderTable(CURRENT.headers, CURRENT.players);
+
+    // 카운트
+    els.countText.textContent = `선수 ${CURRENT.players.length.toLocaleString()}명`;
+  }
+
+  function setChip(el, text, showWhenHas){
+    if(showWhenHas){
+      if(text){ el.textContent = text; el.style.display=''; }
+      else { el.style.display='none'; }
+    }else{
+      el.textContent = text;
+    }
+  }
+
+  function renderTable(headers, players){
+    // 숨김 컬럼(개인정보) 처리
+    const hidePhone = els.hidePhone.checked;
+    const H = headers.filter(h => !(hidePhone && looksPhoneHeader(h)));
+
+    // 헤더
+    els.theadRow.innerHTML = '';
+    H.forEach(h=>{
+      const th = document.createElement('th');
+      th.textContent = h;
+      els.theadRow.appendChild(th);
+    });
+
+    // 바디
+    els.tbody.innerHTML = '';
+    players.forEach(row=>{
+      const tr = document.createElement('tr');
+      H.forEach(h=>{
+        const td = document.createElement('td');
+        const val = row[h] ?? '';
+        td.textContent = val;
+        tr.appendChild(td);
+      });
+      els.tbody.appendChild(tr);
+    });
+  }
+
+  function copyShareLink(){
+    try{
+      navigator.clipboard.writeText(location.href);
+      alert('현재 조회 조합의 링크가 복사되었습니다.');
+    }catch{
+      prompt('링크를 복사하세요:', location.href);
+    }
+  }
+
+  function downloadCSV(){
+    if(!LAST_PLAYERS_JSON) return alert('먼저 팀을 선택하세요.');
+    const hidePhone = els.hidePhone.checked;
+    const headers = (LAST_PLAYERS_JSON.headers||[]).filter(h => !(hidePhone && looksPhoneHeader(h)));
+    const rows = LAST_PLAYERS_JSON.players || [];
+    const escape = v => {
+      const s = (v??'').toString().replace(/"/g,'""');
+      return `"${s}"`;
+    };
+    const csv = [headers.map(escape).join(',')]
+      .concat(rows.map(r=> headers.map(h=>escape(r[h])).join(',')))
+      .join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const teamName = (LAST_PLAYERS_JSON.team?.displayName || LAST_PLAYERS_JSON.team?.teamNameKo || LAST_PLAYERS_JSON.team?.teamId || 'team');
+    a.href = url; a.download = `${teamName}_roster.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // go!
+  init().catch(err=>{
+    console.error(err);
+    els.emptyCard.style.display='block';
+    alert('초기 데이터 불러오기 실패: ' + err.message);
+  });
+})();
+</script>
+</body>
+</html>
