@@ -277,7 +277,7 @@
 <script>
   /* ===== 설정 ===== */
   const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
-  const DEBUG_POSTER = false; // 필요시 true로 바꾸면 시도 URL이 콘솔에 출력됩니다.
+  const DEBUG_POSTER = false; // true로 바꾸면 시도 URL을 콘솔에 출력
 
   /* ===== URL 파라미터(링크 수정 모드) ===== */
   const qs=new URLSearchParams(location.search);
@@ -360,49 +360,35 @@
   function extractDriveId(u){
     const s=String(u||'').trim();
     if(!s) return '';
-    // 이미 ID 문자열인 경우
-    if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;
-    // /d/ID/ 패턴
+    if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s; // 이미 ID
     let m = s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];
-    // ?id=ID 패턴
     m = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);   if(m) return m[1];
-    // /uc?id=ID 패턴
     m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     return '';
   }
   const buildView  = id => 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
   const buildDown  = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
   const buildPlain = id => 'https://drive.google.com/uc?id='+encodeURIComponent(id);
-  const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000'; // ← 공백 제거
-  const buildPlain = id => 'https://drive.google.com/uc?id='+encodeURIComponent(id);
+  const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000';
 
-  // 기존: function computePosterVariants(posterUrl, posterId){ ... }
-// 변경: 레거시 poster, data:image, buildPlain 지원
-function computePosterVariants(posterUrl, posterId, posterLegacy){
-  const variants=[];
-  const candidates=[posterId, posterUrl, posterLegacy].filter(v=>typeof v==='string' && v.trim());
-
-  // 1) Drive ID 우선 추출
-  const id = candidates.map(extractDriveId).find(Boolean);
-  if(id){
-    [ 
-      'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id),
-      'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id),
-      'https://drive.google.com/uc?id='+encodeURIComponent(id), // buildPlain
-      'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000' // buildThumb
-    ].forEach(u=>{ if(!variants.includes(u)) variants.push(u); });
+  // posterUrl, posterId, poster(레거시) 모두 지원 + data:image 도 표시
+  function computePosterVariants(posterUrl, posterId, posterLegacy){
+    const variants=[];
+    const candidates=[posterId, posterUrl, posterLegacy].filter(v=>typeof v==='string' && v.trim());
+    // 1) Drive ID 우선
+    const id=candidates.map(extractDriveId).find(Boolean);
+    if(id){
+      [buildView(id), buildDown(id), buildPlain(id), buildThumb(id)].forEach(u=>{ if(!variants.includes(u)) variants.push(u); });
+    }
+    // 2) data:image 또는 직접 이미지 URL
+    candidates.forEach(u=>{
+      const s=String(u).trim();
+      if(/^data:image\//i.test(s)){ if(!variants.includes(s)) variants.push(s); return; }
+      if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(s) && !variants.includes(s)) variants.push(s);
+      if(/^https?:\/\//i.test(s) && !variants.includes(s)) variants.push(s);
+    });
+    return variants;
   }
-
-  // 2) 직접 URL / data:image 처리
-  candidates.forEach(u=>{
-    const s=String(u).trim();
-    if(/^data:image\//i.test(s)){ if(!variants.includes(s)) variants.push(s); return; }
-    if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(s) && !variants.includes(s)) variants.push(s);
-    if(/^https?:\/\//i.test(s) && !variants.includes(s)) variants.push(s);
-  });
-
-  return variants;
-}
 
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
@@ -412,7 +398,6 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
 
     const urls = computePosterVariants(t.posterUrl, t.posterId, t.poster);
     if(DEBUG_POSTER) console.debug('[Poster] variants:', urls, t);
-
     if(!urls.length) return;
 
     let idx=0;
@@ -538,7 +523,7 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
   /* ===== 유니폼 SVG/색상 ===== */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
-      <defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <defs><filter id="shadow" x="-20%" y="-20%" width="140%">
         <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"></feDropShadow>
       </filter></defs>
       <g filter="url(#shadow)">
@@ -623,8 +608,8 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
-  const SAMPLE=`홍길동/7/G/010302
-김철수/11/F/000615`;
+  const SAMPLE=`홍길동/7/G/010302/비선출
+김철수/11/F/000615/선출`;
   $('#copySampleBtn').addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText(SAMPLE); show('샘플이 복사되었습니다. 붙여넣기 후 적용을 누르세요.'); }
     catch(e){ const ta=document.createElement('textarea'); ta.value=SAMPLE; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); show('샘플이 복사되었습니다.'); }
@@ -645,12 +630,13 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
     if(allEmpty) playersDiv.innerHTML='';
     lines.forEach(line=>{
       const cols=line.split(/[\/,\t]| {2,}/).map(s=>s.trim());
-      const [name='', number='', position='', birthYY=''] = cols;
+      const [name='', number='', position='', birthYY='', elite=''] = cols;
       const card=createPlayerCard();
       card.querySelector('[data-key="name"]').value=name;
       card.querySelector('[data-key="number"]').value=number;
       card.querySelector('[data-key="position"]').value=(position||'').toUpperCase();
       card.querySelector('[data-key="birth"]').value=normalizeBirth(birthYY);
+      card.querySelector('[data-key="elite"]').value=elite||'';
       playersDiv.appendChild(card);
     });
     show('붙여넣기 적용 완료');
@@ -751,6 +737,7 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
         c.querySelector('[data-key="number"]').value=pl.number||pl['등번호']||'';
         c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase();
         c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||'';
+        c.querySelector('[data-key="elite"]').value=pl.elite||'';
         playersDiv.appendChild(c);
       });
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
@@ -784,7 +771,7 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
 
     const players=$$('.player-card').map(card=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
-      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth') };
+      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
     }).filter(p=>p.name);
 
     if (players.length < 5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return; }
@@ -837,7 +824,7 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
   /* ===== 부트스트랩 ===== */
   (async function init(){
     populateYouthAges(); // U7~U18 세팅
-    await loadTournaments();
+    await loadTournaments();            // ← 대회 목록 로드 (중복 선언 에러가 사라져 정상 동작)
     const initialId = $('#tourSelect').value || '';
     const initialTour = initialId ? TOUR_MAP[initialId] : null;
     renderTourInfo(initialTour);
@@ -869,7 +856,7 @@ function computePosterVariants(posterUrl, posterId, posterLegacy){
           $('#uniformHome').value=t.uniformHome||'#ff0000'; $('#uniformAway').value=t.uniformAway||'#ffffff';
           $('#uniformHomePicker').value=$('#uniformHome').value; $('#uniformAwayPicker').value=$('#uniformAway').value;
           renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
-          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; playersDiv.appendChild(c); });
+          playersDiv.innerHTML=''; (pls||[]).forEach(pl=>{ const c=createPlayerCard(); c.querySelector('[data-key="name"]').value=pl.name||''; c.querySelector('[data-key="number"]').value=pl.number||''; c.querySelector('[data-key="position"]').value=(pl.position||'').toUpperCase(); c.querySelector('[data-key="birth"]').value=pl.birth||''; c.querySelector('[data-key="elite"]').value=pl.elite||''; playersDiv.appendChild(c); });
           show('수정 링크로 불러온 신청서입니다.');
         }
       }catch(e){}
