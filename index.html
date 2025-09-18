@@ -374,25 +374,35 @@
   const buildDown  = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
   const buildPlain = id => 'https://drive.google.com/uc?id='+encodeURIComponent(id);
   const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000'; // ← 공백 제거
+  const buildPlain = id => 'https://drive.google.com/uc?id='+encodeURIComponent(id);
 
-  // posterUrl, posterId, poster(레거시) 모두 지원 + data:image 도 표시
-  function computePosterVariants(posterUrl, posterId, posterLegacy){
-    const variants=[];
-    const candidates=[posterId, posterUrl, posterLegacy].filter(v=>typeof v==='string' && v.trim());
-    // 1) Drive ID 우선
-    const id=candidates.map(extractDriveId).find(Boolean);
-    if(id){
-      [buildView(id), buildDown(id), buildPlain(id), buildThumb(id)].forEach(u=>{ if(!variants.includes(u)) variants.push(u); });
-    }
-    // 2) data:image 또는 직접 이미지 URL
-    candidates.forEach(u=>{
-      const s=String(u).trim();
-      if(/^data:image\//i.test(s)){ if(!variants.includes(s)) variants.push(s); return; }
-      if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(s) && !variants.includes(s)) variants.push(s);
-      if(/^https?:\/\//i.test(s) && !variants.includes(s)) variants.push(s);
-    });
-    return variants;
+  // 기존: function computePosterVariants(posterUrl, posterId){ ... }
+// 변경: 레거시 poster, data:image, buildPlain 지원
+function computePosterVariants(posterUrl, posterId, posterLegacy){
+  const variants=[];
+  const candidates=[posterId, posterUrl, posterLegacy].filter(v=>typeof v==='string' && v.trim());
+
+  // 1) Drive ID 우선 추출
+  const id = candidates.map(extractDriveId).find(Boolean);
+  if(id){
+    [ 
+      'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id),
+      'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id),
+      'https://drive.google.com/uc?id='+encodeURIComponent(id), // buildPlain
+      'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000' // buildThumb
+    ].forEach(u=>{ if(!variants.includes(u)) variants.push(u); });
   }
+
+  // 2) 직접 URL / data:image 처리
+  candidates.forEach(u=>{
+    const s=String(u).trim();
+    if(/^data:image\//i.test(s)){ if(!variants.includes(s)) variants.push(s); return; }
+    if(/\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(s) && !variants.includes(s)) variants.push(s);
+    if(/^https?:\/\//i.test(s) && !variants.includes(s)) variants.push(s);
+  });
+
+  return variants;
+}
 
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
