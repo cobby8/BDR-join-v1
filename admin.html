@@ -454,41 +454,169 @@ window.addEventListener('beforeunload',(e)=>{ if(DIRTY){ e.preventDefault(); e.r
 async function confirmDiscardIfDirty(){ if(!DIRTY) return true; const ok=confirm('저장하지 않은 변경사항이 있습니다. 계속 진행할까요?'); if(ok) DIRTY=false; return ok; }
 
 /* ========= 종별/장소 UI ========= */
-const DIVISION_PRESETS={'일반부':['D3','D4','D5','D6','D7'],'대학부':['U1','U2','U3','UW'],'여성부':['D3','D4','D5'],'유소년부':['하모니','i1','i2','i3','i4']};
-function renderDivRow(container, group, values, editable){
-  const row=el(`<div class="place-item"></div>`);
-  const left=el(`<div style="display:flex;align-items:center;gap:8px"><b>${group}</b></div>`);
-  const delSmall=el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
-  delSmall.addEventListener('click',()=>{ if(FORM_LOCKED) return; if(confirm(`"${group}" 구분을 삭제할까요?`)){ DIV_STATE=DIV_STATE.filter(s=>s.group!==group); DIRTY=true; refreshDivUI(); } });
+// 기존 DIVISION_PRESETS 를 아래로 교체
+const DIVISION_PRESETS = {
+  '일반부': ['D3','D4','D5','D6','D7'],
+  '대학부': ['U1','U2','U3','UW'],
+  '여성부': ['D3','D4','D5'],
+  // 유소년부에 하모니w, i1w~i4w 추가
+  '유소년부': ['하모니','하모니w','i1','i1w','i2','i2w','i3','i3w','i4','i4w']
+};
+
+// 유소년 연령(참가신청서와 동일하게) U7 ~ U18
+const YOUTH_AGE_LABELS = Array.from({length: 12}, (_, i) => 'U' + (7 + i));
+
+function renderDivRow(container, set, editable){
+  const group = set.group;
+  const divisions = set.divisions || [];
+  const ages = group === '유소년부' ? (set.ages || []) : [];
+
+  const row = el(`<div class="place-item"></div>`);
+
+  // 좌측: 그룹명 + 삭제
+  const left = el(`<div style="display:flex;align-items:center;gap:8px"><b>${group}</b></div>`);
+  const delSmall = el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
+  delSmall.addEventListener('click',()=>{ 
+    if(FORM_LOCKED) return; 
+    if(confirm(`"${group}" 구분을 삭제할까요?`)){ 
+      DIV_STATE = DIV_STATE.filter(s=>s.group!==group); 
+      DIRTY=true; 
+      refreshDivUI(); 
+    } 
+  });
   left.appendChild(delSmall);
   row.appendChild(left);
-  const chips=el(`<div class="chips"></div>`);
-  chips.innerHTML = (values||[]).length ? values.map(v=>`<span class="chip" data-v="${v}" title="${editable?'클릭하여 제거':''}">${v}${editable?' ×':''}</span>`).join('') : `<span class="muted">미선택</span>`;
+
+  // 가운데1: 종별 칩
+  const chipsDiv = el(`<div class="chips"></div>`);
+  chipsDiv.innerHTML = divisions.length 
+    ? divisions.map(v=>`<span class="chip" data-type="div" data-v="${v}" title="${editable?'클릭하여 제거':''}">${v}${editable?' ×':''}</span>`).join('')
+    : `<span class="muted">종별 미선택</span>`;
   if (editable){
-    chips.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{ const v=c.getAttribute('data-v'); const set=DIV_STATE.find(s=>s.group===group); if(set){ set.divisions=set.divisions.filter(x=>x!==v); DIRTY=true; refreshDivUI(); }}));
+    chipsDiv.querySelectorAll('.chip[data-type="div"]').forEach(c=>{
+      c.addEventListener('click',()=>{
+        const v=c.getAttribute('data-v');
+        const st=DIV_STATE.find(s=>s.group===group);
+        if(st){ st.divisions=(st.divisions||[]).filter(x=>x!==v); DIRTY=true; refreshDivUI(); }
+      });
+    });
   }
-  row.appendChild(chips);
+  row.appendChild(chipsDiv);
+
+  // 가운데2: (유소년 전용) 연령 칩
+  const chipsAge = el(`<div class="chips"></div>`);
+  if (group === '유소년부'){
+    chipsAge.innerHTML = ages.length
+      ? ages.map(v=>`<span class="chip" data-type="age" data-v="${v}" title="${editable?'클릭하여 제거':''}">${v}${editable?' ×':''}</span>`).join('')
+      : `<span class="muted">연령 미선택</span>`;
+    if (editable){
+      chipsAge.querySelectorAll('.chip[data-type="age"]').forEach(c=>{
+        c.addEventListener('click',()=>{
+          const v=c.getAttribute('data-v');
+          const st=DIV_STATE.find(s=>s.group===group);
+          if(st){ st.ages=(st.ages||[]).filter(x=>x!==v); DIRTY=true; refreshDivUI(); }
+        });
+      });
+    }
+  }
+  row.appendChild(chipsAge);
+
+  // 우측(비움 - 4열 레이아웃 맞춤)
   row.appendChild(el(`<div></div>`));
-  row.appendChild(el(`<div></div>`));
+
   container.appendChild(row);
 }
-function refreshDivUI(){ const box=$('#divSetList'); box.innerHTML=''; const editable=!FORM_LOCKED; DIV_STATE.forEach(s=> renderDivRow(box,s.group,s.divisions||[],editable)); $('#addDivSetBtn').disabled=FORM_LOCKED; $('#clearAllDivBtn').disabled=FORM_LOCKED || DIV_STATE.length===0; }
+
+function refreshDivUI(){
+  const box = $('#divSetList');
+  box.innerHTML = '';
+  const editable = !FORM_LOCKED;
+  DIV_STATE.forEach(s => renderDivRow(box, s, editable));
+  $('#addDivSetBtn').disabled = FORM_LOCKED;
+  $('#clearAllDivBtn').disabled = FORM_LOCKED || DIV_STATE.length === 0;
+}
+
 function openDivFloating(){
-  const body=el(`<div><label>구분</label><select id="popGroupSel" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #e6ecf5;border-radius:12px"></select><div id="popDivChecks"></div></div>`);
+  const body = el(`
+    <div>
+      <label>구분</label>
+      <select id="popGroupSel" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #e6ecf5;border-radius:12px"></select>
+      <div id="popDivChecks"></div>
+      <div id="popAgeWrap" style="margin-top:10px;display:none">
+        <label>연령(유소년)</label>
+        <div id="popAgeChecks"></div>
+      </div>
+    </div>
+  `);
+
   const sel = body.querySelector('#popGroupSel');
-  sel.innerHTML=Object.keys(DIVISION_PRESETS).map(g=>`<option value="${g}">${g}</option>`).join('');
-  const checks=body.querySelector('#popDivChecks');
-  function render(g){ const opts=DIVISION_PRESETS[g]||[]; checks.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:8px;">${opts.map(v=>`<label class="chip"><input type="checkbox" value="${v}"> ${v}</label>`).join('')}</div>`; }
-  sel.addEventListener('change',()=>render(sel.value));
+  sel.innerHTML = Object.keys(DIVISION_PRESETS).map(g=>`<option value="${g}">${g}</option>`).join('');
+
+  const checks = body.querySelector('#popDivChecks');
+  const ageWrap = body.querySelector('#popAgeWrap');
+  const ageChecks = body.querySelector('#popAgeChecks');
+
+  function render(g){
+    const opts = DIVISION_PRESETS[g] || [];
+    const existing = DIV_STATE.find(s=>s.group===g) || {};
+    const pickedDivs = existing.divisions || [];
+
+    // 종별 체크박스
+    checks.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${opts.map(v=>`<label class="chip"><input type="checkbox" value="${v}" ${pickedDivs.includes(v)?'checked':''}> ${v}</label>`).join('')}
+      </div>`;
+
+    // 유소년이면 연령 노출
+    if(g === '유소년부'){
+      ageWrap.style.display = '';
+      const pickedAges = existing.ages || [];
+      ageChecks.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${YOUTH_AGE_LABELS.map(a=>`<label class="chip"><input type="checkbox" value="${a}" ${pickedAges.includes(a)?'checked':''}> ${a}</label>`).join('')}
+        </div>`;
+    }else{
+      ageWrap.style.display = 'none';
+      ageChecks.innerHTML = '';
+    }
+  }
+
+  sel.addEventListener('change', ()=>render(sel.value));
   render(sel.value);
-  const actions=el(`<div></div>`);
-  const cancel=el(`<button class="btn">취소</button>`);
-  const ok=el(`<button class="btn primary">적용</button>`);
+
+  const actions = el(`<div></div>`);
+  const cancel = el(`<button class="btn">취소</button>`);
+  const ok = el(`<button class="btn primary">적용</button>`);
   actions.appendChild(cancel); actions.appendChild(ok);
   cancel.addEventListener('click', closePopover);
-  ok.addEventListener('click',()=>{ const picked=[...checks.querySelectorAll('input:checked')].map(i=>i.value); if(!picked.length) return alert('종별을 선택하세요.'); let set=DIV_STATE.find(s=>s.group===sel.value); if(!set){ set={group:sel.value,divisions:[]}; DIV_STATE.push(set); } picked.forEach(v=>{ if(!set.divisions.includes(v)) set.divisions.push(v); }); DIRTY=true; refreshDivUI(); closePopover(); });
+
+  ok.addEventListener('click', ()=>{
+    const g = sel.value;
+    const pickedDiv = [...checks.querySelectorAll('input:checked')].map(i=>i.value);
+    if(!pickedDiv.length) return alert('종별을 선택하세요.');
+    const pickedAges = g==='유소년부' ? [...ageChecks.querySelectorAll('input:checked')].map(i=>i.value) : [];
+
+    let set = DIV_STATE.find(s=>s.group===g);
+    if(!set){ set = { group: g, divisions: [], ages: [] }; DIV_STATE.push(set); }
+
+    // 종별은 병합(중복 제거)
+    pickedDiv.forEach(v=>{ if(!set.divisions.includes(v)) set.divisions.push(v); });
+
+    // 유소년 연령은 병합(중복 제거). 유소년이 아니면 ages 제거
+    if(g === '유소년부'){
+      set.ages = Array.from(new Set([...(set.ages||[]), ...pickedAges]));
+    }else{
+      delete set.ages;
+    }
+
+    DIRTY = true;
+    refreshDivUI();
+    closePopover();
+  });
+
   openPopoverCentered('구분/종별 선택', body, actions);
 }
+
 document.getElementById('addDivSetBtn').addEventListener('click', openDivFloating);
 
 function makePlaceRow(init={name:''}){
