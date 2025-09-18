@@ -232,7 +232,9 @@
 <script>
 /* ========= 상수 ========= */
 const WEB_APP_URL='https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
-const VIEWER_BASE='./teamview.html';
+
+/* ✅ 파일명 정정: teamviewer.html 로 확정 */
+const VIEWER_BASE='./teamviewer.html';
 
 /* ========= 상태 점 ========= */
 function setHealth(color, tip){ const dot=document.getElementById('healthDot'); dot.style.color=color; if(tip) dot.title=tip||''; }
@@ -247,7 +249,7 @@ let conf=store.load(); if(!validWebAppUrl(conf.appUrl)) { conf.appUrl=WEB_APP_UR
 const $=s=>document.querySelector(s);
 const el=h=>{ const t=document.createElement('template'); t.innerHTML=h.trim(); return t.content.firstElementChild; };
 const pad=n=>String(n).padStart(2,'0');
-const phonePretty=s=> (s||'').replace(/\D/g,'').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
+const phonePretty=s=> (s||'').replace(/\D/g,'').replace(/^(\d{3})(단|[0-9]{3,4})([0-9]{4})$/, (m,a,b,c)=>`${a}-${b}-${c}`);
 function fmtDate(v){ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return String(v); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function toInputDateOnly(s){ if(!s) return ''; if(typeof s==='string'){ const m=s.match(/^(\d{4}-\d{2}-\d{2})/); if(m) return m[1]; } const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; return ''; }
 function toInputDT(s){ if(!s) return ''; if(typeof s==='string'){ const m=s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/); if(m) return `${m[1]}T${m[2]}:${m[3]}`; } const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; return ''; }
@@ -381,7 +383,8 @@ function normalizeTeamRow(r){
   };
 }
 function rowTeam(v){
-  const openBtn = `<a href="#" class="btn primary open-view" data-id="${v.teamId}" title="TeamView(새 탭)">열기</a>`;
+  /* ✅ TeamViewer로 정확히 연결되도록 tourId, teamId를 모두 data-*로 보관 */
+  const openBtn = `<a href="#" class="btn primary open-view" data-id="${v.teamId}" data-tour="${v.tourId}" title="TeamViewer(새 탭)">열기</a>`;
   return `<tr>
     <td class="ellipsis" title="${v.tourName||''}">${v.tourName||'-'}</td>
     <td class="ellipsis" title="${v.region||''}">${v.region||'-'}</td>
@@ -406,8 +409,23 @@ async function loadTeams(){
   }
   $('#teamsTbody').innerHTML=rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') || `<tr><td colspan="7" class="muted">데이터 없음</td></tr>`;
 }
+
+/* ✅ TeamViewer 열기: tourId와 teamId를 함께 넘기고, 경로가 절대/상대 모두 동작하도록 */
 document.getElementById('teamsTbody').addEventListener('click', (e)=>{
-  const open=e.target.closest('.open-view'); if(open){ e.preventDefault(); const id=open.dataset.id||''; if(!id) return; const url=`${VIEWER_BASE}?teamId=${encodeURIComponent(id)}`; window.open(url,'_blank','noopener'); }
+  const open=e.target.closest('.open-view'); 
+  if(open){
+    e.preventDefault(); 
+    const teamId=open.dataset.id||'';
+    const tourId=open.dataset.tour||'';
+    if(!teamId) return;
+    // VIEWER_BASE가 절대경로면 그대로, 상대면 현재 위치 기준
+    let base = VIEWER_BASE;
+    try{ new URL(VIEWER_BASE); } catch { base = new URL(VIEWER_BASE, location.href).toString(); }
+    const url = new URL(base);
+    url.searchParams.set('teamId', teamId);
+    if(tourId) url.searchParams.set('tourId', tourId);
+    window.open(url.toString(),'_blank','noopener');
+  }
 });
 
 /* ========= 상태/잠금 ========= */
@@ -568,7 +586,7 @@ function openDivFloating(){
     const picked = existing.divisions || [];
 
     if (g === '유소년부'){
-      // 유소년: 라디오(단일선택) UI + 추가 버튼, 상단 칩에는 "종별 연령" 문자열들이 들어감
+      // 유소년: 라디오(단일선택) UI + 추가 버튼
       youthWrap.style.display = '';
       checks.innerHTML = `<div class="muted">※ 유소년은 아래에서 종별/연령을 하나씩 선택 후 <b>+ 쌍 추가</b>를 누르세요.</div>`;
 
@@ -582,7 +600,6 @@ function openDivFloating(){
           ${YOUTH_AGE_LABELS.map(a=>`<label class="chip"><input type="radio" name="y_age" value="${a}"> ${a}</label>`).join('')}
         </div>`;
 
-      // 버튼 핸들러
       const btnAdd = body.querySelector('#btnAddPair');
       btnAdd.onclick = ()=>{
         const div = (body.querySelector('input[name="y_div"]:checked')||{}).value || '';
@@ -602,7 +619,7 @@ function openDivFloating(){
       };
 
     }else{
-      // 일반/대학/여성: 기존처럼 체크박스 다중선택
+      // 일반/대학/여성: 체크박스 다중선택
       youthWrap.style.display = 'none';
       youthDivRadios.innerHTML = '';
       youthAgeRadios.innerHTML = '';
@@ -627,7 +644,6 @@ function openDivFloating(){
     const g = sel.value;
 
     if (g === '유소년부'){
-      // 유소년은 +쌍 추가로 이미 DIV_STATE에 들어갔으므로 여기서는 바로 닫기
       if(!(DIV_STATE.find(s=>s.group===g)?.divisions||[]).length){
         return alert('추가된 쌍이 없습니다. 아래에서 종별/연령을 선택 후 "+ 쌍 추가"를 눌러주세요.');
       }
@@ -637,7 +653,6 @@ function openDivFloating(){
       return;
     }
 
-    // 그 외: 체크박스 수집 후 병합
     const pickedDiv = [...checks.querySelectorAll('input:checked')].map(i=>i.value);
     if(!pickedDiv.length) return alert('종별을 선택하세요.');
 
@@ -681,7 +696,7 @@ function openPlaceFloating(initName,onApply){
   openPopoverCentered(initName?'장소명 수정':'장소 추가', body, actions);
 }
 
-/* ========= 포스터: 업로드/미리보기(폴백 체인) ========= */
+/* ========= 포스터: 업로드/미리보기 ========= */
 let POSTER_DATA_URL='', POSTER_CLEAR=false;
 
 function extractDriveId(u){
@@ -698,7 +713,6 @@ const buildDown=id=>'https://drive.google.com/uc?export=download&id='+encodeURIC
 const buildThumb=(id,w=2000)=>'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+w;
 
 function normalizePosterFromFields(posterUrl, posterId){
-  // 반환: {primary, variants[]} (복사 버튼은 primary 사용)
   const variants=[];
   const id = extractDriveId(posterId) || extractDriveId(posterUrl);
   if(id){
@@ -745,7 +759,6 @@ async function renderPoster(){
     img.onerror=tryNext; img.onload=()=>{};
     tryNext();
     $('#posterCopy').disabled=false; $('#posterClear').disabled=false;
-    // 복사 버튼은 primary 기준
     $('#posterCopy').dataset.copyUrl = variants[0] || showUrl;
   }
 }
