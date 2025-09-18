@@ -1,0 +1,33 @@
+[
+  {
+    "tourId": "BDR-2025-10-GNBA",
+    "name": "GNBA 2025 가을리그",
+    "status": "접수중",
+    "start": "2025-10-05T09:00:00+09:00",
+    "end": "2025-10-26T21:00:00+09:00",
+    "regStart": "2025-09-20T00:00:00+09:00",
+    "regEnd": "2025-10-02T23:59:59+09:00",
+    "url": "https://example.com/gnba",
+    "posterUrl": "https://YOUR-SITE.netlify.app/assets/gnba-2025-fall.jpg",
+    "divs": {
+      "일반부": ["A", "B"],
+      "유소년": ["하모니", "하모니w", "i1", "i2", "i3", "i4", "i1w", "i2w", "i3w", "i4w"]
+    },
+    "places": [{"name":"강남구민체육관"},{"name":"대치중 체육관"}]
+  },
+  {
+    "tourId": "BDR-2025-11-U",
+    "name": "BDR 유소년 컵 2025",
+    "status": "준비중",
+    "start": "2025-11-09T09:00:00+09:00",
+    "end": "2025-11-09T18:00:00+09:00",
+    "regStart": "",
+    "regEnd": "",
+    "url": "",
+    "posterUrl": "https://YOUR-SITE.netlify.app/assets/youth-cup.jpg",
+    "divs": {
+      "유소년": ["하모니", "하모니w", "i1", "i2", "i3", "i4", "i1w", "i2w", "i3w", "i4w"]
+    },
+    "places": ["서울","경기"]
+  }
+]
