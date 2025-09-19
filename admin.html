@@ -357,9 +357,9 @@ function tourCard(t){
    box.querySelectorAll('.pill').forEach(el=>{
      el.addEventListener('click', async ()=>{
        if(!(await confirmDiscardIfDirty())) return;
--      const id=el.getAttribute('data-id'); const t=TOURS[id];
-+      const id = el.getAttribute('data-id');
-+      const t  = TOURS[id] || (TOUR_ARRAY||[]).find(x => String((x.tourId||x.TourID)||'')===id) || null;
+       const id=el.getAttribute('data-id'); const t=TOURS[id];
+       const id = el.getAttribute('data-id');
+       const t  = TOURS[id] || (TOUR_ARRAY||[]).find(x => String((x.tourId||x.TourID)||'')===id) || null;
        CURRENT_TOUR_OBJ=t||null;
        await loadTourToForm(t,true);
        $('#editBtn').disabled=false;
