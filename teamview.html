@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --blue:#1769ff; --bg:#f6f8fb; --card:#fff; --muted:#6b7684; --red:#ef4444; --green:#16a34a }
+  :root{ --blue:#1769ff; --bg:#f6f8fb; --card:#fff; --muted:#6b7684; --chip-bg:#f1f5fb; --chip-bd:#e4ecf7 }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
   .wrap{max-width:980px;margin:20px auto;padding:0 14px 64px}
@@ -22,7 +22,9 @@
   .row{display:grid;gap:10px}
   @media(min-width:720px){ .row-2{grid-template-columns:1.2fr 1fr} }
   .kvs{display:grid;grid-template-columns:120px 1fr;gap:6px;font-size:14px}
-  .kv-k{color:#6b7280}
+  .kv-k{color:#6b7280;align-self:center}
+  .kv-v{align-self:center}
+  .kv-chip{display:inline-block;max-width:100%;padding:6px 10px;border-radius:999px;border:1px solid var(--chip-bd);background:var(--chip-bg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .badge{display:inline-block;font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid #e2e8f0;background:#f1f5fb;color:#334155}
   .jersey{display:inline-flex;align-items:center;gap:6px}
   /* table */
@@ -34,8 +36,9 @@
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
   .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .center{display:flex;justify-content:center;align-items:center}
-  .skeleton{height:14px;background:linear-gradient(90deg,#f2f4f7,#e9eef7,#f2f4f7);border-radius:8px;animation:sh 1.2s infinite}
-  @keyframes sh{0%{background-position:-100px 0}100%{background-position:100px 0}}
+  .skeleton{background:linear-gradient(90deg,#f2f4f7,#e9eef7,#f2f4f7) 0 0/200px 100% no-repeat;animation:sh 1.2s infinite}
+  .skeleton-pill{height:24px;border-radius:999px;display:inline-block}
+  @keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
   /* mobile-friendly column visibility */
   @media (max-width: 640px) {
     .col-pos, .col-elite, .col-age, .col-birth { display:none; }
@@ -72,10 +75,14 @@
       </div>
       <div>
         <div class="kvs" id="teamKVs">
-          <!-- key-values -->
-          <div class="kv-k">지역</div><div id="kvRegion" class="ellipsis skeleton" style="width:60%"></div>
-          <div class="kv-k">종별·디비전</div><div id="kvCatDiv" class="ellipsis skeleton" style="width:45%"></div>
-          <div class="kv-k">대표자</div><div id="kvManager" class="ellipsis skeleton" style="width:70%"></div>
+          <div class="kv-k">지역</div>
+          <div class="kv-v"><span id="kvRegion" class="kv-chip skeleton skeleton-pill" style="width:60%"></span></div>
+
+          <div class="kv-k">종별·디비전</div>
+          <div class="kv-v"><span id="kvCatDiv" class="kv-chip skeleton skeleton-pill" style="width:50%"></span></div>
+
+          <div class="kv-k">대표자</div>
+          <div class="kv-v"><span id="kvManager" class="kv-chip skeleton skeleton-pill" style="width:70%"></span></div>
         </div>
       </div>
     </div>
@@ -99,7 +106,7 @@
           </tr>
         </thead>
         <tbody id="playersTbody">
-          <tr><td colspan="6" class="center"><div class="skeleton" style="width:60%"></div></td></tr>
+          <tr><td colspan="6" class="center"><div class="skeleton" style="width:60%;height:16px;border-radius:8px"></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -137,6 +144,13 @@ function qs(k){ return new URLSearchParams(location.search).get(k)||''; }
 function fmtBirth(s){ if(!s) return ''; const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; return String(s); }
 
 /* ============ 렌더러 ============ */
+function fillKV(id, text){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = text || '-';
+  el.classList.remove('skeleton','skeleton-pill');
+}
+
 function renderTeamCard(team){
   if(!team){
     $('#teamTitle').textContent='팀 정보를 찾을 수 없습니다.';
@@ -155,9 +169,10 @@ function renderTeamCard(team){
   const region = [team.province||'', team.city||''].join(' ').trim() || (team.region||'');
   const catdiv = [team.category||'', team.division||''].filter(Boolean).join(' · ');
   const mgr = [team.managerName||'', phonePretty(team.managerPhone||'')].filter(Boolean).join(' · ');
-  $('#kvRegion').textContent = region || '-';
-  $('#kvCatDiv').textContent = catdiv || '-';
-  $('#kvManager').textContent = mgr || '-';
+
+  fillKV('kvRegion', region);
+  fillKV('kvCatDiv', catdiv);
+  fillKV('kvManager', mgr);
 }
 
 function renderPlayers(rows){
