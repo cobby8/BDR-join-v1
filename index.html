@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>BDR 참가신청서 v1.0</title>
+<title>BDR 참가신청서 v1.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -29,6 +29,12 @@
 
   .brand{position:absolute;right:30px;top:30px}
   .brand img{height:31px;opacity:.95}
+  /* 연결상태 + 설정 */
+  .conn{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:6px}
+  .dot{font-size:14px;line-height:1}
+  .dot.ok{color:#1769ff}
+  .dot.bad{color:#ef4444}
+  .dot.warn{color:#f59e0b}
 
   .step{display:none}.step.active{display:block}
   .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
@@ -60,8 +66,14 @@
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="brand"><img id="bdrLogo" alt="BDR" src="BDR(배경없음).png"></div>
-    <h1>BDR 참가신청서 v1.0</h1>
+    <div class="brand">
+      <img id="bdrLogo" alt="BDR" src="BDR(배경없음).png">
+      <div class="conn" title="Apps Script 연결 상태">
+        <span id="connDot" class="dot warn">●</span>
+        <button class="btn-sm" id="formSettingsBtn" type="button" title="Web App URL 설정">⚙️</button>
+      </div>
+    </div>
+    <h1>BDR 참가신청서 v1.1</h1>
     <div class="muted">참가 대회 선택 ➜ 팀 대표 정보 ➜ 선수 명단 ➜ 제출</div>
 
     <!-- 0) 대회 선택 -->
@@ -126,7 +138,6 @@
     <!-- 1) 팀 기본정보 -->
     <div class="step" id="step1">
       <div class="section-title">① 팀 기본정보</div>
-
       <div class="row row-2">
         <div>
           <label>시도 선택</label>
@@ -279,9 +290,58 @@
 </div>
 
 <script>
-  /* ===== 설정 ===== */
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
-  const DEBUG_POSTER = false;
+  /* ===== 연결 설정/헬퍼 ===== */
+  const DEFAULT_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
+  const CONF_KEY = 'BDR_FORM_CONF_V1';
+
+  const store = {
+    load(){ try{ return JSON.parse(localStorage.getItem(CONF_KEY)||'{}'); }catch{return{};} },
+    save(o){ localStorage.setItem(CONF_KEY, JSON.stringify(o||{})); }
+  };
+  const conf = store.load();
+  function validWebAppUrl(u){ return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(\?.*)?$/i.test((u||'').trim()); }
+  if(!validWebAppUrl(conf.appUrl)) { conf.appUrl = DEFAULT_APP_URL; store.save(conf); }
+
+  function appUrl(){ return (conf.appUrl||DEFAULT_APP_URL).trim(); }
+  function apiUrl(path, params){
+    const u = new URL(appUrl());
+    if(path) u.searchParams.set('path', path);
+    if(params) Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,String(v)));
+    return u.toString();
+  }
+
+  async function getJSONFlex(u){
+    try{
+      const r = await fetch(u, { cache:'no-store', mode:'cors', credentials:'omit', redirect:'follow' });
+      const t = await r.text();
+      try { return JSON.parse(t); } catch(e) {
+        // 로그인/권한/오류 HTML일 때도 무너지지 않게
+        return { ok:false, error:'JSON_PARSE_FAIL', raw: t.slice(0,300) };
+      }
+    }catch(e){
+      return { ok:false, error: String(e && e.message || e) };
+    }
+  }
+
+  async function apiGet(path, params){ return getJSONFlex(apiUrl(path, params)); }
+
+  async function apiPost(paths, payload){
+    const bodyText = JSON.stringify(payload||{});
+    async function tryTextPlain(p){
+      const r = await fetch(apiUrl(p), { method:'POST', headers:{'Content-Type':'text/plain'}, body:bodyText });
+      const t = await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false,error:t||'JSON 파싱 실패'}; }
+    }
+    async function tryForm(p){
+      const r = await fetch(apiUrl(p), { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'payload='+encodeURIComponent(bodyText) });
+      const t = await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false,error:t||'JSON 파싱 실패'}; }
+    }
+    let last = null;
+    for(const p of paths){
+      try{ const j = await tryTextPlain(p); last=j; if(j && (j.ok!==undefined || j.rows!==undefined)) return j; }catch(e){}
+      try{ const j = await tryForm(p); last=j; if(j && (j.ok!==undefined || j.rows!==undefined)) return j; }catch(e){}
+    }
+    return last || { ok:false, error:'unknown' };
+  }
 
   /* ===== URL 파라미터(링크 수정 모드) ===== */
   const qs=new URLSearchParams(location.search);
@@ -292,22 +352,11 @@
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const show=msg=>{ const t=$('.toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); };
 
-  async function postWithFallback(paths, payload){
-    const bodyText=JSON.stringify(payload||{});
-    const tryTextPlain=async(p)=>{
-      const r=await fetch(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`,{method:'POST',headers:{'Content-Type':'text/plain'},body:bodyText});
-      const t=await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false,error:t||'JSON 파싱 실패'}; }
-    };
-    const tryUrlEncoded=async(p)=>{
-      const r=await fetch(`${WEB_APP_URL}?path=${encodeURIComponent(p)}`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'payload='+encodeURIComponent(bodyText)});
-      const t=await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false,error:t||'JSON 파싱 실패'}; }
-    };
-    let last=null;
-    for(const p of paths){
-      try{ const j=await tryTextPlain(p); last=j; if(j && (j.ok!==undefined || j.rows!==undefined)) return j; }catch(e){}
-      try{ const j=await tryUrlEncoded(p); last=j; if(j && (j.ok!==undefined || j.rows!==undefined)) return j; }catch(e){}
-    }
-    return last||{ok:false,error:'unknown'};
+  function setConn(state, tip){
+    const dot = $('#connDot');
+    dot.classList.remove('ok','bad','warn');
+    if(state==='ok') dot.classList.add('ok'); else if(state==='bad') dot.classList.add('bad'); else dot.classList.add('warn');
+    if(tip) dot.title = tip;
   }
 
   (function fixLogo(){
@@ -316,6 +365,17 @@
     const inline='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="36"><rect width="120" height="36" fill="white"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-weight="700" font-family="sans-serif" fill="#111">BDR</text></svg>');
     el.onerror=()=>{ if(el.dataset.fallback==='1'){ el.src=inline; } else { el.dataset.fallback='1'; el.src=fallback2; } };
   })();
+
+  // 설정 버튼: Web App URL 변경
+  $('#formSettingsBtn').addEventListener('click', ()=>{
+    const cur=(conf.appUrl||'').trim();
+    const val=prompt('Apps Script Web App URL을 입력하세요 (…/exec):', cur);
+    if(val===null) return;
+    if(!validWebAppUrl(val)) { alert('URL 형식이 올바르지 않습니다. (…/exec)'); return; }
+    conf.appUrl = val.trim(); store.save(conf);
+    show('설정이 저장되었습니다. 다시 시도 중…');
+    boot(true);
+  });
 
   $$('.next').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -330,16 +390,22 @@
 
   /* ===== 대회 목록 ===== */
   let TOUR_MAP={}, currentTour=null;
+
   async function loadTournaments(){
-    const res=await fetch(`${WEB_APP_URL}?path=tournaments`);
-    const json=await res.json();
-    if(!json.ok) return;
+    const json = await apiGet('tournaments');
+    if(!(json && (json.ok || Array.isArray(json.rows)))){
+      setConn('bad', (json && (json.error || (json.raw && '로그인/권한 필요'))) || '연결 실패');
+      return;
+    }
+    setConn('ok','연결 정상');
+
     const sel=$('#tourSelect'); sel.innerHTML='<option value="">대회를 선택하세요</option>';
+    TOUR_MAP = {};
     (json.rows||[]).forEach(t=>{
       TOUR_MAP[t.TourID||t.tourId]=t;
       const opt=document.createElement('option');
       opt.value=t.TourID||t.tourId;
-      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
+      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:''; 
       opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
       sel.appendChild(opt);
     });
@@ -392,16 +458,10 @@
     const t = TOUR_MAP[tourId]; if(!t) return;
 
     const urls = computePosterVariants(t.posterUrl, t.posterId, t.poster);
-    if(DEBUG_POSTER) console.debug('[Poster] variants:', urls, t);
     if(!urls.length) return;
 
     let idx=0;
-    const tryNext=()=>{
-      if(idx>=urls.length){
-        wrap.style.display='none'; img.removeAttribute('src'); return;
-      }
-      img.src = urls[idx++];
-    };
+    const tryNext=()=>{ if(idx>=urls.length){ wrap.style.display='none'; img.removeAttribute('src'); return; } img.src = urls[idx++]; };
     img.onload = ()=>{ wrap.style.display='block'; };
     img.onerror= ()=>{ tryNext(); };
     tryNext();
@@ -474,12 +534,9 @@
   /* ===== 유니폼 SVG/색상 ===== */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
-      <defs><filter id="shadow" x="-20%" y="-20%" width="140%">
-        <feDropShadow dx="0" dy="2" stdDeviation="2"></feDropShadow>
-      </filter></defs>
+      <defs><filter id="shadow" x="-20%" y="-20%" width="140%"><feDropShadow dx="0" dy="2" stdDeviation="2"></feDropShadow></filter></defs>
       <g filter="url(#shadow)">
-        <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z"
-              fill="${hex}" stroke="#111" stroke-width="1.5"/>
+        <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z" fill="${hex}" stroke="#111" stroke-width="1.5"/>
         <path d="M54 22 L60 28 L66 22" fill="none" stroke="#111" stroke-width="2"/>
         <rect x="38" y="60" width="44" height="8" rx="4" fill="rgba(255,255,255,0.25)"/>
         <path d="M35 34 L35 24" stroke="#111" stroke-width="1"/>
@@ -617,7 +674,7 @@
   }
 
   /* ===== 본인 신청서 찾기/불러오기/복제 ===== */
-  let ownerEdit=null;   // {teamId,name,phone} — 수정 모드일 때만 사용
+  let ownerEdit=null;   // {teamId,name,phone}
   let cloneSource=null; // {team, players}
 
   // 검색
@@ -625,8 +682,7 @@
     const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
     if(!name || phone.length<8){ show('이름과 연락처(숫자만)를 입력하세요'); return; }
     try{
-      const res=await fetch(`${WEB_APP_URL}?path=findteam&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
-      const json=await res.json();
+      const json = await apiGet('findteam', { name, phone });
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
       const list=json.items||[]; if(list.length===0){ show('일치하는 신청서가 없습니다.'); $('#ownerResult').style.display='none'; return; }
       const sel=$('#ownerTeamSel'); sel.innerHTML='';
@@ -639,7 +695,6 @@
     }catch(e){ alert('네트워크 오류'); }
   });
 
-  // 팀/선수 폼 채우기
   async function fillFormFromTeam_(t, pls){
     if (t.tourId && TOUR_MAP[t.tourId]) {
       $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId];
@@ -649,7 +704,6 @@
     $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
     $('#managerName').value = t.managerName || ''; $('#managerPhone').value = String(t.managerPhone||'').replace(/\D/g,'');
 
-    // 종/디비전은 “수정하기” 때만 그대로 세팅, “복제 신청” 시에는 이후 별도 리셋
     if (t.category){
       $('#category').value = t.category;
       $('#category').dispatchEvent(new Event('change'));
@@ -682,17 +736,16 @@
     const teamId=$('#ownerTeamSel').value; const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
     if(!teamId){ show('신청서를 선택하세요'); return; }
     try{
-      const url=`${WEB_APP_URL}?path=getTeamByOwner&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&teamId=${encodeURIComponent(teamId)}`;
-      const json=await (await fetch(url)).json();
+      const json = await apiGet('getTeamByOwner', { name, phone, teamId });
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
-      ownerEdit={teamId,name,phone};           // 수정 모드
+      ownerEdit={teamId,name,phone};
       await fillFormFromTeam_(json.team||{}, json.players||[]);
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
       $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
     }catch(e){ alert('네트워크 오류'); }
   });
 
-  // 복제 신청: 드롭다운(원 대회 포함) 채우기
+  // 복제 버튼
   function fillCloneTourOptions(){
     const sel=$('#cloneTourSel');
     sel.innerHTML='<option value="">대회를 선택하세요</option>';
@@ -705,17 +758,16 @@
     const teamId=$('#ownerTeamSel').value; const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
     if(!teamId){ show('신청서를 선택하세요'); return; }
     try{
-      const url=`${WEB_APP_URL}?path=getTeamByOwner&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&teamId=${encodeURIComponent(teamId)}`;
-      const json=await (await fetch(url)).json();
+      const json = await apiGet('getTeamByOwner', { name, phone, teamId });
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
       cloneSource={ team: json.team||{}, players: json.players||[] };
-      fillCloneTourOptions();                  // 원대회 포함
+      fillCloneTourOptions();
       $('#clonePanel').style.display='block';
       show('새 대회를 선택한 뒤 [추가 신청하기]를 누르세요.');
     }catch(e){ alert('네트워크 오류'); }
   });
 
-  // 복제 신청 실행: 새 대회로 채우고 종/디비전 리셋 → ②단계로 이동
+  // 복제 실행
   $('#ownerCloneSubmitBtn').addEventListener('click', async ()=>{
     if(!cloneSource || !cloneSource.team){ show('먼저 원본 신청서를 선택해 주세요.'); return; }
     const newTourId=$('#cloneTourSel').value;
@@ -723,18 +775,13 @@
     const newTour=TOUR_MAP[newTourId];
     if(!newTour){ show('대회 정보를 불러오지 못했습니다'); return; }
 
-    // 원본 데이터로 기본정보/명단 채우되, 대회만 새 대회로
     const src=cloneSource.team, srcPlayers=cloneSource.players||[];
     await fillFormFromTeam_({...src, tourId:newTourId}, srcPlayers);
     currentTour=newTour; fillCategoriesFromTour(newTour);
 
-    // (핵심) 종별/디비전 리셋하여 다시 선택하도록
     resetCategoryDivisionUI();
-
-    // 복제는 항상 신규 신청이므로 수정모드 해제
     ownerEdit=null;
 
-    // 사용자 흐름: 바로 ② 종별/디비전 단계로 안내
     $$('.step').forEach(s=>s.classList.remove('active')); $('#step2').classList.add('active');
     window.scrollTo({top:0,behavior:'smooth'});
     show('새 대회로 불러왔습니다. ② 종별/디비전을 다시 선택해 주세요.');
@@ -756,7 +803,7 @@
       managerName: $('#managerName').value.trim(),
       managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
       category: $('#category').value,
-      division: $('#division').value,   // 유소년 연령 입력 삭제: 디비전 문자열 그대로 사용
+      division: $('#division').value,
       uniformHome: $('#uniformHome').value.trim(),
       uniformAway: $('#uniformAway').value.trim()
     };
@@ -778,7 +825,6 @@
     let candidates = ['registerteam','registerTeam'];
 
     if (ownerEdit && ownerEdit.teamId){
-      // 수정 모드일 때만 업데이트 라우트 사용
       payload.teamId = ownerEdit.teamId; payload.name = ownerEdit.name; payload.phone = ownerEdit.phone;
       candidates = ['updateteambyowner','updateTeamByOwner'];
     } else if (editTeamId && editCode){
@@ -788,7 +834,7 @@
 
     const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
     try{
-      const json = await postWithFallback(candidates, payload);
+      const json = await apiPost(candidates, payload);
       if(json.ok){
         btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
         btn.classList.add('done');
@@ -815,7 +861,8 @@
   });
 
   /* ===== 부트스트랩 ===== */
-  (async function init(){
+  async function boot(forceReload){
+    setConn('warn','연결 확인 중…');
     await loadTournaments();
     const initialId = $('#tourSelect').value || '';
     const initialTour = initialId ? TOUR_MAP[initialId] : null;
@@ -825,14 +872,18 @@
     // 링크 수정 모드: 기존값 미리 불러오기
     if (editTeamId && editCode){
       try{
-        const j=await (await fetch(`${WEB_APP_URL}?path=getTeam&teamId=${encodeURIComponent(editTeamId)}&code=${encodeURIComponent(editCode)}`)).json();
-        if(j.ok){
+        const j = await apiGet('getteam', { teamId: editTeamId, code: editCode });
+        if(j && (j.team || j.ok)){
           await fillFormFromTeam_(j.team||{}, j.players||[]);
           show('수정 링크로 불러온 신청서입니다.');
+        }else if(j && j.error){
+          show('수정 링크 불러오기 실패: ' + j.error);
         }
       }catch(e){}
     }
-  })();
+  }
+
+  (async function init(){ await boot(); })();
 </script>
 </body>
 </html>
