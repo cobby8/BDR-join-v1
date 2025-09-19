@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>BDR 관리자 v1.0</title>
+<title>BDR 관리자 v1.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -39,8 +39,6 @@
   .input-icon{position:relative}
   .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;font-size:16px}
   .offscreen{position:absolute;left:-9999px;opacity:0;width:0;height:0;pointer-events:none}
-
-  /* 목록 테이블 */
   table{width:100%;border-collapse:separate;border-spacing:0 10px;table-layout:fixed}
   col.col-tournament{width:17%}
   col.col-region{width:15%}
@@ -55,8 +53,6 @@
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
   .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .jersey{display:inline-flex;align-items:center;gap:6px}
-
-  /* Floating Popover */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.15s;z-index:9998}
   .overlay.show{opacity:1;pointer-events:auto}
   .popover{position:fixed;min-width:320px;max-width:92vw;background:#fff;border:1px solid #e6ecf5;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.16);opacity:0;transform:translate(-50%,-6px);transition:.15s;z-index:9999;left:50%;top:13%}
@@ -64,8 +60,6 @@
   .pop-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eef2f7;font-weight:700}
   .pop-body{padding:12px}
   .pop-actions{display:flex;gap:8px;justify-content:flex-end;padding:10px 12px;border-top:1px solid #eef2f7}
-
-  /* Poster */
   .poster-preview{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .poster-preview img{max-width:220px;max-height:220px;border-radius:12px;border:1px solid #e6ecf5;object-fit:contain;background:#fff}
   .poster-drop{border:1px dashed #cbd5e1;border-radius:12px;padding:12px;text-align:center;color:#64748b;cursor:pointer;min-width:240px}
@@ -75,7 +69,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>BDR 관리자 v1.0</h1>
+    <h1>BDR 관리자 v1.1</h1>
     <div class="toolbar" title="연결상태">
       <span class="muted" id="healthDot">●</span>
       <button class="btn" id="settingsBtn">⚙️ 설정</button>
@@ -83,11 +77,9 @@
     </div>
   </header>
 
-  <!-- 자동완성 트랩 -->
   <input class="offscreen" type="text" autocomplete="username" />
   <input class="offscreen" type="password" autocomplete="current-password" />
 
-  <!-- 대회 필터 -->
   <div class="card">
     <div class="row row-3">
       <div>
@@ -98,7 +90,6 @@
     </div>
   </div>
 
-  <!-- 대회 관리 -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0;font-size:16px">대회 관리</h3>
@@ -109,13 +100,11 @@
     </div>
 
     <div class="row row-2">
-      <!-- 좌 목록 -->
       <div>
         <label>대회 목록</label>
         <div id="tourList" class="grid"></div>
       </div>
 
-      <!-- 우 폼 -->
       <div id="formArea" class="locked">
         <label id="tourFormTitle">대회 등록/수정</label>
 
@@ -144,7 +133,6 @@
 
         <div class="hr"></div>
 
-        <!-- 포스터 업로드/미리보기 -->
         <label>대회 포스터</label>
         <div class="poster-preview" id="posterPreview"></div>
         <div class="toolbar" style="justify-content:space-between;margin-top:6px">
@@ -221,7 +209,6 @@
   </div>
 </div>
 
-<!-- Floating base -->
 <div id="overlay" class="overlay"></div>
 <div id="popover" class="popover" role="dialog" aria-modal="true" style="display:none">
   <div class="pop-head"><span id="popTitle">제목</span><button class="btn" id="popCloseBtn">닫기</button></div>
@@ -256,14 +243,21 @@ function statusBadgeHtml(st){ const m={'접수중':{bg:'#ecfdf5',bd:'#d1fae5',fg
 
 /* ========= API 유틸 ========= */
 const truthyFlag = (v)=>{ if (v===true || v===1) return true; if (typeof v==='string') { const s=v.trim().toLowerCase(); if (['true','ok','success','done','1','yes'].includes(s)) return true; } return false; };
-const isSuccessResponse = (j)=>{ if (!j || typeof j!=='object') return false; if (truthyFlag(j.ok) || truthyFlag(j.success) || truthyFlag(j.status) || truthyFlag(j.result)) return true; if (j.rows!==undefined) return true; if (j.tourId || j.id || (j.data && (j.data.tourId || j.data.id))) return true; if (Number.isFinite(j.affectedRows) || Number.isFinite(j.updated) || Number.isFinite(j.inserted) || Number.isFinite(j.count)) return true; return false; };
+const isSuccessResponse = (j)=>{ if (!j || typeof j!=='object') return false; if (truthyFlag(j.ok) || truthyFlag(j.success) || truthyFlag(j.status) || j.rows!==undefined) return true; if (j.tourId || j.id || (j.data && (j.data.tourId || j.data.id))) return true; if (Number.isFinite(j.affectedRows) || Number.isFinite(j.updated) || Number.isFinite(j.inserted) || Number.isFinite(j.count)) return true; return false; };
 function apiUrl(path,q={}){ 
   let base=(conf.appUrl||'').trim(); if(!validWebAppUrl(base)){ base=WEB_APP_URL; conf.appUrl=base; store.save(conf); }
   const u=new URL(base); u.searchParams.set('path', path); Object.entries(q).forEach(([k,v])=>u.searchParams.set(k,v)); return u.toString();
 }
 async function getJSON(u){
-  const r=await fetch(u,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'follow'});
-  const t=await r.text(); try{ return JSON.parse(t); }catch{ throw new Error('JSON 파싱 실패'); }
+  try{
+    const r=await fetch(u,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'follow'});
+    const t=await r.text();
+    try{ return JSON.parse(t); }catch(e){
+      return { ok:false, error:'JSON 파싱 실패', raw: t.slice(0,300) };
+    }
+  }catch(e){
+    return { ok:false, error: String(e && e.message || e) };
+  }
 }
 async function postJSONCompat(paths, payload){
   const bodyText = JSON.stringify(payload||{});
@@ -326,11 +320,18 @@ function openAdminCodeFloating(onOk){
 
 /* ========= 목록 ========= */
 let TOURS={}, TOUR_ARRAY=[], CURRENT_TOUR_ID='', CURRENT_TOUR_OBJ=null;
-async function health(){ try{ setHealth('#3b82f6','연결 확인 중…'); const j=await getJSON(apiUrl('health')); if(j && (j.ok || j.status==='ok' || j.success || j.rows!==undefined)){ setHealth('#22c55e','연결 정상'); return true; } setHealth('#ef4444','health 비정상'); return false; }catch(e){ setHealth('#ef4444','연결 실패'); return false; } }
+async function health(){
+  const j=await getJSON(apiUrl('health'));
+  if(j && (j.ok || j.status==='ok' || j.success || j.rows!==undefined)){
+    setHealth('#22c55e','연결 정상'); return true;
+  }
+  setHealth('#ef4444','연결 실패'+(j && (j.error?(' - '+j.error): (j.raw?' (로그인/권한 필요 의심)':'')) || ''));
+  return false;
+}
 
 async function loadTournaments(){
   const j=await getJSON(apiUrl('tournaments'));
-  TOURS={}; TOUR_ARRAY=j.rows||[]; TOUR_ARRAY.forEach(t=>{ const id=t.tourId||t.TourID||t.id; if(id) TOURS[id]=t; });
+  TOURS={}; TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
   renderTournamentList(); renderTourFilter();
 }
 function tourCard(t){
@@ -454,16 +455,12 @@ window.addEventListener('beforeunload',(e)=>{ if(DIRTY){ e.preventDefault(); e.r
 async function confirmDiscardIfDirty(){ if(!DIRTY) return true; const ok=confirm('저장하지 않은 변경사항이 있습니다. 계속 진행할까요?'); if(ok) DIRTY=false; return ok; }
 
 /* ========= 종별/장소 UI ========= */
-// 유소년부는 종별 단일선택(라디오) + 연령 단일선택(라디오)로 "i2 U12" 한 쌍을 칩으로 저장
 const DIVISION_PRESETS = {
   '일반부': ['D3','D4','D5','D6','D7'],
   '대학부': ['U1','U2','U3','UW'],
   '여성부': ['D3','D4','D5'],
-  // 유소년부에 하모니w, i1w~i4w 추가
   '유소년부': ['하모니','하모니w','i1','i1w','i2','i2w','i3','i3w','i4','i4w']
 };
-
-// 유소년 연령 라벨: U7 ~ U18
 const YOUTH_AGE_LABELS = Array.from({length: 12}, (_, i) => 'U' + (7 + i));
 
 function renderDivRow(container, set, editable){
@@ -471,8 +468,6 @@ function renderDivRow(container, set, editable){
   const divisions = set.divisions || [];
 
   const row = el(`<div class="place-item"></div>`);
-
-  // 좌측: 그룹명 + 삭제
   const left = el(`<div style="display:flex;align-items:center;gap:8px"><b>${group}</b></div>`);
   const delSmall = el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
   delSmall.addEventListener('click',()=>{ 
@@ -486,7 +481,6 @@ function renderDivRow(container, set, editable){
   left.appendChild(delSmall);
   row.appendChild(left);
 
-  // 가운데1: 칩 영역 (유소년부는 "종별 연령" 쌍, 그 외는 종별)
   const chipsDiv = el(`<div class="chips"></div>`);
   if (group === '유소년부'){
     chipsDiv.innerHTML = divisions.length
@@ -516,16 +510,10 @@ function renderDivRow(container, set, editable){
     }
   }
   row.appendChild(chipsDiv);
-
-  // 가운데2: (유지용 더미, 4열 맞춤)
   row.appendChild(el(`<div></div>`));
-
-  // 우측: (유지용 더미, 4열 맞춤)
   row.appendChild(el(`<div></div>`));
-
   container.appendChild(row);
 }
-
 function refreshDivUI(){
   const box = $('#divSetList');
   box.innerHTML = '';
@@ -534,7 +522,6 @@ function refreshDivUI(){
   $('#addDivSetBtn').disabled = FORM_LOCKED;
   $('#clearAllDivBtn').disabled = FORM_LOCKED || DIV_STATE.length === 0;
 }
-
 function openDivFloating(){
   const body = el(`
     <div>
@@ -568,7 +555,6 @@ function openDivFloating(){
     const picked = existing.divisions || [];
 
     if (g === '유소년부'){
-      // 유소년: 라디오(단일선택) UI + 추가 버튼, 상단 칩에는 "종별 연령" 문자열들이 들어감
       youthWrap.style.display = '';
       checks.innerHTML = `<div class="muted">※ 유소년은 아래에서 종별/연령을 하나씩 선택 후 <b>+ 쌍 추가</b>를 누르세요.</div>`;
 
@@ -582,7 +568,6 @@ function openDivFloating(){
           ${YOUTH_AGE_LABELS.map(a=>`<label class="chip"><input type="radio" name="y_age" value="${a}"> ${a}</label>`).join('')}
         </div>`;
 
-      // 버튼 핸들러
       const btnAdd = body.querySelector('#btnAddPair');
       btnAdd.onclick = ()=>{
         const div = (body.querySelector('input[name="y_div"]:checked')||{}).value || '';
@@ -602,7 +587,6 @@ function openDivFloating(){
       };
 
     }else{
-      // 일반/대학/여성: 기존처럼 체크박스 다중선택
       youthWrap.style.display = 'none';
       youthDivRadios.innerHTML = '';
       youthAgeRadios.innerHTML = '';
@@ -627,23 +611,16 @@ function openDivFloating(){
     const g = sel.value;
 
     if (g === '유소년부'){
-      // 유소년은 +쌍 추가로 이미 DIV_STATE에 들어갔으므로 여기서는 바로 닫기
       if(!(DIV_STATE.find(s=>s.group===g)?.divisions||[]).length){
         return alert('추가된 쌍이 없습니다. 아래에서 종별/연령을 선택 후 "+ 쌍 추가"를 눌러주세요.');
       }
-      DIRTY = true;
-      refreshDivUI();
-      closePopover();
-      return;
+    }else{
+      const pickedDiv = [...checks.querySelectorAll('input:checked')].map(i=>i.value);
+      if(!pickedDiv.length) return alert('종별을 선택하세요.');
+      let set = DIV_STATE.find(s=>s.group===g);
+      if(!set){ set = { group: g, divisions: [] }; DIV_STATE.push(set); }
+      pickedDiv.forEach(v=>{ if(!set.divisions.includes(v)) set.divisions.push(v); });
     }
-
-    // 그 외: 체크박스 수집 후 병합
-    const pickedDiv = [...checks.querySelectorAll('input:checked')].map(i=>i.value);
-    if(!pickedDiv.length) return alert('종별을 선택하세요.');
-
-    let set = DIV_STATE.find(s=>s.group===g);
-    if(!set){ set = { group: g, divisions: [] }; DIV_STATE.push(set); }
-    pickedDiv.forEach(v=>{ if(!set.divisions.includes(v)) set.divisions.push(v); });
 
     DIRTY = true;
     refreshDivUI();
@@ -652,7 +629,6 @@ function openDivFloating(){
 
   openPopoverCentered('구분/종별 선택', body, actions);
 }
-
 document.getElementById('addDivSetBtn').addEventListener('click', openDivFloating);
 
 function makePlaceRow(init={name:''}){
@@ -681,9 +657,8 @@ function openPlaceFloating(initName,onApply){
   openPopoverCentered(initName?'장소명 수정':'장소 추가', body, actions);
 }
 
-/* ========= 포스터: 업로드/미리보기(폴백 체인) ========= */
+/* ========= 포스터: 업로드/미리보기 ========= */
 let POSTER_DATA_URL='', POSTER_CLEAR=false;
-
 function extractDriveId(u){
   const s=String(u||'').trim();
   if(!s) return '';
@@ -698,7 +673,6 @@ const buildDown=id=>'https://drive.google.com/uc?export=download&id='+encodeURIC
 const buildThumb=(id,w=2000)=>'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w'+w;
 
 function normalizePosterFromFields(posterUrl, posterId){
-  // 반환: {primary, variants[]} (복사 버튼은 primary 사용)
   const variants=[];
   const id = extractDriveId(posterId) || extractDriveId(posterUrl);
   if(id){
@@ -745,7 +719,6 @@ async function renderPoster(){
     img.onerror=tryNext; img.onload=()=>{};
     tryNext();
     $('#posterCopy').disabled=false; $('#posterClear').disabled=false;
-    // 복사 버튼은 primary 기준
     $('#posterCopy').dataset.copyUrl = variants[0] || showUrl;
   }
 }
@@ -845,7 +818,6 @@ async function doSave(){
     places:  getPlaces(),
     adminCode,
     posterClear: POSTER_CLEAR ? true : undefined,
-    // 구버전 호환 필드 유지
     'reg.start': $('#regStart').value || '', 'reg.end': $('#regEnd').value || '',
     reg_start: $('#regStart').value || '',   reg_end: $('#regEnd').value || '',
     regStartDate: $('#regStart').value || '', regEndDate: $('#regEnd').value || '',
@@ -853,7 +825,7 @@ async function doSave(){
     divs_json: JSON.stringify(divs)
   };
   if (POSTER_DATA_URL && !POSTER_CLEAR) {
-    base.posterDataUrl = POSTER_DATA_URL;  // 서버가 Drive 저장 후 posterId/posterUrl 반영
+    base.posterDataUrl = POSTER_DATA_URL;
   }
 
   try{
@@ -897,7 +869,7 @@ async function doDelete(){
 }
 
 /* ========= 상단 버튼/탐색 ========= */
-$('#settingsBtn').addEventListener('click', ()=>{ const cur=(conf.appUrl||'').trim(); const val=prompt('Apps Script Web App URL을 입력하세요 (…/exec):',cur); if(val===null) return; conf.appUrl=(val||'').trim(); store.save(conf); alert('설정이 저장되었습니다. 새로고침합니다.'); location.reload(); });
+$('#settingsBtn').addEventListener('click', ()=>{ const cur=(conf.appUrl||'').trim(); const val=prompt('Apps Script Web App URL을 입력하세요 (…/exec):',cur); if(val===null) return; if(!validWebAppUrl(val)) { alert('URL 형식이 올바르지 않습니다. (…/exec)'); return; } conf.appUrl=(val||'').trim(); store.save(conf); alert('설정이 저장되었습니다. 새로고침합니다.'); location.reload(); });
 $('#reloadBtn').addEventListener('click', async ()=>{ if(!(await confirmDiscardIfDirty())) return; await health(); await loadTournaments(); await loadTeams(); await renderPoster(); });
 $('#newTourBtn').addEventListener('click', async ()=>{ if(!(await confirmDiscardIfDirty())) return; clearTourForm(); });
 $('#editBtn').addEventListener('click', ()=>{ if(!CURRENT_TOUR_ID) return alert('수정할 대회를 먼저 선택하세요.'); openAdminCodeFloating(()=>{ $('#tourFormTitle').textContent='대회 수정 (편집중)'; }); });
