@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BDR TeamView</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --blue:#1769ff; --bg:#f6f8fb; --card:#fff; --muted:#6b7684; --red:#ef4444; --green:#16a34a }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
+  .wrap{max-width:980px;margin:20px auto;padding:0 14px 64px}
+  header{display:flex;justify-content:space-between;align-items:center;margin:8px 0 14px}
+  h1{font-size:18px;margin:0}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn.ghost{background:#fff;color:#334155;border-color:#e6ecf5}
+  .card{background:var(--card);border-radius:14px;box-shadow:0 8px 28px rgba(23,105,255,.08);padding:14px;margin-top:14px}
+  .muted{color:var(--muted);font-size:12px}
+  .row{display:grid;gap:10px}
+  @media(min-width:720px){ .row-2{grid-template-columns:1.2fr 1fr} }
+  .kvs{display:grid;grid-template-columns:120px 1fr;gap:6px;font-size:14px}
+  .kv-k{color:#6b7280}
+  .badge{display:inline-block;font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid #e2e8f0;background:#f1f5fb;color:#334155}
+  .jersey{display:inline-flex;align-items:center;gap:6px}
+  /* table */
+  .table-wrap{overflow:auto}
+  table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
+  th{font-size:12px;color:#5b6472;text-align:left;padding:0 10px}
+  td{background:#fff;padding:10px;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;vertical-align:top}
+  tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
+  tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
+  .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .center{display:flex;justify-content:center;align-items:center}
+  .skeleton{height:14px;background:linear-gradient(90deg,#f2f4f7,#e9eef7,#f2f4f7);border-radius:8px;animation:sh 1.2s infinite}
+  @keyframes sh{0%{background-position:-100px 0}100%{background-position:100px 0}}
+  /* mobile-friendly column visibility */
+  @media (max-width: 640px) {
+    .col-pos, .col-elite, .col-age, .col-birth { display:none; }
+  }
+  /* print */
+  @media print{
+    header,.toolbar{display:none !important}
+    body{background:#fff}
+    .card{box-shadow:none;border:1px solid #e5e7eb}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="pageTitle">TeamView</h1>
+    <div class="toolbar">
+      <button class="btn" id="btnShare">공유</button>
+      <button class="btn" id="btnCopy">링크 복사</button>
+      <button class="btn" id="btnPrint">인쇄</button>
+      <button class="btn" id="btnReload">새로고침</button>
+    </div>
+  </header>
+
+  <div class="card" id="teamCard">
+    <div class="row row-2">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div id="teamTitle" style="font-size:18px;font-weight:700">팀 정보를 불러오는 중…</div>
+          <span class="badge" id="tourNameBadge"></span>
+        </div>
+        <div class="muted" id="teamSub" style="margin-top:4px">Team ID: <span id="teamIdTxt"></span></div>
+        <div id="jerseys" class="jersey" style="margin-top:8px"></div>
+      </div>
+      <div>
+        <div class="kvs" id="teamKVs">
+          <!-- key-values -->
+          <div class="kv-k">지역</div><div id="kvRegion" class="ellipsis skeleton" style="width:60%"></div>
+          <div class="kv-k">종별·디비전</div><div id="kvCatDiv" class="ellipsis skeleton" style="width:45%"></div>
+          <div class="kv-k">대표자</div><div id="kvManager" class="ellipsis skeleton" style="width:70%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="playersCard">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <h3 style="margin:0;font-size:16px">선수 명단</h3>
+      <div class="muted" id="countInfo"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:80px">등번호</th>
+            <th>선수이름</th>
+            <th class="col-pos" style="width:100px">포지션</th>
+            <th class="col-birth" style="width:140px">생년월일</th>
+            <th class="col-age" style="width:80px">만나이</th>
+            <th class="col-elite" style="width:100px">선출</th>
+          </tr>
+        </thead>
+        <tbody id="playersTbody">
+          <tr><td colspan="6" class="center"><div class="skeleton" style="width:60%"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="errorCard" style="display:none">
+    <div style="color:#b91c1c;font-weight:700">불러오기 실패</div>
+    <div class="muted" id="errorMsg" style="margin-top:6px"></div>
+  </div>
+</div>
+
+<script>
+/* ============ 상수/설정 ============ */
+const DEFAULT_WEB_APP_URL='https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
+const CONF_KEY='BDR_ADMIN_CONF_V2';
+const conf = (()=>{
+  try{ return JSON.parse(localStorage.getItem(CONF_KEY)||'{}'); }catch{return{};}
+})();
+function validWebAppUrl(u){ return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(\?.*)?$/i.test((u||'').trim()); }
+function apiBase(){ return validWebAppUrl(conf.appUrl)? conf.appUrl : DEFAULT_WEB_APP_URL; }
+function apiUrl(path, q={}){ const u=new URL(apiBase()); u.searchParams.set('path', path); Object.entries(q).forEach(([k,v])=>u.searchParams.set(k,v)); return u.toString(); }
+async function getJSON(u){
+  try{
+    const r=await fetch(u,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'follow'});
+    const t=await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false,error:'JSON 파싱 실패', raw:t.slice(0,280)}; }
+  }catch(e){ return {ok:false,error:String(e && e.message || e)}; }
+}
+
+/* ============ 유틸 ============ */
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+function phonePretty(s){ return String(s||'').replace(/\D/g,'').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3'); }
+function jerseySVG(hex,label){ const color=(/^[#][0-9a-f]{6}$/i).test(hex||'')?hex:'#e5e7eb', text=(label||'').toUpperCase(); return `<svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg"><g filter="url(#s)"><path d="M14 3 l4 6 h6 l4-6 h6 v15 l3 3 v27 a3 3 0 0 1 -3 3 h-26 a3 3 0 0 1 -3 -3 v-27 l3-3 v-15 z" fill="${color}" stroke="#cbd5e1"/><text x="21" y="31" font-family="system-ui,sans-serif" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="700">${text}</text></g><defs><filter id="s" x="0" y="0" width="42" height="52"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".08"/></filter></defs></svg>`; }
+function qs(k){ return new URLSearchParams(location.search).get(k)||''; }
+function fmtBirth(s){ if(!s) return ''; const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; return String(s); }
+
+/* ============ 렌더러 ============ */
+function renderTeamCard(team){
+  if(!team){
+    $('#teamTitle').textContent='팀 정보를 찾을 수 없습니다.';
+    $('#tourNameBadge').textContent='';
+    $('#teamSub').textContent='';
+    $('#teamKVs').innerHTML='';
+    return;
+  }
+  const title = [team.teamNameKo||'', team.teamNameEn?`(${team.teamNameEn})`:'' ].join(' ').trim();
+  $('#pageTitle').textContent = title || 'TeamView';
+  $('#teamTitle').textContent = title || '무명 팀';
+  $('#tourNameBadge').textContent = team.tourName || '';
+  $('#teamIdTxt').textContent = String(team.teamId||'');
+  $('#jerseys').innerHTML = `<div class="jersey">${jerseySVG(team.uniformHome||'#e5e7eb','HOME')}${jerseySVG(team.uniformAway||'#e5e7eb','AWAY')}</div>`;
+
+  const region = [team.province||'', team.city||''].join(' ').trim() || (team.region||'');
+  const catdiv = [team.category||'', team.division||''].filter(Boolean).join(' · ');
+  const mgr = [team.managerName||'', phonePretty(team.managerPhone||'')].filter(Boolean).join(' · ');
+  $('#kvRegion').textContent = region || '-';
+  $('#kvCatDiv').textContent = catdiv || '-';
+  $('#kvManager').textContent = mgr || '-';
+}
+
+function renderPlayers(rows){
+  const tb = $('#playersTbody');
+  if(!Array.isArray(rows) || rows.length===0){
+    tb.innerHTML = `<tr><td colspan="6" class="muted">등록된 선수 명단이 없습니다.</td></tr>`;
+    $('#countInfo').textContent = '0명';
+    return;
+  }
+  const normNo = v => {
+    const s = String(v||'').trim();
+    const m = s.match(/^\d+$/); return m ? parseInt(s,10) : Number.MAX_SAFE_INTEGER;
+  };
+  rows.sort((a,b)=> normNo(a['등번호']||a.backNumber) - normNo(b['등번호']||b.backNumber));
+  tb.innerHTML = rows.map(r=>{
+    const no   = r['등번호']||r.backNumber||'';
+    const name = r['선수이름']||r.playerName||'';
+    const pos  = (r['포지션']||r.position||'').toUpperCase();
+    const birth= fmtBirth(r['생년월일']||r.birth||r.dob||'');
+    const age  = r['만나이']||r.age||'';
+    const elite= r['선출여부']||r.elite||'';
+    return `<tr>
+      <td class="ellipsis" style="font-weight:700">${no||'-'}</td>
+      <td class="ellipsis">${name||''}</td>
+      <td class="col-pos ellipsis">${pos||''}</td>
+      <td class="col-birth ellipsis">${birth||''}</td>
+      <td class="col-age ellipsis">${age||''}</td>
+      <td class="col-elite ellipsis">${elite||''}</td>
+    </tr>`;
+  }).join('');
+  $('#countInfo').textContent = `${rows.length}명`;
+}
+
+/* ============ 로드 ============ */
+async function boot(){
+  const teamId = qs('teamId') || qs('id');
+  if(!teamId){
+    $('#errorCard').style.display='';
+    $('#errorMsg').textContent='teamId 파라미터가 필요합니다. 예) teamview.html?teamId=TMXXXXXXXX';
+    return;
+  }
+  // 팀 정보
+  const teamRes = await getJSON(apiUrl('getteam', { teamId }));
+  if(!(teamRes && (teamRes.ok===true || teamRes.team))){
+    $('#errorCard').style.display='';
+    $('#errorMsg').textContent = (teamRes && (teamRes.error||teamRes.raw)) || '팀 정보를 불러올 수 없습니다.';
+  }
+  renderTeamCard(teamRes && teamRes.team);
+
+  // 선수 목록(정규화)
+  const plyRes = await getJSON(apiUrl('players', { teamId }));
+  if(!(plyRes && Array.isArray(plyRes.rows))){
+    $('#playersTbody').innerHTML = `<tr><td colspan="6" class="muted">선수명단을 불러오지 못했습니다.</td></tr>`;
+    $('#countInfo').textContent = '';
+  }else{
+    renderPlayers(plyRes.rows);
+  }
+}
+
+/* ============ 상단 버튼 ============ */
+$('#btnReload').addEventListener('click', ()=>location.reload());
+$('#btnPrint').addEventListener('click', ()=>window.print());
+$('#btnCopy').addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText(location.href); alert('현재 페이지 링크를 복사했습니다.'); }catch{ alert('복사 실패'); }
+});
+$('#btnShare').addEventListener('click', async ()=>{
+  try{
+    if(navigator.share){
+      await navigator.share({ title: document.title, text:'팀 선수명단', url: location.href });
+    }else{
+      await navigator.clipboard.writeText(location.href);
+      alert('공유 API 미지원 기기입니다. 링크를 복사했습니다.');
+    }
+  }catch(e){}
+});
+
+boot();
+</script>
+</body>
+</html>
