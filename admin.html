@@ -329,11 +329,19 @@ async function health(){
   return false;
 }
 
-async function loadTournaments(){
-  const j=await getJSON(apiUrl('tournaments'));
-  TOURS={}; TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
-  renderTournamentList(); renderTourFilter();
-}
+ async function loadTournaments(){
+   const j=await getJSON(apiUrl('tournaments'));
+-  TOURS={}; TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
++  TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
++  // 배열 → id 기반 맵으로 인덱싱 (tourId 또는 TourID 지원)
++  TOURS = {};
++  for (const t of TOUR_ARRAY) {
++    const id = String((t && (t.tourId || t.TourID)) || '').trim();
++    if (id) TOURS[id] = t;
++  }
+   renderTournamentList(); renderTourFilter();
+ }
+
 function tourCard(t){
   const id=t.tourId||t.TourID;
   const rs=t.regStart||t['reg.start']||t.reg_start||t.regStartDate||'';
@@ -342,22 +350,25 @@ function tourCard(t){
   const range=(t.start||t.end)?`${toInputDateOnly(t.start)} ~ ${toInputDateOnly(t.end)}`:'일정미정';
   return `<div class="pill" data-id="${id}" tabindex="0" role="button"><b class="ellipsis" style="max-width:260px;display:inline-block;vertical-align:bottom;">${t.name||'(무제)'}</b> · ${st} · ${range}</div>`;
 }
-function renderTournamentList(){
-  const box=$('#tourList');
-  box.innerHTML=(TOUR_ARRAY||[]).map(t=>tourCard(t)).join('');
-  box.querySelectorAll('.pill').forEach(el=>{
-    el.addEventListener('click', async ()=>{
-      if(!(await confirmDiscardIfDirty())) return;
-      const id=el.getAttribute('data-id'); const t=TOURS[id];
-      CURRENT_TOUR_OBJ=t||null;
-      await loadTourToForm(t,true);
-      $('#editBtn').disabled=false;
-      $('#tourFilter').value=id;
-      await loadTeams();
-      document.getElementById('formArea').scrollIntoView({behavior:'smooth', block:'start'});
-    });
-  });
-}
+ function renderTournamentList(){
+   const box=$('#tourList');
+   box.innerHTML=(TOUR_ARRAY||[]).map(t=>tourCard(t)).join('');
+   box.querySelectorAll('.pill').forEach(el=>{
+     el.addEventListener('click', async ()=>{
+       if(!(await confirmDiscardIfDirty())) return;
+-      const id=el.getAttribute('data-id'); const t=TOURS[id];
++      const id = el.getAttribute('data-id');
++      const t  = TOURS[id] || (TOUR_ARRAY||[]).find(x => String((x.tourId||x.TourID)||'')===id) || null;
+       CURRENT_TOUR_OBJ=t||null;
+       await loadTourToForm(t,true);
+       $('#editBtn').disabled=false;
+       $('#tourFilter').value=id;
+       await loadTeams();
+       document.getElementById('formArea').scrollIntoView({behavior:'smooth', block:'start'});
+     });
+   });
+ }
+
 function renderTourFilter(){
   const sel=$('#tourFilter'); const keep=sel.value;
   sel.innerHTML='<option value="">전체 대회</option>';
