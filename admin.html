@@ -329,18 +329,19 @@ async function health(){
   return false;
 }
 
- async function loadTournaments(){
-   const j=await getJSON(apiUrl('tournaments'));
--  TOURS={}; TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
-+  TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
-+  // 배열 → id 기반 맵으로 인덱싱 (tourId 또는 TourID 지원)
-+  TOURS = {};
-+  for (const t of TOUR_ARRAY) {
-+    const id = String((t && (t.tourId || t.TourID)) || '').trim();
-+    if (id) TOURS[id] = t;
-+  }
-   renderTournamentList(); renderTourFilter();
- }
+async function loadTournaments(){
+  const j = await getJSON(apiUrl('tournaments'));
+  // 배열 채우기
+  TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
+  // 배열 → id 맵 인덱싱 (tourId/TourID 모두 지원)
+  TOURS = {};
+  for (const t of TOUR_ARRAY) {
+    const id = String((t && (t.tourId || t.TourID)) || '').trim();
+    if (id) TOURS[id] = t;
+  }
+  renderTournamentList();
+  renderTourFilter();
+}
 
 function tourCard(t){
   const id=t.tourId||t.TourID;
@@ -369,15 +370,23 @@ function tourCard(t){
    });
  }
 
-function renderTourFilter(){
-  const sel=$('#tourFilter'); const keep=sel.value;
-  sel.innerHTML='<option value="">전체 대회</option>';
-  (TOUR_ARRAY||[]).forEach(t=>{
-    const id=t.tourId||t.TourID; if(!id) return;
-    const period=(t.start||t.end)?` · ${toInputDateOnly(t.start)}~${toInputDateOnly(t.end)}`:'';
-    sel.appendChild(new Option(`${t.name||'(무제)'}${period}`, id));
+function renderTournamentList(){
+  const box = $('#tourList');
+  box.innerHTML = (TOUR_ARRAY || []).map(t => tourCard(t)).join('');
+  box.querySelectorAll('.pill').forEach(el => {
+    el.addEventListener('click', async () => {
+      if (!(await confirmDiscardIfDirty())) return;
+      const id = el.getAttribute('data-id');
+      // 맵 우선, 없으면 배열에서 찾아서 보완
+      const t  = TOURS[id] || (TOUR_ARRAY || []).find(x => String((x.tourId || x.TourID) || '') === id) || null;
+      CURRENT_TOUR_OBJ = t || null;
+      await loadTourToForm(t, true);
+      $('#editBtn').disabled = false;
+      $('#tourFilter').value = id;
+      await loadTeams();
+      document.getElementById('formArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   });
-  if(keep && [...sel.options].some(o=>o.value===keep)) sel.value=keep;
 }
 
 /* ========= 팀 표 ========= */
