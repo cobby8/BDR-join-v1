@@ -320,6 +320,7 @@ function openAdminCodeFloating(onOk){
 
 /* ========= 목록 ========= */
 let TOURS={}, TOUR_ARRAY=[], CURRENT_TOUR_ID='', CURRENT_TOUR_OBJ=null;
+
 async function health(){
   const j=await getJSON(apiUrl('health'));
   if(j && (j.ok || j.status==='ok' || j.success || j.rows!==undefined)){
@@ -351,24 +352,6 @@ function tourCard(t){
   const range=(t.start||t.end)?`${toInputDateOnly(t.start)} ~ ${toInputDateOnly(t.end)}`:'일정미정';
   return `<div class="pill" data-id="${id}" tabindex="0" role="button"><b class="ellipsis" style="max-width:260px;display:inline-block;vertical-align:bottom;">${t.name||'(무제)'}</b> · ${st} · ${range}</div>`;
 }
- function renderTournamentList(){
-   const box=$('#tourList');
-   box.innerHTML=(TOUR_ARRAY||[]).map(t=>tourCard(t)).join('');
-   box.querySelectorAll('.pill').forEach(el=>{
-     el.addEventListener('click', async ()=>{
-       if(!(await confirmDiscardIfDirty())) return;
-       const id=el.getAttribute('data-id'); const t=TOURS[id];
-       const id = el.getAttribute('data-id');
-       const t  = TOURS[id] || (TOUR_ARRAY||[]).find(x => String((x.tourId||x.TourID)||'')===id) || null;
-       CURRENT_TOUR_OBJ=t||null;
-       await loadTourToForm(t,true);
-       $('#editBtn').disabled=false;
-       $('#tourFilter').value=id;
-       await loadTeams();
-       document.getElementById('formArea').scrollIntoView({behavior:'smooth', block:'start'});
-     });
-   });
- }
 
 function renderTournamentList(){
   const box = $('#tourList');
@@ -387,6 +370,17 @@ function renderTournamentList(){
       document.getElementById('formArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
+}
+
+function renderTourFilter(){
+  const sel=$('#tourFilter'); const keep=sel.value;
+  sel.innerHTML='<option value="">전체 대회</option>';
+  (TOUR_ARRAY||[]).forEach(t=>{
+    const id=t.tourId||t.TourID; if(!id) return;
+    const period=(t.start||t.end)?` · ${toInputDateOnly(t.start)}~${toInputDateOnly(t.end)}`:'';
+    sel.appendChild(new Option(`${t.name||'(무제)'}${period}`, id));
+  });
+  if(keep && [...sel.options].some(o=>o.value===keep)) sel.value=keep;
 }
 
 /* ========= 팀 표 ========= */
@@ -730,6 +724,8 @@ async function renderPoster(){
         <input type="file" id="posterInput" accept="image/*" style="display:none">
       </div>`;
     $('#posterCopy').disabled=true; $('#posterClear').disabled=true;
+    // stale dataset 제거
+    $('#posterCopy').dataset.copyUrl = '';
     wirePosterInteractions();
   }else{
     prev.innerHTML = `<img id="posterImg" src="" alt="poster"> <div class="muted">${POSTER_DATA_URL?'업로드(미저장)':'현재 저장된 포스터'}</div>`;
