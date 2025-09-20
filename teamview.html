@@ -31,25 +31,23 @@
   /* table */
   .table-wrap{overflow:auto}
   table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
-  /* 기본 폭 (화면) */
+  /* 화면 기준 열 폭 (비율은 인쇄에도 그대로 유지) */
   col.no   { width:72px }
-  col.name { width:78px }   /* 이름-출석 최대 근접 */
-  col.att  { width:52px }
-  col.strt { width:52px }
-  col.pos  { width:52px }
-  col.birth{ width:100px }
+  col.name { width:auto }
+  col.pos  { width:72px }
+  col.birth{ width:132px }
   col.age  { width:64px }
   col.elite{ width:84px }
+  col.att  { width:56px }
+  col.strt { width:80px }
 
   th{font-size:12px;color:#5b6472;text-align:left;padding:0 10px}
   td{background:#fff;padding:10px;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;vertical-align:middle}
   tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
 
-  /* 이름↔출석 간격 최소화 */
-  th.col-name, td.col-name{ padding-right:4px }
-  th.col-att,  td.col-att { padding-left:4px; padding-right:4px; text-align:center }
-  th.col-start, td.col-start{ text-align:center }
+  th.col-att, td.col-att,
+  th.col-start, td.col-start { text-align:center }
   .chk-attend, .chk-starter{ width:18px;height:18px;vertical-align:middle }
 
   .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -63,7 +61,7 @@
     .col-pos, .col-elite, .col-age, .col-birth { display:none; }
   }
 
-  /* 선발출전 동그라미 */
+  /* 선발출전 동그라미(등번호) */
   td.backno{ position:relative; font-weight:700 }
   tr:has(.chk-starter:checked) td.backno::after{
     content:"◯";
@@ -71,40 +69,24 @@
     font-size:16px; color:#0f172a;
   }
 
-  /* ===== Print: A4, 우측여백 0처럼 보여주기 ===== */
+  /* ===== Print: 화면 비율 그대로, A4 폭에 맞춰 확대/축소 ===== */
   @page { size: A4 portrait; margin: 6mm; }
   @media print{
+    /* 페이지 폭을 A4로 고정하고, 화면과 동일한 colgroup/비율 유지 */
     html, body { width: 210mm; }
     header,.toolbar{display:none !important}
     body{background:#fff}
     .wrap{max-width:none;width:100%;margin:0;padding:0}
     .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px;margin:6mm 0 0 0;padding:10px}
-
-    /* 상단 K/V 박스 우측 끝까지 확장 */
-    .row-2{grid-template-columns:1fr 1fr}
-    .kvs{grid-template-columns:22% 78%}         /* 라벨:값 비율 */
-    .kv-v .kv-chip{display:block;width:100%;text-align:left}  /* 오른쪽 끝까지 차도록 */
-
-    /* 인쇄 시 출석 미체크 행 숨김: :has() 호환 보완(클래스 기반) */
-    tbody tr{ display:none }          /* 기본은 숨김 */
-    tbody tr.print-keep{ display:table-row }  /* JS가 넣어주는 행만 표시 */
-
-    /* 체크박스 열은 감춤 */
-    th.col-att, td.col-att,
-    th.col-start, td.col-start{ display:none !important }
-
-    /* 표가 가로폭을 꽉 채우도록 퍼센트 폭 재배분 */
     .table-wrap{overflow:visible}
-    table{width:100%;border-spacing:0;table-layout:fixed}
-    col.no   { width:10% }
-    col.name { width:30% }
-    col.pos  { width:12% }
-    col.birth{ width:23% }
-    col.age  { width:10% }
-    col.elite{ width:15% }
-
+    table{width:100%;border-spacing:0;table-layout:fixed} /* 화면 colgroup 그대로 사용 */
     td,th{padding:8px}
     tr{break-inside:avoid}
+
+    /* 출석 체크된 행만 인쇄 (호환성 위해 클래스 방식 사용) */
+    tbody tr{ display:none }
+    tbody tr.print-keep{ display:table-row }
+    /* 체크박스/선발열도 화면과 동일하게 보이도록 숨김 처리 없음 */
   }
 </style>
 </head>
@@ -151,20 +133,20 @@
     </div>
     <div class="table-wrap">
       <table>
+        <!-- 열 순서: 번호, 이름, 포지션, 생년월일, 만나이, 선출, 출석, 선발출전 -->
         <colgroup>
-          <col class="no"><col class="name"><col class="att"><col class="strt">
-          <col class="pos"><col class="birth"><col class="age"><col class="elite">
+          <col class="no"><col class="name"><col class="pos"><col class="birth"><col class="age"><col class="elite"><col class="att"><col class="strt">
         </colgroup>
         <thead>
           <tr>
             <th>등번호</th>
-            <th class="col-name">선수이름</th>
-            <th class="col-att">출석</th>
-            <th class="col-start">선발출전</th>
+            <th>선수이름</th>
             <th class="col-pos">포지션</th>
             <th class="col-birth">생년월일</th>
             <th class="col-age">만나이</th>
             <th class="col-elite">선출</th>
+            <th class="col-att">출석</th>
+            <th class="col-start">선발출전</th>
           </tr>
         </thead>
         <tbody id="playersTbody">
@@ -275,13 +257,13 @@ function renderPlayers(rows){
     const st = saved[key] || { a:false, s:false };
     return `<tr data-key="${key}">
       <td class="backno ellipsis">${no||'-'}</td>
-      <td class="col-name ellipsis">${name||''}</td>
-      <td class="col-att"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
-      <td class="col-start"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
+      <td class="ellipsis">${name||''}</td>
       <td class="col-pos ellipsis">${pos||''}</td>
       <td class="col-birth ellipsis">${birth||''}</td>
       <td class="col-age ellipsis">${age||''}</td>
       <td class="col-elite ellipsis">${elite||''}</td>
+      <td class="col-att"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
+      <td class="col-start"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
     </tr>`;
   }).join('');
   $('#countInfo').textContent = `${rows.length}명`;
@@ -328,7 +310,7 @@ document.getElementById('btnShare').addEventListener('click', async ()=>{
   }catch(e){}
 });
 
-/* ============ 인쇄 호환성(행 필터 클래스) ============ */
+/* ============ 인쇄: 출석 체크된 행만 살리기(화면 비율 유지) ============ */
 function applyPrintKeepRows(){
   const rows = document.querySelectorAll('#playersTbody tr');
   rows.forEach(tr=>{
@@ -338,10 +320,13 @@ function applyPrintKeepRows(){
   });
 }
 window.addEventListener('beforeprint', applyPrintKeepRows);
+
+/* ============ 체크 상태 저장 ============ */
 document.addEventListener('change', (e)=>{
   const t = e.target;
   if(!(t instanceof HTMLInputElement)) return;
   if(!t.closest('#playersTbody')) return;
+
   if(t.classList.contains('chk-attend') || t.classList.contains('chk-starter')){
     const tr = t.closest('tr');
     const key = tr?.getAttribute('data-key')||'';
