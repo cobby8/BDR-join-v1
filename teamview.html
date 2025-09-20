@@ -39,15 +39,41 @@
   .skeleton{background:linear-gradient(90deg,#f2f4f7,#e9eef7,#f2f4f7) 0 0/200px 100% no-repeat;animation:sh 1.2s infinite}
   .skeleton-pill{height:24px;border-radius:999px;display:inline-block}
   @keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
-  /* mobile-friendly column visibility */
+
+  /* mobile-friendly column visibility (기존 컬럼만 숨김) */
   @media (max-width: 640px) {
     .col-pos, .col-elite, .col-age, .col-birth { display:none; }
+    /* 출석/선발은 모바일에서도 보이도록 유지 */
   }
+
+  /* 선발출전 동그라미 표시: 행에 선발 체크가 있으면 등번호 셀에 ◯ 출력 */
+  td.backno{ position:relative; font-weight:700 }
+  tr:has(.chk-starter:checked) td.backno::after{
+    content:"◯";
+    position:absolute;
+    right:8px;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:16px;
+    color:#0f172a;
+  }
+
+  /* 체크박스 크기(모바일 터치용으로 조금 크게) */
+  input[type="checkbox"]{ width:18px;height:18px }
+
   /* print */
   @media print{
-    header,.toolbar{display:none !important}
+    header,.toolbar,#teamCard{display:none !important}
     body{background:#fff}
     .card{box-shadow:none;border:1px solid #e5e7eb}
+    /* 출석 체크되지 않은 행은 숨김 */
+    tbody tr:not(:has(.chk-attend:checked)){ display:none !important }
+    /* 체크박스 칸과 입력은 인쇄에서 감춤 */
+    th.col-att, td.col-att,
+    th.col-start input, td.col-start input{ display:none !important }
+    /* 테이블 여백/선 정리 */
+    table{border-spacing:0}
+    td{border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
   }
 </style>
 </head>
@@ -99,6 +125,8 @@
           <tr>
             <th style="width:80px">등번호</th>
             <th>선수이름</th>
+            <th class="col-att" style="width:72px">출석</th>
+            <th class="col-start" style="width:88px">선발출전</th>
             <th class="col-pos" style="width:100px">포지션</th>
             <th class="col-birth" style="width:140px">생년월일</th>
             <th class="col-age" style="width:80px">만나이</th>
@@ -106,7 +134,7 @@
           </tr>
         </thead>
         <tbody id="playersTbody">
-          <tr><td colspan="6" class="center"><div class="skeleton" style="width:60%;height:16px;border-radius:8px"></div></td></tr>
+          <tr><td colspan="8" class="center"><div class="skeleton" style="width:60%;height:16px;border-radius:8px"></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -122,9 +150,9 @@
 /* ============ 상수/설정 ============ */
 const DEFAULT_WEB_APP_URL='https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
 const CONF_KEY='BDR_ADMIN_CONF_V2';
-const conf = (()=>{
-  try{ return JSON.parse(localStorage.getItem(CONF_KEY)||'{}'); }catch{return{};}
-})();
+const CHECKS_NS='TV_CHECKS_V1::'; // 팀별 저장 네임스페이스
+let gTeamId='';
+const conf = (()=>{ try{ return JSON.parse(localStorage.getItem(CONF_KEY)||'{}'); }catch{return{}} })();
 function validWebAppUrl(u){ return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(\?.*)?$/i.test((u||'').trim()); }
 function apiBase(){ return validWebAppUrl(conf.appUrl)? conf.appUrl : DEFAULT_WEB_APP_URL; }
 function apiUrl(path, q={}){ const u=new URL(apiBase()); u.searchParams.set('path', path); Object.entries(q).forEach(([k,v])=>u.searchParams.set(k,v)); return u.toString(); }
@@ -142,6 +170,15 @@ function phonePretty(s){ return String(s||'').replace(/\D/g,'').replace(/^(\d{3}
 function jerseySVG(hex,label){ const color=(/^[#][0-9a-f]{6}$/i).test(hex||'')?hex:'#e5e7eb', text=(label||'').toUpperCase(); return `<svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg"><g filter="url(#s)"><path d="M14 3 l4 6 h6 l4-6 h6 v15 l3 3 v27 a3 3 0 0 1 -3 3 h-26 a3 3 0 0 1 -3 -3 v-27 l3-3 v-15 z" fill="${color}" stroke="#cbd5e1"/><text x="21" y="31" font-family="system-ui,sans-serif" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="700">${text}</text></g><defs><filter id="s" x="0" y="0" width="42" height="52"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".08"/></filter></defs></svg>`; }
 function qs(k){ return new URLSearchParams(location.search).get(k)||''; }
 function fmtBirth(s){ if(!s) return ''; const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; return String(s); }
+
+/* 로컬 저장/복원 */
+function loadChecks(teamId){ try{ return JSON.parse(localStorage.getItem(CHECKS_NS+teamId)||'{}'); }catch{return{}} }
+function saveChecks(teamId, data){ try{ localStorage.setItem(CHECKS_NS+teamId, JSON.stringify(data||{})); }catch{} }
+function rowKey(r){
+  const no = r['등번호']||r.backNumber||'';
+  const name = r['선수이름']||r.playerName||'';
+  return `${String(no).trim()}::${String(name).trim()}`;
+}
 
 /* ============ 렌더러 ============ */
 function fillKV(id, text){
@@ -178,7 +215,7 @@ function renderTeamCard(team){
 function renderPlayers(rows){
   const tb = $('#playersTbody');
   if(!Array.isArray(rows) || rows.length===0){
-    tb.innerHTML = `<tr><td colspan="6" class="muted">등록된 선수 명단이 없습니다.</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="8" class="muted">등록된 선수 명단이 없습니다.</td></tr>`;
     $('#countInfo').textContent = '0명';
     return;
   }
@@ -187,6 +224,9 @@ function renderPlayers(rows){
     const m = s.match(/^\d+$/); return m ? parseInt(s,10) : Number.MAX_SAFE_INTEGER;
   };
   rows.sort((a,b)=> normNo(a['등번호']||a.backNumber) - normNo(b['등번호']||b.backNumber));
+
+  const saved = loadChecks(gTeamId);
+
   tb.innerHTML = rows.map(r=>{
     const no   = r['등번호']||r.backNumber||'';
     const name = r['선수이름']||r.playerName||'';
@@ -194,9 +234,13 @@ function renderPlayers(rows){
     const birth= fmtBirth(r['생년월일']||r.birth||r.dob||'');
     const age  = r['만나이']||r.age||'';
     const elite= r['선출여부']||r.elite||'';
-    return `<tr>
-      <td class="ellipsis" style="font-weight:700">${no||'-'}</td>
+    const key  = rowKey(r);
+    const st = saved[key] || { a:false, s:false };
+    return `<tr data-key="${key}">
+      <td class="backno ellipsis">${no||'-'}</td>
       <td class="ellipsis">${name||''}</td>
+      <td class="col-att center"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
+      <td class="col-start center"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
       <td class="col-pos ellipsis">${pos||''}</td>
       <td class="col-birth ellipsis">${birth||''}</td>
       <td class="col-age ellipsis">${age||''}</td>
@@ -208,24 +252,24 @@ function renderPlayers(rows){
 
 /* ============ 로드 ============ */
 async function boot(){
-  const teamId = qs('teamId') || qs('id');
-  if(!teamId){
+  gTeamId = qs('teamId') || qs('id');
+  if(!gTeamId){
     $('#errorCard').style.display='';
     $('#errorMsg').textContent='teamId 파라미터가 필요합니다. 예) teamview.html?teamId=TMXXXXXXXX';
     return;
   }
   // 팀 정보
-  const teamRes = await getJSON(apiUrl('getteam', { teamId }));
+  const teamRes = await getJSON(apiUrl('getteam', { teamId: gTeamId }));
   if(!(teamRes && (teamRes.ok===true || teamRes.team))){
     $('#errorCard').style.display='';
     $('#errorMsg').textContent = (teamRes && (teamRes.error||teamRes.raw)) || '팀 정보를 불러올 수 없습니다.';
   }
   renderTeamCard(teamRes && teamRes.team);
 
-  // 선수 목록(정규화)
-  const plyRes = await getJSON(apiUrl('players', { teamId }));
+  // 선수 목록
+  const plyRes = await getJSON(apiUrl('players', { teamId: gTeamId }));
   if(!(plyRes && Array.isArray(plyRes.rows))){
-    $('#playersTbody').innerHTML = `<tr><td colspan="6" class="muted">선수명단을 불러오지 못했습니다.</td></tr>`;
+    $('#playersTbody').innerHTML = `<tr><td colspan="8" class="muted">선수명단을 불러오지 못했습니다.</td></tr>`;
     $('#countInfo').textContent = '';
   }else{
     renderPlayers(plyRes.rows);
@@ -247,6 +291,30 @@ $('#btnShare').addEventListener('click', async ()=>{
       alert('공유 API 미지원 기기입니다. 링크를 복사했습니다.');
     }
   }catch(e){}
+});
+
+/* ============ 체크박스 이벤트(저장/연동) ============ */
+document.addEventListener('change', (e)=>{
+  const t = e.target;
+  if(!(t instanceof HTMLInputElement)) return;
+  if(!t.closest('#playersTbody')) return;
+
+  if(t.classList.contains('chk-attend') || t.classList.contains('chk-starter')){
+    const tr = t.closest('tr');
+    const key = tr?.getAttribute('data-key')||'';
+    if(!key) return;
+    const all = loadChecks(gTeamId);
+    const aEl = tr.querySelector('.chk-attend');
+    const sEl = tr.querySelector('.chk-starter');
+
+    // 선발 체크하면 출석 자동체크
+    if(t.classList.contains('chk-starter') && sEl?.checked && aEl && !aEl.checked){
+      aEl.checked = true;
+    }
+
+    all[key] = { a: !!aEl?.checked, s: !!sEl?.checked };
+    saveChecks(gTeamId, all);
+  }
 });
 
 boot();
