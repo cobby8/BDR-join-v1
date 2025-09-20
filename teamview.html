@@ -31,8 +31,9 @@
   /* table */
   .table-wrap{overflow:auto}
   table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
+  /* 기본 폭 (화면) */
   col.no   { width:72px }
-  col.name { width:78px }   /* 이름-출석 사이 거의 붙게 유지 */
+  col.name { width:78px }   /* 이름-출석 최대 근접 */
   col.att  { width:52px }
   col.strt { width:52px }
   col.pos  { width:52px }
@@ -70,35 +71,37 @@
     font-size:16px; color:#0f172a;
   }
 
-  /* ===== Print: A4 가득 채우기 ===== */
-  @page { size: A4 portrait; margin: 6mm; }  /* 여백 축소 */
+  /* ===== Print: A4, 우측여백 0처럼 보여주기 ===== */
+  @page { size: A4 portrait; margin: 6mm; }
   @media print{
-    /* 페이지 폭을 A4로 고정하고 좌우 여백 최소화 */
     html, body { width: 210mm; }
     header,.toolbar{display:none !important}
     body{background:#fff}
     .wrap{max-width:none;width:100%;margin:0;padding:0}
-    .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px;margin-top:6mm}
+    .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px;margin:6mm 0 0 0;padding:10px}
 
-    /* 인쇄 시 출석 미체크 행 숨김 */
-    tbody tr:not(:has(.chk-attend:checked)){ display:none !important }
+    /* 상단 K/V 박스 우측 끝까지 확장 */
+    .row-2{grid-template-columns:1fr 1fr}
+    .kvs{grid-template-columns:22% 78%}         /* 라벨:값 비율 */
+    .kv-v .kv-chip{display:block;width:100%;text-align:left}  /* 오른쪽 끝까지 차도록 */
+
+    /* 인쇄 시 출석 미체크 행 숨김: :has() 호환 보완(클래스 기반) */
+    tbody tr{ display:none }          /* 기본은 숨김 */
+    tbody tr.print-keep{ display:table-row }  /* JS가 넣어주는 행만 표시 */
 
     /* 체크박스 열은 감춤 */
     th.col-att, td.col-att,
     th.col-start, td.col-start{ display:none !important }
 
-    /* 테이블을 페이지 폭에 꽉 차게 */
+    /* 표가 가로폭을 꽉 채우도록 퍼센트 폭 재배분 */
     .table-wrap{overflow:visible}
     table{width:100%;border-spacing:0;table-layout:fixed}
-
-    /* 인쇄 전용 열폭을 퍼센트로 재지정 → 가로폭 꽉 채움 */
-    col.no   { width:8% }
-    col.name { width:28% }
-    /* col.att/col.strt 는 숨겨지므로 비율 재분배 */
-    col.pos  { width:10% }
-    col.birth{ width:24% }
+    col.no   { width:10% }
+    col.name { width:30% }
+    col.pos  { width:12% }
+    col.birth{ width:23% }
     col.age  { width:10% }
-    col.elite{ width:20% }
+    col.elite{ width:15% }
 
     td,th{padding:8px}
     tr{break-inside:avoid}
@@ -122,6 +125,7 @@
       <div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div id="teamTitle" style="font-size:18px;font-weight:700">팀 정보를 불러오는 중…</div>
+          <!-- 왼쪽 배지 = 지역 -->
           <span class="badge" id="leftBadge"></span>
         </div>
         <div class="muted" id="teamSub" style="margin-top:4px">Team ID: <span id="teamIdTxt"></span></div>
@@ -324,12 +328,20 @@ document.getElementById('btnShare').addEventListener('click', async ()=>{
   }catch(e){}
 });
 
-/* ============ 체크박스 저장 ============ */
+/* ============ 인쇄 호환성(행 필터 클래스) ============ */
+function applyPrintKeepRows(){
+  const rows = document.querySelectorAll('#playersTbody tr');
+  rows.forEach(tr=>{
+    const att = tr.querySelector('.chk-attend');
+    if(att && att.checked){ tr.classList.add('print-keep'); }
+    else { tr.classList.remove('print-keep'); }
+  });
+}
+window.addEventListener('beforeprint', applyPrintKeepRows);
 document.addEventListener('change', (e)=>{
   const t = e.target;
   if(!(t instanceof HTMLInputElement)) return;
   if(!t.closest('#playersTbody')) return;
-
   if(t.classList.contains('chk-attend') || t.classList.contains('chk-starter')){
     const tr = t.closest('tr');
     const key = tr?.getAttribute('data-key')||'';
