@@ -25,28 +25,27 @@
   .kv-k{color:#6b7280;align-self:center}
   .kv-v{align-self:center}
   .kv-chip{display:inline-block;max-width:100%;padding:6px 10px;border-radius:999px;border:1px solid var(--chip-bd);background:var(--chip-bg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .badge{display:inline-block;font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid #e2e8f0;background:#f1f5fb;color:#334155}
+  .badge{display:inline-block;font-size:12px;padding:6px 12px;border-radius:999px;border:1px solid #e2e8f0;background:#f1f5fb;color:#334155}
   .jersey{display:inline-flex;align-items:center;gap:6px}
 
-  /* table (기존 레이아웃 유지) */
+  /* table */
   .table-wrap{overflow:auto}
   table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
-  /* 열 간격을 번호↔이름 수준으로 붙이기 위해 colgroup 폭을 명시 */
-  col.no   { width:80px }
-  col.name { width:auto }
-  col.att  { width:68px }      /* 출석: 이름 옆으로 촘촘히 */
-  col.strt { width:88px }      /* 선발출전: 헤더 바로 아래 정중앙 */
-  col.pos  { width:100px }
-  col.birth{ width:140px }
-  col.age  { width:80px }
-  col.elite{ width:100px }
+  /* 균형 폭으로 조정 (이름↔출석 간격 축소) */
+  col.no   { width:72px }
+  col.name { width:220px }  /* 이름을 적당히 고정해서 다음 열이 가까워짐 */
+  col.att  { width:56px }
+  col.strt { width:80px }
+  col.pos  { width:72px }
+  col.birth{ width:132px }
+  col.age  { width:64px }
+  col.elite{ width:84px }
 
   th{font-size:12px;color:#5b6472;text-align:left;padding:0 10px}
   td{background:#fff;padding:10px;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;vertical-align:middle}
   tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
 
-  /* 이름 옆 컬럼 정렬 */
   th.col-att, td.col-att,
   th.col-start, td.col-start { text-align:center }
   .chk-attend, .chk-starter{ width:18px;height:18px;vertical-align:middle }
@@ -57,12 +56,12 @@
   .skeleton-pill{height:24px;border-radius:999px;display:inline-block}
   @keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
 
-  /* 모바일 숨김 규칙(기존 그대로) */
+  /* 모바일 숨김 규칙(기존 유지) */
   @media (max-width: 640px) {
     .col-pos, .col-elite, .col-age, .col-birth { display:none; }
   }
 
-  /* 선발출전 동그라미(등번호 셀) */
+  /* 선발출전 동그라미 */
   td.backno{ position:relative; font-weight:700 }
   tr:has(.chk-starter:checked) td.backno::after{
     content:"◯";
@@ -70,18 +69,22 @@
     font-size:16px; color:#0f172a;
   }
 
-  /* print */
+  /* print (A4 기준) */
+  @page { size: A4 portrait; margin: 12mm; }
   @media print{
-    header,.toolbar,#teamCard{display:none !important}
+    header,.toolbar{display:none !important}
     body{background:#fff}
-    .card{box-shadow:none;border:1px solid #e5e7eb}
+    .wrap{max-width:none;margin:0;padding:0}
+    .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px}
     /* 출석 미체크 행 숨김 */
     tbody tr:not(:has(.chk-attend:checked)){ display:none !important }
-    /* 체크박스 칸 자체는 인쇄에서 감춤(헤더도 함께) */
+    /* 체크박스 열은 감추고 컬럼 정렬 유지 위해 colgroup 폭 고정 */
     th.col-att, td.col-att,
     th.col-start, td.col-start{ display:none !important }
-    table{border-spacing:0}
-    td{border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+    table{border-spacing:0; table-layout:fixed}
+    td,th{padding:8px}
+    /* 행 쪼개짐 방지 */
+    tr{break-inside:avoid}
   }
 </style>
 </head>
@@ -102,17 +105,20 @@
       <div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div id="teamTitle" style="font-size:18px;font-weight:700">팀 정보를 불러오는 중…</div>
-          <span class="badge" id="tourNameBadge"></span>
+          <!-- 왼쪽 배지는 이제 '지역'이 들어갑니다 -->
+          <span class="badge" id="leftBadge"></span>
         </div>
         <div class="muted" id="teamSub" style="margin-top:4px">Team ID: <span id="teamIdTxt"></span></div>
         <div id="jerseys" class="jersey" style="margin-top:8px"></div>
       </div>
       <div>
         <div class="kvs" id="teamKVs">
-          <div class="kv-k">지역</div>
+          <div class="kv-k" id="kv1Label">대회명</div>
           <div class="kv-v"><span id="kvRegion" class="kv-chip skeleton skeleton-pill" style="width:60%"></span></div>
+
           <div class="kv-k">종별·디비전</div>
           <div class="kv-v"><span id="kvCatDiv" class="kv-chip skeleton skeleton-pill" style="width:50%"></span></div>
+
           <div class="kv-k">대표자</div>
           <div class="kv-v"><span id="kvManager" class="kv-chip skeleton skeleton-pill" style="width:70%"></span></div>
         </div>
@@ -127,7 +133,6 @@
     </div>
     <div class="table-wrap">
       <table>
-        <!-- 기존 레이아웃 유지 + 이름 바로 옆에 출석/선발만 삽입 -->
         <colgroup>
           <col class="no"><col class="name"><col class="att"><col class="strt">
           <col class="pos"><col class="birth"><col class="age"><col class="elite">
@@ -178,7 +183,7 @@ async function getJSON(u){
 const $=s=>document.querySelector(s);
 const pad=n=>String(n).padStart(2,'0');
 function phonePretty(s){ return String(s||'').replace(/\D/g,'').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3'); }
-function jerseySVG(hex,label){ const color=(/^[#][0-9a-f]{6}$/i).test(hex||'')?hex:'#e5e7eb', text=(label||'').toUpperCase(); return `<svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg"><g filter="url(#s)"><path d="M14 3 l4 6 h6 l4-6 h6 v15 l3 3 v27 a3 3 0 0 1 -3 3 h-26 a3 3 0  0 1 -3 -3 v-27 l3-3 v-15 z" fill="${color}" stroke="#cbd5e1"/><text x="21" y="31" font-family="system-ui,sans-serif" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="700">${text}</text></g><defs><filter id="s" x="0" y="0" width="42" height="52"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".08"/></filter></defs></svg>`; }
+function jerseySVG(hex,label){ const color=(/^[#][0-9a-f]{6}$/i).test(hex||'')?hex:'#e5e7eb', text=(label||'').toUpperCase(); return `<svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg"><g filter="url(#s)"><path d="M14 3 l4 6 h6 l4-6 h6 v15 l3 3 v27 a3 3 0 0 1 -3 3 h-26 a3 3 0 0 1 -3 -3 v-27 l3-3 v-15 z" fill="${color}" stroke="#cbd5e1"/><text x="21" y="31" font-family="system-ui,sans-serif" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="700">${text}</text></g><defs><filter id="s" x="0" y="0" width="42" height="52"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".08"/></filter></defs></svg>`; }
 function qs(k){ return new URLSearchParams(location.search).get(k)||''; }
 function fmtBirth(s){ if(!s) return ''; const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; return String(s); }
 
@@ -202,7 +207,7 @@ function fillKV(id, text){
 function renderTeamCard(team){
   if(!team){
     $('#teamTitle').textContent='팀 정보를 찾을 수 없습니다.';
-    $('#tourNameBadge').textContent='';
+    $('#leftBadge').textContent='';
     $('#teamSub').textContent='';
     $('#teamKVs').innerHTML='';
     return;
@@ -210,15 +215,18 @@ function renderTeamCard(team){
   const title = [team.teamNameKo||'', team.teamNameEn?`(${team.teamNameEn})`:'' ].join(' ').trim();
   $('#pageTitle').textContent = title || 'TeamView';
   $('#teamTitle').textContent = title || '무명 팀';
-  $('#tourNameBadge').textContent = team.tourName || '';
   $('#teamIdTxt').textContent = String(team.teamId||'');
   $('#jerseys').innerHTML = `<div class="jersey">${jerseySVG(team.uniformHome||'#e5e7eb','HOME')}${jerseySVG(team.uniformAway||'#e5e7eb','AWAY')}</div>`;
 
-  const region = [team.province||'', team.city||''].join(' ').trim() || (team.region||'');
-  const catdiv = [team.category||'', team.division||''].filter(Boolean).join(' · ');
-  const mgr = [team.managerName||'', phonePretty(team.managerPhone||'')].filter(Boolean).join(' · ');
+  const regionStr = [team.province||'', team.city||''].join(' ').trim() || (team.region||'');
+  const tourName  = team.tourName || '';
+  const catdiv    = [team.category||'', team.division||''].filter(Boolean).join(' · ');
+  const mgr       = [team.managerName||'', phonePretty(team.managerPhone||'')].filter(Boolean).join(' · ');
 
-  fillKV('kvRegion', region);
+  // 자리 교체: 왼쪽 배지 = 지역, 우측 첫 줄 = 대회명
+  $('#leftBadge').textContent = regionStr || '';
+  $('#kv1Label').textContent = '대회명';
+  fillKV('kvRegion', tourName);   // id는 kvRegion 그대로 두고 값만 대회명으로
   fillKV('kvCatDiv', catdiv);
   fillKV('kvManager', mgr);
 }
@@ -265,33 +273,33 @@ function renderPlayers(rows){
 async function boot(){
   gTeamId = qs('teamId') || qs('id');
   if(!gTeamId){
-    document.getElementById('errorCard').style.display='';
-    document.getElementById('errorMsg').textContent='teamId 파라미터가 필요합니다. 예) teamview.html?teamId=TMXXXXXXXX';
+    $('#errorCard').style.display='';
+    $('#errorMsg').textContent='teamId 파라미터가 필요합니다. 예) teamview.html?teamId=TMXXXXXXXX';
     return;
   }
   const teamRes = await getJSON(apiUrl('getteam', { teamId: gTeamId }));
   if(!(teamRes && (teamRes.ok===true || teamRes.team))){
-    document.getElementById('errorCard').style.display='';
-    document.getElementById('errorMsg').textContent = (teamRes && (teamRes.error||teamRes.raw)) || '팀 정보를 불러올 수 없습니다.';
+    $('#errorCard').style.display='';
+    $('#errorMsg').textContent = (teamRes && (teamRes.error||teamRes.raw)) || '팀 정보를 불러올 수 없습니다.';
   }
   renderTeamCard(teamRes && teamRes.team);
 
   const plyRes = await getJSON(apiUrl('players', { teamId: gTeamId }));
   if(!(plyRes && Array.isArray(plyRes.rows))){
-    document.getElementById('playersTbody').innerHTML = `<tr><td colspan="8" class="muted">선수명단을 불러오지 못했습니다.</td></tr>`;
-    document.getElementById('countInfo').textContent = '';
+    $('#playersTbody').innerHTML = `<tr><td colspan="8" class="muted">선수명단을 불러오지 못했습니다.</td></tr>`;
+    $('#countInfo').textContent = '';
   }else{
     renderPlayers(plyRes.rows);
   }
 }
 
 /* ============ 상단 버튼 ============ */
-document.getElementById('btnReload').addEventListener('click', ()=>location.reload());
-document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
-document.getElementById('btnCopy').addEventListener('click', async ()=>{
+$('#btnReload').addEventListener('click', ()=>location.reload());
+$('#btnPrint').addEventListener('click', ()=>window.print());
+$('#btnCopy').addEventListener('click', async ()=>{
   try{ await navigator.clipboard.writeText(location.href); alert('현재 페이지 링크를 복사했습니다.'); }catch{ alert('복사 실패'); }
 });
-document.getElementById('btnShare').addEventListener('click', async ()=>{
+$('#btnShare').addEventListener('click', async ()=>{
   try{
     if(navigator.share){
       await navigator.share({ title: document.title, text:'팀 선수명단', url: location.href });
