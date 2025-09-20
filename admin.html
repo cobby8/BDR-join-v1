@@ -159,6 +159,22 @@
           <input id="regStart" type="datetime-local" placeholder="접수 시작" data-editable>
           <input id="regEnd" type="datetime-local" placeholder="접수 종료" data-editable>
         </div>
+        
+        <div class="hr"></div>
+        
+        <label>결제 정보</label>
+        <div class="grid" style="margin-top:6px">
+          <div>
+            <label style="margin:0 0 6px">참가비</label>
+            <input id="fee" placeholder="예: 90,000" data-editable>
+            <div class="muted">참가신청서에는 <b>“참가비 n원”</b> 형태로 표시됩니다.</div>
+          </div>
+          <div>
+            <label style="margin:0 0 6px">입금계좌</label>
+            <input id="account" placeholder="예: 카카오뱅크 3333-01-1234567 홍길동" data-editable>
+            <div class="muted">신청서에는 <b>“은행명 계좌번호 예금주”</b> 한 줄로 표시됩니다.</div>
+          </div>
+        </div>
 
         <div class="grid grid-2" style="margin-top:12px;align-items:end">
           <div>
@@ -293,6 +309,47 @@ function openPopoverCentered(title, bodyEl, actionsEl){ popTitle.textContent = t
 function closePopover(){ pop.classList.remove('show'); overlay.classList.remove('show'); setTimeout(()=>{ pop.style.display='none'; popBody.innerHTML=''; popActions.innerHTML=''; },120); }
 overlay.addEventListener('click', closePopover);
 popCloseBtn.addEventListener('click', closePopover);
+// 추후 백엔드 연동 스위치
+const ENABLE_DELETE_API = false; // 3단계에서 true로 변경 예정
+
+async function confirmDeleteTeamAdmin(teamId, teamName){
+  // 관리자코드 확인
+  let adminCode = ($('#adminCode').value || '').trim();
+  if (!adminCode){
+    await new Promise(res => openAdminCodeFloating(()=> res())); // 코드 입력 팝업
+    adminCode = ($('#adminCode').value || '').trim();
+    if (!adminCode) return;
+  }
+
+  // 확인 팝업
+  const body = el(`<div>
+    <div style="margin:6px 0 10px">팀 <b>${teamName || teamId}</b> 를 삭제합니다. 이 작업은 되돌릴 수 없습니다.</div>
+    <div class="muted">Players/Teams에서 해당 팀 관련 데이터가 제거됩니다.</div>
+  </div>`);
+  const actions = el(`<div></div>`);
+  const cancel  = el(`<button class="btn">취소</button>`);
+  const ok      = el(`<button class="btn danger">영구 삭제</button>`);
+  actions.appendChild(cancel); actions.appendChild(ok);
+  cancel.addEventListener('click', closePopover);
+  ok.addEventListener('click', async ()=>{
+    closePopover();
+    if (!ENABLE_DELETE_API){
+      alert('프런트 배치 완료: 백엔드 연동 후 활성화됩니다.');
+      return;
+    }
+    // 3단계에서 아래 API 라우트 구현 후 활성화
+    try{
+      const payload = { teamId, adminCode };
+      const j = await postJSONCompat(['deleteTeamAdmin','deleteteamadmin','delete_team_admin'], payload);
+      if (!isSuccessResponse(j)) throw new Error(j?.error || '삭제 실패');
+      await loadTeams();
+      alert('삭제되었습니다.');
+    }catch(e){
+      alert('삭제 중 오류: ' + (e.message||e));
+    }
+  });
+  openPopoverCentered('팀 삭제(관리자)', body, actions);
+}
 
 /* ========= 관리자코드 입력 팝업 ========= */
 function openAdminCodeFloating(onOk){
@@ -397,6 +454,7 @@ function normalizeTeamRow(r){
 }
 function rowTeam(v){
   const openBtn = `<a href="#" class="btn primary open-view" data-id="${v.teamId}" title="TeamView(새 탭)">열기</a>`;
+  const delBtn  = `<a href="#" class="btn danger del-team" data-id="${v.teamId}" data-team="${(v.teamName||'').replace(/"/g,'&quot;')}" title="팀 삭제(관리자)">삭제</a>`;
   return `<tr>
     <td class="ellipsis" title="${v.tourName||''}">${v.tourName||'-'}</td>
     <td class="ellipsis" title="${v.region||''}">${v.region||'-'}</td>
@@ -404,7 +462,7 @@ function rowTeam(v){
     <td class="ellipsis">${v.category||''} · ${v.division||''}</td>
     <td><div class="jersey">${jerseySVG(v.homeHex,'HOME')}${jerseySVG(v.awayHex,'AWAY')}</div></td>
     <td class="ellipsis">${fmtDate(v.createdAt)}</td>
-    <td style="text-align:right">${openBtn}</td>
+    <td style="text-align:right; display:flex; gap:6px; justify-content:flex-end">${openBtn}${delBtn}</td>
   </tr>`;
 }
 async function loadTeams(){
@@ -424,6 +482,15 @@ async function loadTeams(){
 document.getElementById('teamsTbody').addEventListener('click', (e)=>{
   const open=e.target.closest('.open-view'); if(open){ e.preventDefault(); const id=open.dataset.id||''; if(!id) return; const url=`${VIEWER_BASE}?teamId=${encodeURIComponent(id)}`; window.open(url,'_blank','noopener'); }
 });
+  const del = e.target.closest('.del-team');
+  if (del){
+    e.preventDefault();
+    const id = del.dataset.id || '';
+    const name = del.dataset.team || '';
+    if (!id) return;
+    confirmDeleteTeamAdmin(id, name);
+    return;
+  }
 
 /* ========= 상태/잠금 ========= */
 let DIV_STATE=[];
@@ -784,6 +851,9 @@ async function loadTourToForm(t, locked=true){
   $('#tourId').value   = id;
   $('#tourName').value = t?.name || '';
   $('#tourUrl').value  = t?.url  || '';
+    // 결제 정보 로드
+  $('#fee').value     = t?.fee     || '';
+  $('#account').value = t?.account || '';
 
   await renderPoster();
 
@@ -832,6 +902,8 @@ async function doSave(){
     divSets:  DIV_STATE,
     divs,
     places:  getPlaces(),
+    fee:     ($('#fee').value || '').trim(),
+    account: ($('#account').value || '').trim(),
     adminCode,
     posterClear: POSTER_CLEAR ? true : undefined,
     'reg.start': $('#regStart').value || '', 'reg.end': $('#regEnd').value || '',
