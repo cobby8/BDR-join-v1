@@ -310,8 +310,7 @@ function closePopover(){ pop.classList.remove('show'); overlay.classList.remove(
 overlay.addEventListener('click', closePopover);
 popCloseBtn.addEventListener('click', closePopover);
 // 추후 백엔드 연동 스위치
-const ENABLE_DELETE_API = false; // 3단계에서 true로 변경 예정
-
+const ENABLE_DELETE_API = true; // 백엔드 연동 활성화
 async function confirmDeleteTeamAdmin(teamId, teamName){
   // 관리자코드 확인
   let adminCode = ($('#adminCode').value || '').trim();
@@ -331,23 +330,31 @@ async function confirmDeleteTeamAdmin(teamId, teamName){
   const ok      = el(`<button class="btn danger">영구 삭제</button>`);
   actions.appendChild(cancel); actions.appendChild(ok);
   cancel.addEventListener('click', closePopover);
-  ok.addEventListener('click', async ()=>{
-    closePopover();
-    if (!ENABLE_DELETE_API){
-      alert('프런트 배치 완료: 백엔드 연동 후 활성화됩니다.');
-      return;
-    }
-    // 3단계에서 아래 API 라우트 구현 후 활성화
-    try{
-      const payload = { teamId, adminCode };
-      const j = await postJSONCompat(['deleteTeamAdmin','deleteteamadmin','delete_team_admin'], payload);
-      if (!isSuccessResponse(j)) throw new Error(j?.error || '삭제 실패');
-      await loadTeams();
-      alert('삭제되었습니다.');
-    }catch(e){
-      alert('삭제 중 오류: ' + (e.message||e));
-    }
-  });
+ok.addEventListener('click', async ()=>{
+  // (기존) closePopover(); 는 유지
+  closePopover();
+
+  if (!ENABLE_DELETE_API){
+    alert('프런트 배치 완료: 백엔드 연동 후 활성화됩니다.');
+    return;
+  }
+
+  try{
+    // 삭제 재입력 방지 토글 (팝업은 이미 닫혔으니 중복호출만 방지되면 OK)
+    ok.disabled = true; ok.textContent = '삭제 중…';
+
+    const payload = { teamId, adminCode };
+    const j = await postJSONCompat(['deleteTeamAdmin','deleteteamadmin','delete_team_admin'], payload);
+    if (!isSuccessResponse(j)) throw new Error(j?.error || '삭제 실패');
+
+    await loadTeams();
+    alert('삭제되었습니다.');
+  }catch(e){
+    alert('삭제 중 오류: ' + (e.message||e));
+  }finally{
+    ok.disabled = false; ok.textContent = '영구 삭제';
+  }
+});
   openPopoverCentered('팀 삭제(관리자)', body, actions);
 }
 
