@@ -68,6 +68,8 @@
   .actions-cell{ display:flex; gap:8px; justify-content:flex-end; align-items:center; }
   .actions-cell .btn{ transform:scale(.9); transform-origin:right center; }
   .actions-cell .btn.primary, .actions-cell .btn.danger{ padding:9px 13px; font-size:13px; }
+  /* 유니폼 칼럼 셀 가운데 정렬 */
+  .td-uniform{ text-align:center; }
 </style>
 </head>
 <body>
@@ -473,7 +475,7 @@ function rowTeam(v){
       <div class="ellipsis" title="${v.teamName||''}"><b>${v.teamName||''}</b></div>
       <div class="muted ellipsis" title="${(v.managerName||'')+' · '+(v.managerPhone||'')}">${v.managerName||''} · ${v.managerPhone||''}</div>
     </td>
-    <td><div class="jersey">${jerseySVG(v.homeHex,'HOME')}${jerseySVG(v.awayHex,'AWAY')}</div></td>
+    <td class="td-uniform"><div class="jersey">${jerseySVG(v.homeHex,'HOME')}${jerseySVG(v.awayHex,'AWAY')}</div></td>
     <td class="ellipsis">${v.category||''} · ${v.division||''}</td>
     <td class="ellipsis">${fmtDate(v.createdAt)}</td>
     <td class="actions-cell" style="text-align:right; display:flex; gap:8px; justify-content:flex-end">${openBtn}${delBtn}</td>
