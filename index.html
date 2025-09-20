@@ -78,10 +78,7 @@
   .chip{border:1px dashed rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:700}
   .chip:disabled{opacity:.45;border-style:solid;cursor:not-allowed}
   .chip small{opacity:.8;font-weight:600}
-  /* 복사 텍스트 박스 */
-  .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;margin-bottom: 10px;
-}
-
+  .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;margin-bottom: 10px;}
 </style>
 </head>
 <body>
@@ -274,11 +271,13 @@
     <!-- 4) 선수 명단 -->
     <div class="step" id="step4">
       <div class="section-title">④ 선수 명단</div>
+
+      <!-- 상단 툴바(붙여넣기/샘플만 유지) -->
       <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-sm" id="addPlayerBtn" type="button">선수 추가 +</button>
         <button class="btn-sm" id="togglePasteBtn" type="button">명단 붙여넣기</button>
         <button class="btn-sm" id="copySampleBtn" type="button">샘플복사</button>
       </div>
+
       <div id="pastePanel" style="display:none;margin-top:8px">
         <div class="muted">형식: <b>이름/백넘버/포지션/생년월일(YYMMDD)/선출 또는 비선출</b></div>
         <textarea id="pasteText" style="height:120px;resize:vertical" placeholder="예)
@@ -289,8 +288,17 @@
           <button class="btn-sm" id="pasteClearBtn" type="button">지우기</button>
         </div>
       </div>
+
+      <!-- 입력 필드 -->
       <div id="players"></div>
-      <div class="muted">※ 최소 5명 권장. 팀 내 등번호 중복 없도록 확인해 주세요.</div>
+
+      <!-- ▼▼▼ 요청대로 '선수 추가 +' 버튼을 입력 필드 아래로 이동 ▼▼▼ -->
+      <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap; margin-top:10px;">
+        <button class="btn-sm" id="addPlayerBtn" type="button">선수 추가 +</button>
+      </div>
+
+      <div class="muted">※ 최소 5명 필수. 모든 칸을 채우고 팀 내 등번호 중복이 없도록 확인해 주세요.</div>
+
       <button class="btn" id="submitBtn">신청서 제출</button>
       <div class="nextbar"><button class="next" data-next="#step3" data-dir="prev">← 이전</button></div>
 
@@ -654,7 +662,7 @@
       <div><label>포지션</label><select data-key="position"><option value="">선택</option><option>G</option><option>F</option><option>C</option></select></div>
     </div>
     <div class="row row-2" style="margin-top:8px">
-      <div><label>생년월일 (선택)</label><input data-key="birth" type="date"></div>
+      <div><label>생년월일</label><input data-key="birth" type="date"></div>
       <div><label>선출여부</label><select data-key="elite"><option value="">선택</option><option>선출</option><option>비선출</option></select></div>
     </div>
     <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>`;
@@ -662,7 +670,9 @@
     return div;
   }
   const playersDiv=$('#players');
+  // ▼ 아래 위치의 버튼을 클릭해서 카드 추가
   $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
+  // 기본 5명 생성
   for(let i=0;i<5;i++) $('#addPlayerBtn').click();
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
@@ -703,6 +713,7 @@
 
   /* ===== 검증 ===== */
   function setErr(el,noteId,on){ if(!el) return; if(on){ el.classList.add('error'); if(noteId) $('#'+noteId).style.display='block'; } else { el.classList.remove('error'); if(noteId) $('#'+noteId).style.display='none'; } }
+
   function validateStep(stepId){
     let ok=true;
     if(stepId==='step0'){ const v=$('#tourSelect').value; if(!v){ show('대회를 선택해 주세요'); ok=false; } }
@@ -722,6 +733,68 @@
       if(!ok) show('종별/디비전을 선택해 주세요');
     }
     return ok;
+  }
+
+  // ▼ 선수 명단 엄격 검증 (모든 필드 필수 + 등번호 중복 금지)
+  function validatePlayersStrict(){
+    const cards=$$('.player-card');
+    if(cards.length<5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return false; }
+
+    // 초기화
+    cards.forEach(c=> c.querySelectorAll('input,select').forEach(el=>el.classList.remove('error')));
+
+    const numbers=[];
+    let firstBad=null;
+
+    for(const card of cards){
+      const nameEl=card.querySelector('[data-key="name"]');
+      const numEl=card.querySelector('[data-key="number"]');
+      const posEl=card.querySelector('[data-key="position"]');
+      const birthEl=card.querySelector('[data-key="birth"]');
+      const eliteEl=card.querySelector('[data-key="elite"]');
+
+      const name=(nameEl.value||'').trim();
+      const number=(numEl.value||'').trim();
+      const position=(posEl.value||'').trim();
+      const birth=(birthEl.value||'').trim();
+      const elite=(eliteEl.value||'').trim();
+
+      // 숫자만 허용(0~99 제한은 걸지 않고 숫자 필수만)
+      const numOk=/^\d+$/.test(number);
+
+      const requiredMap = [
+        [nameEl, !!name],
+        [numEl, numOk],
+        [posEl, !!position],
+        [birthEl, !!birth],
+        [eliteEl, !!elite],
+      ];
+      requiredMap.forEach(([el,ok])=>{ if(!ok){ el.classList.add('error'); if(!firstBad) firstBad=el; } });
+
+      numbers.push(number);
+    }
+
+    // 중복 체크(빈칸은 위에서 이미 걸러짐)
+    const seen=new Set(), dups=new Set();
+    numbers.forEach(n=>{ if(seen.has(n)) dups.add(n); else seen.add(n); });
+    if(dups.size){
+      cards.forEach(c=>{
+        const el=c.querySelector('[data-key="number"]');
+        if(dups.has((el.value||'').trim())) el.classList.add('error');
+      });
+      if(!firstBad){
+        // 첫 오류가 아직 없으면 중복 등번호 위치로
+        const firstDupCard=[...cards].find(c=>dups.has((c.querySelector('[data-key="number"]').value||'').trim()));
+        if(firstDupCard) firstBad=firstDupCard.querySelector('[data-key="number"]');
+      }
+      show('등번호가 중복되었습니다. 중복을 해결해 주세요.');
+    }
+
+    if(firstBad){
+      firstBad.scrollIntoView({behavior:'smooth', block:'center'});
+      return false;
+    }
+    return true;
   }
 
   /* ===== 본인 신청서 찾기/불러오기/복제/취소 ===== */
@@ -921,35 +994,28 @@
     navigator.clipboard.writeText(txt).then(()=>{
       show(label+' 복사 완료');
     }).catch(()=>{
-      // 폴백
       const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
       show(label+' 복사 완료');
     });
   }
 
-  // 대회 객체에서 참가비/계좌 키 추정(관리자 연동 전 임시 자동감지)
   function extractPaymentInfo(t){
     const obj=t||{};
     const tryKeys=(o, keys)=>{ for(const k of keys){ if(k in o && String(o[k]??'').trim()) return String(o[k]); } return ''; };
-    // 흔히 쓰일만한 키들(한/영 혼합)
     const fee = tryKeys(obj, ['fee','entryFee','entry_fee','참가비','참가비용','등록비']);
     const acct = tryKeys(obj, ['account','bankAccount','bank_account','입금계좌','계좌','입금정보']);
     return { fee, acct };
   }
 
-  // "참가비 n원\n은행명 계좌번호 예금주" 형식으로 합치기
 function buildPayText(fee, acct){
   const feeLine  = `참가비 ${String(fee||'').trim()||'-'}원`;
-  // 계좌 문자열이 이미 "은행 계좌 예금주" 형태면 그대로 사용, 아니면 최대한 깨끗하게
   let acctLine = String(acct||'').trim();
   if(!acctLine){
     acctLine = '은행명 계좌번호 예금주';
   }else{
-    // 쉼표/슬래시/콜론 구분자 정리 → 공백 1칸
     acctLine = acctLine.replace(/[,\|/]+/g,' ')
                        .replace(/\s{2,}/g,' ')
                        .trim();
-    // "예금주:" 라벨 있으면 콜론 제거
     acctLine = acctLine.replace(/(예금주)\s*[:：]\s*/g,'$1 ');
   }
   return `${feeLine}\n${acctLine}`;
@@ -959,20 +1025,14 @@ function showFloatingPanelAfterSubmit(){
   const el = $('#floatingDone');
   const { fee, acct } = extractPaymentInfo(currentTour || {});
   const txt = buildPayText(fee, acct);
-
-  // 텍스트 출력
   $('#payText').textContent = txt;
-
-  // 안내 문구 & 버튼 활성화
   const ready = Boolean(String(fee||'').trim() && String(acct||'').trim());
   $('#floatingSub').innerHTML = ready
     ? '아래 정보를 확인하고 복사하세요.'
     : '관리자 설정 대기: 참가비/입금계좌가 아직 없습니다. (관리자 설정 후 자동 노출)';
-
   const copyBtn = $('#copyPayBtn');
   copyBtn.disabled = !ready;
   copyBtn.onclick = () => safelyCopy(txt, '결제정보');
-
   el.classList.add('show');
   if(el._hideTimer) clearTimeout(el._hideTimer);
   el._hideTimer = setTimeout(()=>{ el.classList.remove('show'); }, 30000);
@@ -980,6 +1040,7 @@ function showFloatingPanelAfterSubmit(){
 
   $('#submitBtn').addEventListener('click', async ()=>{
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
+    if (!validatePlayersStrict()) return; // ▼ 선수명단 엄격 검증 추가
 
     const province=$('#province').value.trim(), city=$('#city').value.trim();
 
@@ -1001,15 +1062,7 @@ function showFloatingPanelAfterSubmit(){
     const players=$$('.player-card').map(card=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
-    }).filter(p=>p.name);
-
-    if (players.length < 5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return; }
-    const numbers=players.map(p=>p.number).filter(Boolean);
-    const dup=numbers.find((n,i)=> n && numbers.indexOf(n)!==i);
-    if (dup){
-      $$('.player-card [data-key="number"]').forEach(inp=>{ inp.classList.toggle('error', inp.value===dup); });
-      if(!confirm(`등번호 ${dup}가 중복됩니다. 그대로 제출할까요?`)) return;
-    }
+    });
 
     const payload={team, players, base: location.origin + location.pathname};
     let candidates = ['registerteam','registerTeam'];
@@ -1034,7 +1087,6 @@ function showFloatingPanelAfterSubmit(){
           $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
           const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
         }
-        // ✅ 제출 완료 플로팅 패널 표시
         showFloatingPanelAfterSubmit();
       }else{
         alert('오류: '+(json.error||'unknown'));
