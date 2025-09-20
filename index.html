@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>BDR 참가신청서 v1.1</title>
+<title>BDR 참가신청서 v1.1-cancel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:18px; --red:#ef4444; --muted:#6b7684 }
+  :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:24px; --red:#ef4444; --muted:#6b7684 }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
   .wrap{max-width:980px;margin:28px auto;padding:16px}
-  .card{background:var(--card);border-radius:24px;box-shadow:var(--shadow);padding:24px;position:relative}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;position:relative}
   h1{font-size:28px;margin:0 0 10px}
   .section-title{font-weight:800;margin:18px 0 8px}
   label{display:block;font-weight:700;margin:14px 0 6px}
@@ -24,33 +24,28 @@
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .btn.done{background:#2ebf6f}
   .btn-sm{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer;margin-top:10px}
-  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:3}
+  .btn-danger{border-color:#ffd4d4;background:#fff;color:#b91c1c}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#222;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:.25s;z-index:30}
   .toast.show{opacity:1}
-
   .brand{position:absolute;right:30px;top:30px}
   .brand img{height:31px;opacity:.95}
-  /* 연결상태 + 설정 */
   .conn{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:6px}
   .dot{font-size:14px;line-height:1}
   .dot.ok{color:#1769ff}
   .dot.bad{color:#ef4444}
   .dot.warn{color:#f59e0b}
-
   .step{display:none}.step.active{display:block}
-  .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
+  .nextbar{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
   .next{padding:10px 14px;border:1px solid #dfe6ee;background:#fff;border-radius:12px;cursor:pointer}
   .next.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
   .error{border-color:var(--red)!important;background:#fff7f7}
   .error-note{color:var(--red);font-size:12px;margin-top:6px}
-
   #tourInfo.cardish{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#fbfdff}
   #tourInfo .kv{display:grid;grid-template-columns:92px 1fr;gap:6px 10px;font-size:14px;word-break:break-word;overflow-wrap:anywhere;white-space:normal}
   #tourInfo .kv b{color:#111}
-
   .poster-wrap{display:none;margin-top:8px;text-align:center}
   .poster-wrap img{max-width:100%;max-height:420px;border:1px solid #e6ecf5;border-radius:14px;background:#fff;object-fit:contain;box-shadow:var(--shadow)}
   .poster-wrap .caption{font-size:12px;color:var(--muted);margin-top:6px}
-
   .color-grid{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
   .color-btn{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
   .color-confirm{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700;display:none}
@@ -59,8 +54,18 @@
   .jersey-card{border:1px solid #e6ecf5;border-radius:14px;padding:12px;background:#f7fbff}
   .jersey-title{font-weight:700;margin-bottom:6px}
   .jersey{width:100%;height:180px}
-
   .edit-panel{margin-top:14px;border:1px dashed #dbe5f3;background:#f7fbff;border-radius:14px;padding:12px}
+
+  /* ===== Modal (주의사항 확인) ===== */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal-backdrop.show{display:flex}
+  .modal{width:min(560px,92vw);background:#fff;border-radius:18px;box-shadow:0 20px 80px rgba(0,0,0,.25);padding:18px}
+  .modal header{display:flex;justify-content:space-between;align-items:center}
+  .modal h3{margin:0;font-size:18px}
+  .modal .body{margin-top:10px;color:#374151;line-height:1.5}
+  .modal .foot{margin-top:16px;display:flex;gap:8px;justify-content:flex-end}
+  .btn-outline{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer}
+  .btn-danger-solid{background:#ef4444;color:#fff;border:none;border-radius:12px;padding:10px 14px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -91,7 +96,7 @@
       <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
       <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있어요.</div>
 
-      <!-- 신청서 수정/복제(본인인증) -->
+      <!-- 신청서 수정/복제/취소(본인인증) -->
       <div class="edit-panel">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
           <div style="flex:1;min-width:220px">
@@ -114,6 +119,8 @@
           <div class="nextbar" style="justify-content:flex-start;gap:8px">
             <button class="btn-sm" id="ownerEditBtn" type="button">수정하기</button>
             <button class="btn-sm" id="ownerCloneBtn" type="button">다른 대회 신청하기</button>
+            <!-- ★ 신규: 참가취소 버튼 -->
+            <button class="btn-sm btn-danger" id="ownerCancelBtn" type="button" title="선택한 신청서를 취소합니다">참가취소</button>
           </div>
 
           <!-- 다른 대회 동일 내용으로 시작(종/디비전은 리셋) -->
@@ -127,7 +134,7 @@
           </div>
         </div>
 
-        <div class="muted">※ 이름+전화번호로 본인 인증 후 기존 신청서를 <b>수정</b>하거나, <b>다른 대회에 추가 신청</b>할 수 있어요.</div>
+        <div class="muted">※ 이름+전화번호로 본인 인증 후 기존 신청서를 <b>수정</b>하거나, <b>다른 대회에 추가 신청</b>, <b>참가취소</b>할 수 있어요.</div>
       </div>
 
       <div class="nextbar" id="nextbar0" style="display:none">
@@ -289,6 +296,25 @@
   </div>
 </div>
 
+<!-- ===== 주의사항 모달 ===== -->
+<div class="modal-backdrop" id="cancelModal" role="dialog" aria-modal="true" aria-labelledby="cancelTitle" aria-describedby="cancelDesc">
+  <div class="modal">
+    <header>
+      <h3 id="cancelTitle">참가신청 취소</h3>
+      <button class="btn-outline" id="cancelCloseBtn" type="button" aria-label="닫기">✕</button>
+    </header>
+    <div class="body" id="cancelDesc">
+      선택한 신청서를 <b style="color:#b91c1c">정말로 취소</b>하시겠습니까?<br/>
+      이 작업은 즉시 반영되며, <b>삭제된 데이터는 복구할 수 없습니다.</b><br/>
+      (※ 추후 관리자 페이지에서 취소 정책이 변경될 수 있습니다)
+    </div>
+    <div class="foot">
+      <button class="btn-outline" id="cancelNoBtn" type="button">취소</button>
+      <button class="btn-danger-solid" id="cancelYesBtn" type="button">확인(삭제)</button>
+    </div>
+  </div>
+</div>
+
 <script>
   /* ===== 연결 설정/헬퍼 ===== */
   const DEFAULT_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
@@ -315,7 +341,6 @@
       const r = await fetch(u, { cache:'no-store', mode:'cors', credentials:'omit', redirect:'follow' });
       const t = await r.text();
       try { return JSON.parse(t); } catch(e) {
-        // 로그인/권한/오류 HTML일 때도 무너지지 않게
         return { ok:false, error:'JSON_PARSE_FAIL', raw: t.slice(0,300) };
       }
     }catch(e){
@@ -673,7 +698,7 @@
     return ok;
   }
 
-  /* ===== 본인 신청서 찾기/불러오기/복제 ===== */
+  /* ===== 본인 신청서 찾기/불러오기/복제/취소 ===== */
   let ownerEdit=null;   // {teamId,name,phone}
   let cloneSource=null; // {team, players}
 
@@ -786,6 +811,102 @@
     window.scrollTo({top:0,behavior:'smooth'});
     show('새 대회로 불러왔습니다. ② 종별/디비전을 다시 선택해 주세요.');
   });
+
+  /* ===== 참가취소: 모달 열기/닫기/확인 ===== */
+  const cancelModal = $('#cancelModal');
+  let lastFocused=null;
+
+  function openCancelModal(){
+    cancelModal.classList.add('show');
+    lastFocused=document.activeElement;
+    // 첫 포커스
+    $('#cancelYesBtn').focus();
+    // 포커스 트랩
+    function trap(e){
+      if(e.key==='Tab'){
+        const f = cancelModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        const focusables = Array.from(f).filter(el=>!el.hasAttribute('disabled'));
+        const first=focusables[0], last=focusables[focusables.length-1];
+        if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+        else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+      } else if(e.key==='Escape'){ closeCancelModal(); }
+    }
+    cancelModal.addEventListener('keydown', trap);
+    cancelModal._trap = trap;
+  }
+  function closeCancelModal(){
+    cancelModal.classList.remove('show');
+    if(cancelModal._trap){ cancelModal.removeEventListener('keydown', cancelModal._trap); cancelModal._trap=null; }
+    if(lastFocused) lastFocused.focus();
+  }
+  $('#cancelCloseBtn').addEventListener('click', closeCancelModal);
+  $('#cancelNoBtn').addEventListener('click', closeCancelModal);
+  cancelModal.addEventListener('click', (e)=>{ if(e.target===cancelModal) closeCancelModal(); });
+
+  // 참가취소 버튼 클릭 → 모달 열기
+  $('#ownerCancelBtn').addEventListener('click', ()=>{
+    const teamId=$('#ownerTeamSel').value;
+    if(!teamId){ show('취소할 신청서를 먼저 선택하세요'); return; }
+    openCancelModal();
+  });
+
+  // 모달 '확인(삭제)' → 백엔드 호출
+  $('#cancelYesBtn').addEventListener('click', async ()=>{
+    const teamId=$('#ownerTeamSel').value; 
+    const name=$('#ownerName').value.trim(); 
+    const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
+    if(!teamId){ show('취소할 신청서를 선택하세요'); return; }
+    if(!name || phone.length<8){ show('이름과 연락처를 다시 확인하세요'); return; }
+
+    // 엔드포인트 후보(유연성 확보)
+    const candidates = ['cancelteambyowner','cancelTeamByOwner','deleteteambyowner','deleteTeamByOwner'];
+    const payload = { name, phone, teamId };
+
+    // 버튼 중복 클릭 방지
+    const yesBtn = $('#cancelYesBtn'); yesBtn.disabled = true; yesBtn.textContent = '처리 중…';
+    try{
+      const json = await apiPost(candidates, payload);
+      if(json && json.ok){
+        closeCancelModal();
+        show('취소 완료: 신청서가 삭제되었습니다.');
+        // 상태 리셋
+        $('#ownerTeamSel').innerHTML='';
+        $('#ownerResult').style.display='none';
+        ownerEdit=null; cloneSource=null;
+        // 폼 초기화(선택)
+        resetAllFormUI();
+      }else{
+        alert('취소 실패: ' + (json && (json.error||json.raw) || 'unknown'));
+      }
+    }catch(e){
+      alert('네트워크 오류로 취소에 실패했습니다.');
+    }finally{
+      yesBtn.disabled=false; yesBtn.textContent='확인(삭제)';
+    }
+  });
+
+  function resetAllFormUI(){
+    // 대회/정보
+    $('#tourSelect').value='';
+    renderTourInfo(null);
+    $('#posterWrap').style.display='none';
+    // 기본정보
+    $('#province').value=''; $('#province').dispatchEvent(new Event('change'));
+    $('#teamNameKo').value=''; $('#teamNameEn').value='';
+    $('#managerName').value=''; $('#managerPhone').value='';
+    // 종/디비전
+    categorySelect.innerHTML='<option value="">대회를 먼저 선택하세요</option>'; categorySelect.disabled=true;
+    divisionSelect.innerHTML='<option value="">종별을 먼저 선택하세요</option>'; divisionSelect.disabled=true;
+    // 유니폼
+    $('#uniformHome').value='#ff0000'; $('#uniformAway').value='#ffffff';
+    $('#uniformHomePicker').value='#ff0000'; $('#uniformAwayPicker').value='#ffffff';
+    renderJersey($('#jerseyHome'), '#ff0000'); renderJersey($('#jerseyAway'), '#ffffff'); checkContrast();
+    // 선수
+    playersDiv.innerHTML=''; for(let i=0;i<5;i++) $('#addPlayerBtn').click();
+    // 안내
+    $$('.step').forEach(s=>s.classList.remove('active')); $('#step0').classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
 
   /* ===== 제출(신규/수정 공용) ===== */
   $('#submitBtn').addEventListener('click', async ()=>{
