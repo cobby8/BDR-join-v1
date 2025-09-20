@@ -144,10 +144,9 @@
             <th class="col-elite">선출</th>
             <th class="col-att">
               출석
-              <div class="th-actions">
-                <button type="button" class="btn-mini" id="btnAllAttendOn">전체체크</button>
-                <button type="button" class="btn-mini" id="btnAllAttendOff">전체해제</button>
-              </div>
+            <div class="th-actions">
+              <button type="button" class="btn-mini" id="btnAttendToggle">전체체크/해제</button>
+            </div>
             </th>
             <th class="col-start">
               선발출전
@@ -333,10 +332,10 @@ document.getElementById('btnShare').addEventListener('click', async ()=>{
 /* ============ 헤더 액션 버튼 동작 ============ */
 document.addEventListener('click', (e)=>{
   const id = (e.target && e.target.id) || '';
-  if(id === 'btnAllAttendOn'){
-    setCheckedAll('.chk-attend', true);
-  }else if(id === 'btnAllAttendOff'){
-    setCheckedAll('.chk-attend', false);
+  if(id === 'btnAttendToggle'){
+    const nodes = Array.from(document.querySelectorAll('.chk-attend'));
+    const shouldCheck = nodes.some(n => !n.checked); // 하나라도 미체크면 전체 체크
+    setCheckedAll('.chk-attend', shouldCheck);
   }else if(id === 'btnAllStarterOff'){
     setCheckedAll('.chk-starter', false);
   }
