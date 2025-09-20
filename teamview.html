@@ -31,20 +31,19 @@
   /* table */
   .table-wrap{overflow:auto}
   table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
-  /* 화면 기준 열 폭 (비율은 인쇄에도 그대로 유지) */
-  col.no   { width:auto }
-  col.name { width:auto }
-  col.pos  { width:auto }
-  col.birth{ width:auto }
-  col.age  { width:auto }
-  col.elite{ width:auto }
-  col.att  { width:auto }
-  col.strt { width:auto }
+
+  /* 🔧 최신 기준: 모든 열 폭 auto */
+  col.no, col.name, col.pos, col.birth, col.age, col.elite, col.att, col.strt { width:auto }
 
   th{font-size:12px;color:#5b6472;text-align:left;padding:0 10px}
   td{background:#fff;padding:10px;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;vertical-align:middle}
   tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
+
+  /* 헤더 액션 버튼(헤더 아래 배치) */
+  .th-actions{margin-top:4px;display:flex;gap:6px;justify-content:center}
+  .btn-mini{font-size:11px;padding:3px 6px;border-radius:8px;border:1px solid #dfe6ee;background:#fff;cursor:pointer}
+  .btn-mini:hover{border-color:#cbd5e1}
 
   th.col-att, td.col-att,
   th.col-start, td.col-start { text-align:center }
@@ -72,21 +71,19 @@
   /* ===== Print: 화면 비율 그대로, A4 폭에 맞춰 확대/축소 ===== */
   @page { size: A4 portrait; margin: 6mm; }
   @media print{
-    /* 페이지 폭을 A4로 고정하고, 화면과 동일한 colgroup/비율 유지 */
     html, body { width: 210mm; }
-    header,.toolbar{display:none !important}
+    header,.toolbar,.th-actions{display:none !important}
     body{background:#fff}
     .wrap{max-width:none;width:100%;margin:0;padding:0}
     .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px;margin:6mm 0 0 0;padding:10px}
     .table-wrap{overflow:visible}
-    table{width:100%;border-spacing:0;table-layout:fixed} /* 화면 colgroup 그대로 사용 */
+    table{width:100%;border-spacing:0;table-layout:fixed}
     td,th{padding:8px}
     tr{break-inside:avoid}
 
-    /* 출석 체크된 행만 인쇄 (호환성 위해 클래스 방식 사용) */
+    /* 출석 체크된 행만 인쇄 (호환성 위해 클래스 방식) */
     tbody tr{ display:none }
     tbody tr.print-keep{ display:table-row }
-    /* 체크박스/선발열도 화면과 동일하게 보이도록 숨김 처리 없음 */
   }
 </style>
 </head>
@@ -145,8 +142,19 @@
             <th class="col-birth">생년월일</th>
             <th class="col-age">만나이</th>
             <th class="col-elite">선출</th>
-            <th class="col-att">출석</th>
-            <th class="col-start">선발출전</th>
+            <th class="col-att">
+              출석
+              <div class="th-actions">
+                <button type="button" class="btn-mini" id="btnAllAttendOn">전체체크</button>
+                <button type="button" class="btn-mini" id="btnAllAttendOff">전체해제</button>
+              </div>
+            </th>
+            <th class="col-start">
+              선발출전
+              <div class="th-actions">
+                <button type="button" class="btn-mini" id="btnAllStarterOff">전체해제</button>
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody id="playersTbody">
@@ -293,6 +301,18 @@ async function boot(){
   }
 }
 
+/* ============ 유틸: 체크 일괄 적용 ============ */
+function setCheckedAll(selector, value){
+  const inputs = document.querySelectorAll(selector);
+  inputs.forEach(inp=>{
+    if(inp.checked !== value){
+      inp.checked = value;
+      // 변경 이벤트 발생시켜 저장 로직 실행
+      inp.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+  });
+}
+
 /* ============ 상단 버튼 ============ */
 document.getElementById('btnReload').addEventListener('click', ()=>location.reload());
 document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
@@ -308,6 +328,18 @@ document.getElementById('btnShare').addEventListener('click', async ()=>{
       alert('공유 API 미지원 기기입니다. 링크를 복사했습니다.');
     }
   }catch(e){}
+});
+
+/* ============ 헤더 액션 버튼 동작 ============ */
+document.addEventListener('click', (e)=>{
+  const id = (e.target && e.target.id) || '';
+  if(id === 'btnAllAttendOn'){
+    setCheckedAll('.chk-attend', true);
+  }else if(id === 'btnAllAttendOff'){
+    setCheckedAll('.chk-attend', false);
+  }else if(id === 'btnAllStarterOff'){
+    setCheckedAll('.chk-starter', false);
+  }
 });
 
 /* ============ 인쇄: 출석 체크된 행만 살리기(화면 비율 유지) ============ */
@@ -334,8 +366,10 @@ document.addEventListener('change', (e)=>{
     const all = loadChecks(gTeamId);
     const aEl = tr.querySelector('.chk-attend');
     const sEl = tr.querySelector('.chk-starter');
+
+    // 선발 체크 시 출석 자동 체크
     if(t.classList.contains('chk-starter') && sEl?.checked && aEl && !aEl.checked){
-      aEl.checked = true; // 선발이면 출석 자동
+      aEl.checked = true;
     }
     all[key] = { a: !!aEl?.checked, s: !!sEl?.checked };
     saveChecks(gTeamId, all);
