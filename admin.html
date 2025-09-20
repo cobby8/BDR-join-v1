@@ -64,9 +64,10 @@
   .poster-preview img{max-width:220px;max-height:220px;border-radius:12px;border:1px solid #e6ecf5;object-fit:contain;background:#fff}
   .poster-drop{border:1px dashed #cbd5e1;border-radius:12px;padding:12px;text-align:center;color:#64748b;cursor:pointer;min-width:240px}
   .poster-meta{display:flex;gap:8px;align-items:center}
-      /* 팀 목록 우측 '열기/삭제' 버튼 80% 축소 */
-  .actions-cell .btn{ transform:scale(.8); transform-origin:right center; }
-  .actions-cell .btn.primary, .actions-cell .btn.danger{ padding:8px 12px; font-size:12px; }
+  /* 팀 목록 우측 '열기/삭제' 버튼 90% 스케일 + 행 하단 정렬 보정 */
+  .actions-cell{ display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+  .actions-cell .btn{ transform:scale(.9); transform-origin:right center; }
+  .actions-cell .btn.primary, .actions-cell .btn.danger{ padding:9px 13px; font-size:13px; }
 </style>
 </head>
 <body>
