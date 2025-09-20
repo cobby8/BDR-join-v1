@@ -31,9 +31,8 @@
   /* table */
   .table-wrap{overflow:auto}
   table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
-  /* ⚙ 열 폭 재조정: 이름은 shrink, 출석은 최소 폭 */
   col.no   { width:72px }
-  col.name { width:78px }   /* ← 내용만큼만 차지해서 출석 열과 붙음 */
+  col.name { width:78px }   /* 이름-출석 사이 거의 붙게 유지 */
   col.att  { width:52px }
   col.strt { width:52px }
   col.pos  { width:52px }
@@ -46,7 +45,7 @@
   tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
 
-  /* 이름↔출석 사이 간격 제거 */
+  /* 이름↔출석 간격 최소화 */
   th.col-name, td.col-name{ padding-right:4px }
   th.col-att,  td.col-att { padding-left:4px; padding-right:4px; text-align:center }
   th.col-start, td.col-start{ text-align:center }
@@ -58,7 +57,7 @@
   .skeleton-pill{height:24px;border-radius:999px;display:inline-block}
   @keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
 
-  /* 모바일 숨김 규칙 */
+  /* 모바일 숨김 */
   @media (max-width: 640px) {
     .col-pos, .col-elite, .col-age, .col-birth { display:none; }
   }
@@ -71,17 +70,36 @@
     font-size:16px; color:#0f172a;
   }
 
-  /* print (A4) */
-  @page { size: A4 portrait; margin: 12mm; }
+  /* ===== Print: A4 가득 채우기 ===== */
+  @page { size: A4 portrait; margin: 6mm; }  /* 여백 축소 */
   @media print{
+    /* 페이지 폭을 A4로 고정하고 좌우 여백 최소화 */
+    html, body { width: 210mm; }
     header,.toolbar{display:none !important}
     body{background:#fff}
-    .wrap{max-width:none;margin:0;padding:0}
-    .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px}
+    .wrap{max-width:none;width:100%;margin:0;padding:0}
+    .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px;margin-top:6mm}
+
+    /* 인쇄 시 출석 미체크 행 숨김 */
     tbody tr:not(:has(.chk-attend:checked)){ display:none !important }
+
+    /* 체크박스 열은 감춤 */
     th.col-att, td.col-att,
     th.col-start, td.col-start{ display:none !important }
-    table{border-spacing:0; table-layout:fixed}
+
+    /* 테이블을 페이지 폭에 꽉 차게 */
+    .table-wrap{overflow:visible}
+    table{width:100%;border-spacing:0;table-layout:fixed}
+
+    /* 인쇄 전용 열폭을 퍼센트로 재지정 → 가로폭 꽉 채움 */
+    col.no   { width:8% }
+    col.name { width:28% }
+    /* col.att/col.strt 는 숨겨지므로 비율 재분배 */
+    col.pos  { width:10% }
+    col.birth{ width:24% }
+    col.age  { width:10% }
+    col.elite{ width:20% }
+
     td,th{padding:8px}
     tr{break-inside:avoid}
   }
