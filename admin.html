@@ -64,6 +64,9 @@
   .poster-preview img{max-width:220px;max-height:220px;border-radius:12px;border:1px solid #e6ecf5;object-fit:contain;background:#fff}
   .poster-drop{border:1px dashed #cbd5e1;border-radius:12px;padding:12px;text-align:center;color:#64748b;cursor:pointer;min-width:240px}
   .poster-meta{display:flex;gap:8px;align-items:center}
+      /* 팀 목록 우측 '열기/삭제' 버튼 80% 축소 */
+  .actions-cell .btn{ transform:scale(.8); transform-origin:right center; }
+  .actions-cell .btn.primary, .actions-cell .btn.danger{ padding:8px 12px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -200,7 +203,7 @@
   <!-- 팀/선수 -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="margin:0;font-size:16px">팀 / 선수</h3>
+      <h3 style="margin:0;font-size:16px">참가팀 명단</h3>
       <div class="toolbar">
         <input id="searchText" placeholder="팀명/대표자/연락처 검색" style="width:160px">
         <button class="btn" id="searchBtn">검색</button>
@@ -216,7 +219,7 @@
       </colgroup>
         <thead>
           <tr>
-            <th>대회</th><th>지역</th><th>참가팀 명단</th><th>유니폼</th><th>종별·디비전</th><th>신청일시</th><th></th>
+            <th>대회</th><th>지역</th><th>팀 / 대표자</th><th>유니폼</th><th>종별·디비전</th><th>신청일시</th><th></th>
           </tr>
         </thead>
         <tbody id="teamsTbody"></tbody>
@@ -473,9 +476,6 @@ function rowTeam(v){
     <td class="ellipsis">${v.category||''} · ${v.division||''}</td>
     <td class="ellipsis">${fmtDate(v.createdAt)}</td>
     <td class="actions-cell" style="text-align:right; display:flex; gap:8px; justify-content:flex-end">${openBtn}${delBtn}</td>
-          /* 팀 목록 우측 '열기/삭제' 버튼 80% 축소 */
-      .actions-cell .btn{ transform:scale(.8); transform-origin:right center; }
-      .actions-cell .btn.primary, .actions-cell .btn.danger{ padding:8px 12px; font-size:12px; }
   </tr>`;
 }
 async function loadTeams(){
