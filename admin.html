@@ -480,17 +480,26 @@ async function loadTeams(){
   $('#teamsTbody').innerHTML=rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') || `<tr><td colspan="7" class="muted">데이터 없음</td></tr>`;
 }
 document.getElementById('teamsTbody').addEventListener('click', (e)=>{
-  const open=e.target.closest('.open-view'); if(open){ e.preventDefault(); const id=open.dataset.id||''; if(!id) return; const url=`${VIEWER_BASE}?teamId=${encodeURIComponent(id)}`; window.open(url,'_blank','noopener'); }
-});
+  const open = e.target.closest('.open-view');
+  if (open){
+    e.preventDefault();
+    const id = open.dataset.id || '';
+    if (!id) return;
+    const url = `${VIEWER_BASE}?teamId=${encodeURIComponent(id)}`;
+    window.open(url, '_blank', 'noopener');
+    return;
+  }
+
   const del = e.target.closest('.del-team');
   if (del){
     e.preventDefault();
-    const id = del.dataset.id || '';
+    const id   = del.dataset.id   || '';
     const name = del.dataset.team || '';
     if (!id) return;
     confirmDeleteTeamAdmin(id, name);
     return;
   }
+});
 
 /* ========= 상태/잠금 ========= */
 let DIV_STATE=[];
