@@ -134,6 +134,54 @@
     #formArea .chip,
     #formArea .badge{ max-width:100%; overflow:hidden; text-overflow:ellipsis; }
   }
+  /* === Admin: 참가팀 명단 - 모바일 3~4줄 그리드 카드 (≤640px) === */
+  @media (max-width:640px){
+    /* 카드 기본: 이미 responsive-table 기본 카드화가 되어 있으므로, 여기서 그리드만 지정 */
+    #teamsTable.responsive-table tbody tr{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "team   team"      /* 1행: 팀/대표자(풀폭) */
+        "tour   region"    /* 2행: 대회 · 지역 */
+        "catdiv created"   /* 3행: 종별·디비전 · 신청일시 */
+        "uniform uniform"  /* 4행: 유니폼(풀폭) */
+        "actions actions"; /* 5행: 액션(풀폭) */
+      gap:10px 12px;
+      align-items:center;
+    }
+    /* 각 칸을 그리드 영역에 매핑 (열 순서는 고정: 1=대회,2=지역,3=팀/대표자,4=유니폼,5=종별·디비전,6=신청일시,7=액션) */
+    #teamsTable.responsive-table td:nth-child(3){ grid-area: team; }
+    #teamsTable.responsive-table td:nth-child(1){ grid-area: tour; }
+    #teamsTable.responsive-table td:nth-child(2){ grid-area: region; }
+    #teamsTable.responsive-table td:nth-child(5){ grid-area: catdiv; }
+    #teamsTable.responsive-table td:nth-child(6){ grid-area: created; }
+    #teamsTable.responsive-table td:nth-child(4){ grid-area: uniform; text-align:center; }
+    #teamsTable.responsive-table td:nth-child(7){ grid-area: actions; }
+  
+    /* 라벨(헤더텍스트) 중 불필요한 것은 숨김 */
+    #teamsTable.responsive-table td:nth-child(3)::before,  /* 팀/대표자 */
+    #teamsTable.responsive-table td:nth-child(7)::before{  /* 액션 */
+      display:none;
+    }
+  
+    /* 팀명 강조, 대표자/연락처는 세부 텍스트 톤 */
+    #teamsTable.responsive-table td:nth-child(3) b{ font-size:15px; }
+    #teamsTable.responsive-table td:nth-child(3) .muted{ display:block; margin-top:2px; }
+  
+    /* 종별·디비전 두 줄(기존 클래스 유지) */
+    #teamsTable .td-catdiv .cat-line{ font-weight:600; line-height:1.1; }
+    #teamsTable .td-catdiv .div-line{ color:var(--muted); margin-top:2px; line-height:1.1; }
+  
+    /* 신청일시는 우측 정렬보다 가독성 위해 기본 정렬 유지(필요시 text-align:right 로 교체 가능) */
+    #teamsTable .td-created{ text-align:left; }
+  
+    /* 액션 버튼 정렬 */
+    #teamsTable .actions-cell{ justify-content:flex-end; gap:8px; }
+  
+    /* 긴 텍스트 넘침 방지 */
+    #teamsTable.responsive-table td{ min-width:0; }
+    #teamsTable.responsive-table td .ellipsis{ max-width:100%; }
+  }
 </style>
 </head>
 <body>
@@ -282,7 +330,7 @@
     </div>
 
     <div style="overflow:auto">
-      <table class="responsive-table">
+      <table id="teamsTable" class="responsive-table">
       <colgroup>
         <col class="col-tournament" /><col class="col-region" /><col class="col-team" />
         <col class="col-uniform" /><col class="col-catdiv" /><col class="col-created" />
