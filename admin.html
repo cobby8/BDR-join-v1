@@ -78,6 +78,38 @@
   .td-catdiv .div-line{color:var(--muted); margin-top:2px; line-height:1.1}
   /* 신청일시 값도 헤더 아래로 좌측 정렬 */
   .td-created{ text-align:left; }
+  /* === Admin: 모바일 카드 레이아웃 (≤640px) === */
+@media (max-width:640px){
+  /* thead 숨기고 tr을 카드처럼 */
+  table.responsive-table thead{ display:none; }
+  table.responsive-table, 
+  table.responsive-table tbody, 
+  table.responsive-table tr, 
+  table.responsive-table td{ display:block; width:100%; }
+
+  table.responsive-table tbody tr{
+    background:#fff;
+    border:1px solid #e6ecf5;
+    border-radius:14px;
+    margin:10px 0;
+    padding:10px;
+  }
+  table.responsive-table td{
+    border:none;
+    padding:8px 6px 4px;
+  }
+  /* 라벨(헤더 텍스트) 노출 */
+  table.responsive-table td::before{
+    content: attr(data-label);
+    display:block;
+    font-size:12px;
+    color:#6b7280;
+    margin-bottom:4px;
+    line-height:1.2;
+  }
+  /* 액션 버튼은 우측 정렬 유지 */
+  table.responsive-table td:last-child .actions-cell{ justify-content:flex-end; }
+}
 </style>
 </head>
 <body>
@@ -227,7 +259,7 @@
     </div>
 
     <div style="overflow:auto">
-      <table>
+      <table class="responsive-table">
       <colgroup>
         <col class="col-tournament" /><col class="col-region" /><col class="col-team" />
         <col class="col-uniform" /><col class="col-catdiv" /><col class="col-created" />
@@ -272,6 +304,24 @@ const pad=n=>String(n).padStart(2,'0');
 const phonePretty=s=> (s||'').replace(/\D/g,'').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
 function fmtDate(v){  if(!v) return '';  const d=new Date(v);  if(isNaN(d)) return String(v);  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
 function fmtDateShort(v){  if(!v) return '';  const d=new Date(v);  if(isNaN(d)) return String(v);  const yy = String(d.getFullYear()).slice(-2);  return `${yy}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+/* === Admin: 모바일 카드용 라벨 주입 === */
+function applyDataLabelsToTable(table){
+  if(!table) return;
+  const ths = table.querySelectorAll('thead th');
+  if(!ths.length) return;
+  const headers = Array.from(ths).map(th=> (th.textContent||'').trim());
+  table.querySelectorAll('tbody tr').forEach(tr=>{
+    const tds = tr.querySelectorAll('td');
+    tds.forEach((td, i)=>{
+      const label = headers[i] || '';
+      if(label) td.setAttribute('data-label', label);
+    });
+  });
+}
+/* 페이지 내 모든 responsive-table에 적용 */
+function applyResponsiveLabels(){
+  document.querySelectorAll('table.responsive-table').forEach(applyDataLabelsToTable);
+}
 function toInputDateOnly(s){ if(!s) return ''; if(typeof s==='string'){ const m=s.match(/^(\d{4}-\d{2}-\d{2})/); if(m) return m[1]; } const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; return ''; }
 function toInputDT(s){ if(!s) return ''; if(typeof s==='string'){ const m=s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/); if(m) return `${m[1]}T${m[2]}:${m[3]}`; } const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; return ''; }
 function calcStatus(rs,re){ if(!rs||!re) return '상태미정'; const s=new Date(rs), e=new Date(re), n=new Date(); if(isNaN(s)||isNaN(e)) return '상태미정'; if(n<s) return '접수전'; if(n>e) return '마감'; return '접수중'; }
@@ -479,6 +529,10 @@ function normalizeTeamRow(r){
     awayHex:(r.uniformAway||'').toLowerCase(), createdAt:r.createdAt||'', editCode:r.editCode||''
   };
 }
+function telHref(s){
+  const d = String(s||'').replace(/\D/g,'');
+  return d ? `tel:${d}` : '';
+}
 function rowTeam(v){
   const openBtn = `<a href="#" class="btn primary open-view" data-id="${v.teamId}" title="TeamView(새 탭)">열기</a>`;
   const delBtn  = `<a href="#" class="btn danger del-team" data-id="${v.teamId}" data-team="${(v.teamName||'').replace(/"/g,'&quot;')}" title="팀 삭제(관리자)">삭제</a>`;
@@ -487,7 +541,11 @@ function rowTeam(v){
     <td class="ellipsis" title="${v.region||''}">${v.region||'-'}</td>
     <td>
       <div class="ellipsis" title="${v.teamName||''}"><b>${v.teamName||''}</b></div>
-      <div class="muted ellipsis" title="${(v.managerName||'')+' · '+(v.managerPhone||'')}">${v.managerName||''} · ${v.managerPhone||''}</div>
+      <div class="muted ellipsis" title="${(v.managerName||'')+' · '+(v.managerPhone||'')}">
+        ${v.managerName||''} · ${
+          v.managerPhone ? `<a href="${telHref(v.managerPhone)}" style="color:inherit;text-decoration:none">${v.managerPhone}</a>` : ''
+        }
+      </div>
     </td>
     <td class="td-uniform"><div class="jersey">${jerseySVG(v.homeHex,'HOME')}${jerseySVG(v.awayHex,'AWAY')}</div></td>
     <td class="td-catdiv">
@@ -511,6 +569,9 @@ async function loadTeams(){
     });
   }
   $('#teamsTbody').innerHTML=rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') || `<tr><td colspan="7" class="muted">데이터 없음</td></tr>`;
+  $('#teamsTbody').innerHTML=rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') || `<tr><td colspan="7" class="muted">데이터 없음</td></tr>`;
+  /* 추가: 모바일 카드 라벨 주입 */
+  applyResponsiveLabels();
 }
 document.getElementById('teamsTbody').addEventListener('click', (e)=>{
   const open = e.target.closest('.open-view');
