@@ -151,6 +151,12 @@
     .mobile-actions{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
     .mobile-actions .btn-mini{ padding:7px 10px; font-size:12px; border-radius:10px; }
   }
+
+  /* === TeamCard 칩을 동일 폭으로 카드 오른쪽 끝까지 === */
+  #teamCard .row-2 > * { min-width: 0; }                  /* 그리드 자식이 오른쪽으로 줄어들 수 있게 */
+  #teamCard .kvs{ grid-template-columns: 90px 1fr; column-gap: 12px; } /* 라벨 고정폭 + 값(칩) 전체 확장 */
+  #teamCard .kvs .kv-v{ min-width: 0; }                   /* 값 영역도 축소 허용 (ellipsis 작동) */
+  #teamCard .kvs .kv-chip{ display:block; width:100%; }    /* 칩을 값 영역 너비 100%로 */
 </style>
 </head>
 <body>
