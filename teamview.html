@@ -211,55 +211,79 @@ async function saveViewAsJPG(){
   const players = document.getElementById('playersCard');
   if(!team || !players) throw new Error('캡처할 영역을 찾을 수 없습니다.');
 
-  const baseWrap = document.querySelector('.wrap');
-  const baseWidth = (baseWrap && baseWrap.offsetWidth) ? baseWrap.offsetWidth : 980;
-
-  // 화면상 높이(대략) → 스케일링해서 타깃 높이 계산
-  const gap = 28; // 카드 간 여백
-  const totalHeight = team.offsetHeight + players.offsetHeight + gap;
-
-  const targetW = A4_TARGET_WIDTH;       // 예: 2480
-  const scale   = targetW / baseWidth;
-  const targetH = Math.ceil(totalHeight * scale);
-
-  // 문서의 <style>들을 수집해 foreignObject 내부로 주입
-  const styleTexts = Array.from(document.querySelectorAll('style'))
-    .map(s => s.innerHTML)
-    .join('\n');
-
-  // 배경색
+  // 1) 오프스크린 컨테이너 구성(헤더 제외)
+  const wrap = document.querySelector('.wrap');
+  const baseWidth = wrap?.offsetWidth || 980;
   const bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
 
-  // XHTML 루트 1개만 두고, 그 안에 스타일 + 카드 2개를 넣는다
-  const xhtml = `
+  const tempHost = document.createElement('div');
+  tempHost.style.position = 'fixed';
+  tempHost.style.left = '-10000px';
+  tempHost.style.top = '0';
+  tempHost.style.width = baseWidth + 'px';
+  tempHost.style.boxSizing = 'border-box';
+  tempHost.style.padding = '14px';
+  tempHost.style.background = bg;
+
+  const teamClone = team.cloneNode(true);
+  const playersClone = players.cloneNode(true);
+
+  // 체크박스의 '표시 상태'가 복제 시 사라지는 브라우저가 있어 강제 동기화
+  const oChecks = Array.from(players.querySelectorAll('input[type=checkbox]'));
+  const cChecks = Array.from(playersClone.querySelectorAll('input[type=checkbox]'));
+  cChecks.forEach((c,i)=>{ if(oChecks[i]) c.checked = !!oChecks[i].checked; });
+
+  tempHost.appendChild(teamClone);
+  tempHost.appendChild(playersClone);
+  document.body.appendChild(tempHost);
+
+  const targetW = A4_TARGET_WIDTH;               // 2480px (필요 시 조정)
+  const scale   = targetW / baseWidth;
+
+  // 2) 먼저 foreignObject 시도 → 실패 시 html2canvas 폴백
+  try{
+    const canvas = await renderByForeignObject(tempHost, targetW, scale, bg);
+    await downloadCanvasAsJPG(canvas);
+  }catch(e){
+    // 모바일/웹뷰 등에서 실패할 수 있음 → 폴백 경로
+    const canvas = await renderByHtml2Canvas(tempHost, targetW, baseWidth, bg);
+    await downloadCanvasAsJPG(canvas);
+  }finally{
+    tempHost.remove();
+  }
+}
+
+/* foreignObject 방식: 데스크톱/크롬 등에서 고품질 */
+async function renderByForeignObject(container, targetW, scale, bg){
+  // 전체 스타일 텍스트 수집
+  const styleTexts = Array.from(document.querySelectorAll('style'))
+    .map(s => s.innerHTML).join('\n');
+
+  // 실제 렌더 높이 계산
+  const targetH = Math.ceil(container.offsetHeight * scale);
+
+  const inner = `
     <div xmlns="http://www.w3.org/1999/xhtml"
-         style="width:${baseWidth}px; box-sizing:border-box; padding:14px; background:${bg};">
+         style="transform-origin:0 0; transform:scale(${scale});
+                width:${container.offsetWidth}px; box-sizing:border-box; background:${bg};">
       <style>${styleTexts}</style>
-      ${team.outerHTML}
-      ${players.outerHTML}
+      ${container.innerHTML}
     </div>
   `;
 
-  // SVG with foreignObject
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${targetW}" height="${targetH}">
-      <foreignObject width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml"
-             style="transform-origin:0 0; transform:scale(${scale});">
-          ${xhtml}
-        </div>
-      </foreignObject>
+      <foreignObject x="0" y="0" width="100%" height="100%">${inner}</foreignObject>
     </svg>
   `;
-
-  const svgBlob = new Blob([svg], { type:'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
+  const blob = new Blob([svg], { type:'image/svg+xml;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
 
   const img = new Image();
   img.crossOrigin = 'anonymous';
   await new Promise((res, rej)=>{
-    img.onload = ()=>res();
-    img.onerror = ()=>rej(new Error('SVG 렌더 실패(스타일 중첩/구조 오류 가능).'));
+    img.onload = res;
+    img.onerror = ()=>rej(new Error('foreignObject 렌더 실패'));
     img.src = url;
   });
 
@@ -271,12 +295,32 @@ async function saveViewAsJPG(){
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.drawImage(img, 0, 0);
   URL.revokeObjectURL(url);
+  return canvas;
+}
 
-  const now = new Date();
-  const filenameSafe = (document.getElementById('pageTitle')?.textContent || 'TeamView')
-    .replace(/[\\/:*?"<>|]/g,'_');
+/* html2canvas 폴백: 모바일/웹뷰에서도 안정적으로 동작 */
+async function renderByHtml2Canvas(container, targetW, baseWidth, bg){
+  if(typeof html2canvas !== 'function'){
+    throw new Error('html2canvas를 불러오지 못했습니다.');
+  }
+  const scale = targetW / baseWidth; // 목표 폭에 맞추기
+  const canvas = await html2canvas(container, {
+    backgroundColor: '#ffffff',
+    scale,
+    useCORS: true,
+    allowTaint: false,
+    foreignObjectRendering: false, // 모바일 이슈 회피
+    logging: false
+  });
+  return canvas;
+}
 
-  await new Promise((resolve, reject)=>{
+/* 공통 저장 루틴 */
+function downloadCanvasAsJPG(canvas){
+  return new Promise((resolve, reject)=>{
+    const now = new Date();
+    const filenameSafe = (document.getElementById('pageTitle')?.textContent || 'TeamView')
+      .replace(/[\\/:*?"<>|]/g,'_');
     canvas.toBlob(blob=>{
       if(!blob) return reject(new Error('이미지 변환 실패'));
       const a = document.createElement('a');
@@ -469,6 +513,6 @@ document.addEventListener('change', (e)=>{
 });
 
 boot();
-</script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </body>
 </html>
