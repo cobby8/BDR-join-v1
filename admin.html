@@ -899,7 +899,9 @@ async function loadTourToForm(t, locked=true){
     // 결제 정보 로드
   $('#fee').value     = t?.fee     || '';
   $('#account').value = t?.account || '';
-
+  // 대회 전환 시, 이전 대회의 제거/업로드 임시 상태를 반드시 초기화
+  POSTER_DATA_URL = '';
+  POSTER_CLEAR = false;
   await renderPoster();
 
   $('#tourStart').value= toInputDateOnly(t?.start);
