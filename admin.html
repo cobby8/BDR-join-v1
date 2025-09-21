@@ -221,6 +221,19 @@
     /* 넘침 방지 */
     #teamsTable.responsive-table td{ min-width:0; }
   }
+  /* 참가팀 명단: 선택 대회명 칩 스타일 */
+  #selectedTourInfo .chip{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    background:#f1f5fb;
+    border:1px solid #e4ecf7;
+    color:#334155;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
 </style>
 </head>
 <body>
@@ -364,6 +377,8 @@
       <h3 style="margin:0;font-size:16px">참가팀 명단</h3>
       <div class="toolbar">
         <input id="searchText" placeholder="팀명/대표자/연락처 검색" style="width:160px">
+      <!-- ▼ 추가: 선택된 대회명 표시 -->
+      <div id="selectedTourInfo" class="muted" style="margin:-2px 0 8px;display:none"></div>
         <button class="btn" id="searchBtn">검색</button>
       </div>
     </div>
@@ -690,6 +705,28 @@ async function loadTeams(){
     });
   }
   $('#teamsTbody').innerHTML=rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') || `<tr><td colspan="7" class="muted">데이터 없음</td></tr>`;
+  /* 선택된 대회명 표시 */
+  (function(){
+    const box = document.getElementById('selectedTourInfo');
+    if (!box) return;
+  
+    const selId = ($('#tourFilter').value||'').trim();
+    if (!selId){
+      box.style.display = 'none';
+      box.textContent = '';
+      return;
+    }
+  
+    const t = TOURS[selId] || (TOUR_ARRAY||[]).find(x => String(x.tourId||x.TourID||'') === selId);
+    if (t && (t.name||'').trim()){
+      const name = (t.name||'').trim();
+      box.style.display = '';
+      box.innerHTML = `<span class="chip" title="${name}">${name}</span>`;
+    }else{
+      box.style.display = 'none';
+      box.textContent = '';
+    }
+  })();
   /* 선택 대회 요약 표시 */
   (function(){
     const box = document.getElementById('selectedTourInfo');
