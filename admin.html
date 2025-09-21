@@ -173,7 +173,11 @@
           <input id="regStart" type="datetime-local" placeholder="접수 시작" data-editable>
           <input id="regEnd" type="datetime-local" placeholder="접수 종료" data-editable>
         </div>
-        
+
+        <!-- ✨ 수정 마감(접수기간 아래) -->
+        <label style="margin-top:10px">수정 마감</label>
+        <input id="editDeadlineAt" type="datetime-local" placeholder="수정 마감" data-editable>
+
         <div class="hr"></div>
         
         <label>결제 정보</label>
@@ -203,6 +207,7 @@
             </div>
           </div>
           <div class="toolbar" style="justify-content:flex-end;gap:8px">
+            <button class="btn" id="setEditDeadlineBtn" data-editable disabled>수정 마감만 반영</button>
             <button class="btn danger" id="deleteTourBtn" data-editable disabled>삭제</button>
             <button class="btn primary" id="saveTourBtn" data-editable disabled>저장</button>
           </div>
@@ -553,6 +558,9 @@ function setLocked(locked){
   const editBtn = $('#editBtn');
   if (editBtn) {
     editBtn.disabled = locked ? !CURRENT_TOUR_ID : true;
+
+  document.getElementById('setEditDeadlineBtn').disabled = locked || !CURRENT_TOUR_ID;
+
   }
 }
 document.getElementById('addPlaceBtn').addEventListener('click', () => {
@@ -900,6 +908,7 @@ async function loadTourToForm(t, locked=true){
   const re = pickFirst(t, ['regEnd','reg.end','reg_end','regEndDate','reg.end.date']);
   $('#regStart').value = toInputDT(rs);
   $('#regEnd').value   = toInputDT(re);
+  $('#editDeadlineAt').value = toInputDT(t?.editDeadlineAt);
   updateStatusBadge();
 
   let divSets=t?.divSets; if(!Array.isArray(divSets)||!divSets.length){ const m=t?.divs||{}; divSets=Object.keys(m).map(g=>({group:g,divisions:m[g]||[]})); }
@@ -935,6 +944,7 @@ async function doSave(){
     end:   $('#tourEnd').value   || '',
     regStart: $('#regStart').value || '',
     regEnd:   $('#regEnd').value   || '',
+    editDeadlineAt: ($('#editDeadlineAt').value || ''),
     status:   calcStatus($('#regStart').value||'',$('#regEnd').value||''),
     divSets:  DIV_STATE,
     divs,
@@ -1005,6 +1015,29 @@ $('#searchText').addEventListener('keydown', e=>{ if(e.key==='Enter') loadTeams(
 
 document.getElementById('saveTourBtn').addEventListener('click', doSave);
 document.getElementById('deleteTourBtn').addEventListener('click', doDelete);
+
+  // ✨ 수정 마감만 반영
+document.getElementById('setEditDeadlineBtn').addEventListener('click', async ()=>{
+  if (!CURRENT_TOUR_ID) return alert('대회를 먼저 선택하세요.');
+  let adminCode = ($('#adminCode').value || '').trim();
+  if (!adminCode) return openAdminCodeFloating(()=> document.getElementById('setEditDeadlineBtn').click());
+
+  const editAt = ($('#editDeadlineAt').value || '').trim(); // ''이면 마감 해제
+  if (!confirm(editAt ? `수정 마감 시각을\n${fmtDate(editAt)} 로 설정합니다.` : '수정 마감을 해제합니다.')) return;
+
+  try{
+    const payload = { tourId: CURRENT_TOUR_ID, adminCode, editDeadlineAt: editAt };
+    const j = await postJSONCompat(
+      ['tournament/setEditDeadline','tournament_seteditdeadline'],
+      payload
+    );
+    if (!isSuccessResponse(j)) throw new Error(j?.error || '반영 실패');
+
+    alert('수정 마감이 반영되었습니다.');
+  }catch(e){
+    alert('오류: ' + (e.message || e));
+  }
+});
 
 /* ========= 부팅 ========= */
 (async function boot(){ await health(); await loadTournaments(); await loadTeams(); await renderPoster(); })();
