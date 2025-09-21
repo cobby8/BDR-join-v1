@@ -39,30 +39,27 @@
   .input-icon{position:relative}
   .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;font-size:16px}
   .offscreen{position:absolute;left:-9999px;opacity:0;width:0;height:0;pointer-events:none}
+
+  /* 표 기본 */
   table{width:100%;border-collapse:separate;border-spacing:0 10px;table-layout:fixed}
-  col.col-tournament{width:17%}
-  col.col-region{width:15%}
-  /* 팀/유니폼/종별·디비전/일시 재배치 */
-  col.col-team{width:19%}      /* 팀명 약간 넓힘 */
-  col.col-uniform{width:12%}   /* 유니폼 전체를 조금 넓혀 팀명 쪽으로 시각적 균형 */
-/* 신청일시를 왼쪽으로—종별·디비전과 액션 사이 중앙에 오도록 재배치 */
-  col.col-catdiv{width:12%}   /* 종별·디비전 좁힘 → 신청일시의 시작 지점이 왼쪽으로 이동 */
-  col.col-created{width:18%}  /* 신청일시 넓힘(yy-mm-dd hh:mm 충분) + 가운데 정렬 유지 */
-  col.col-actions{width:8%}
-  /* (삭제) col.col-tournament */
+  /* 최종 확정 컬럼 폭 (대회 열 제거 반영) */
   col.col-region{width:18%}
   col.col-team{width:26%}
   col.col-uniform{width:14%}
   col.col-catdiv{width:18%}
   col.col-created{width:16%}
   col.col-actions{width:8%}
+
   th{font-size:12px;color:#5b6472;text-align:left;padding:0 10px}
   td{background:#fff;padding:12px 10px;border-top:1px solid #eef2f7;border-bottom:1px solid #eef2f7;vertical-align:top}
   tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
   .ellipsis{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  /* 유니폼 두 아이콘을 셀 중앙에 배치 */
+
+  /* 유니폼 중앙 */
   .jersey{display:flex;align-items:center;justify-content:center;gap:16px;width:100%}
+
+  /* 팝업 */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.15s;z-index:9998}
   .overlay.show{opacity:1;pointer-events:auto}
   .popover{position:fixed;min-width:320px;max-width:92vw;background:#fff;border:1px solid #e6ecf5;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.16);opacity:0;transform:translate(-50%,-6px);transition:.15s;z-index:9999;left:50%;top:13%}
@@ -70,157 +67,99 @@
   .pop-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eef2f7;font-weight:700}
   .pop-body{padding:12px}
   .pop-actions{display:flex;gap:8px;justify-content:flex-end;padding:10px 12px;border-top:1px solid #eef2f7}
+
+  /* 포스터 */
   .poster-preview{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .poster-preview img{max-width:220px;max-height:220px;border-radius:12px;border:1px solid #e6ecf5;object-fit:contain;background:#fff}
   .poster-drop{border:1px dashed #cbd5e1;border-radius:12px;padding:12px;text-align:center;color:#64748b;cursor:pointer;min-width:240px}
   .poster-meta{display:flex;gap:8px;align-items:center}
-  /* 팀 목록 우측 '열기/삭제' 버튼 90% 스케일 + 행 하단 정렬 보정 */
+
+  /* 액션 버튼 정렬 */
   .actions-cell{ display:flex; gap:8px; justify-content:flex-end; align-items:center; }
   .actions-cell .btn{ transform:scale(.9); transform-origin:right center; }
   .actions-cell .btn.primary, .actions-cell .btn.danger{ padding:9px 13px; font-size:13px; }
-  /* 유니폼 칼럼 셀 가운데 정렬 */
-  .td-uniform{ text-align:center; }
-    /* 종별·디비전 2줄 표기 */
+
+  /* 종별·디비전 2줄 */
   .td-catdiv .cat-line{font-weight:600; line-height:1.1}
   .td-catdiv .div-line{color:var(--muted); margin-top:2px; line-height:1.1}
-  /* 신청일시 값도 헤더 아래로 좌측 정렬 */
-  .td-created{ text-align:left; }
-  /* === Admin: 모바일 카드 레이아웃 (≤640px) === */
-@media (max-width:640px){
-  /* thead 숨기고 tr을 카드처럼 */
-  table.responsive-table thead{ display:none; }
-  table.responsive-table, 
-  table.responsive-table tbody, 
-  table.responsive-table tr, 
-  table.responsive-table td{ display:block; width:100%; }
 
-  table.responsive-table tbody tr{
-    background:#fff;
-    border:1px solid #e6ecf5;
-    border-radius:14px;
-    margin:10px 0;
-    padding:10px;
-  }
-  table.responsive-table td{
-    border:none;
-    padding:8px 6px 4px;
-  }
-  /* 라벨(헤더 텍스트) 노출 */
-  table.responsive-table td::before{
-    content: attr(data-label);
-    display:block;
-    font-size:12px;
-    color:#6b7280;
-    margin-bottom:4px;
-    line-height:1.2;
-  }
-  /* 액션 버튼은 우측 정렬 유지 */
-  table.responsive-table td:last-child .actions-cell{ justify-content:flex-end; }
-}
-  /* === Admin: 대회관리 폼 모바일 오버플로우 수습 === */
+  /* 신청일시 좌정렬 */
+  .td-created{ text-align:left; }
+
+  /* === Admin: 모바일 카드 레이아웃 (≤640px) === */
   @media (max-width:640px){
-    /* 그리드/플렉스 자식이 줄어들 수 있게 */
+    /* thead 숨기고 tr을 카드처럼 */
+    table.responsive-table thead{ display:none; }
+    table.responsive-table, 
+    table.responsive-table tbody, 
+    table.responsive-table tr, 
+    table.responsive-table td{ display:block; width:100%; }
+
+    table.responsive-table tbody tr{
+      background:#fff;
+      border:1px solid #e6ecf5;
+      border-radius:14px;
+      margin:10px 0;
+      padding:10px;
+    }
+    table.responsive-table td{
+      border:none;
+      padding:8px 6px 4px;
+    }
+    /* 라벨(헤더 텍스트) 노출 */
+    table.responsive-table td::before{
+      content: attr(data-label);
+      display:block;
+      font-size:12px;
+      color:#6b7280;
+      margin-bottom:4px;
+      line-height:1.2;
+    }
+    /* 액션 버튼 우측 정렬 유지 */
+    table.responsive-table td:last-child .actions-cell{ justify-content:flex-end; }
+
+    /* 대회관리 폼 모바일 오버플로우 수습 */
     #formArea .grid > *,
     #formArea .row-2 > *,
     #formArea .place-item > * { min-width:0; }
-  
-    /* 길이 긴 텍스트(예: URL) 줄바꿈 허용 */
-    #formArea input,
-    #formArea textarea { word-break:break-all; }
-  
-    /* 장소 행(place-item)은 세로 스택 */
+    #formArea input, #formArea textarea { word-break:break-all; }
     #formArea .place-item{ grid-template-columns:1fr; }
-  
-    /* 포스터 메타/프리뷰는 줄바꿈 허용 */
     #formArea .poster-meta{ flex-wrap:wrap; row-gap:6px; }
     #formArea .poster-preview{ gap:8px; }
     #formArea .poster-preview img{ max-width:100%; height:auto; }
-  
-    /* 칩/필도 박스 안에서 잘리도록 */
-    #formArea .pill,
-    #formArea .chip,
-    #formArea .badge{ max-width:100%; overflow:hidden; text-overflow:ellipsis; }
-  }
-  /* === Admin: 참가팀 명단 - 모바일 3~4줄 그리드 카드 (≤640px) === */
-  @media (max-width:640px){
-    /* 카드 기본: 이미 responsive-table 기본 카드화가 되어 있으므로, 여기서 그리드만 지정 */
+    #formArea .pill, #formArea .chip, #formArea .badge{ max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+
+    /* 참가팀 명단 - 모바일 3행 카드 (대회열 제거 기준) */
     #teamsTable.responsive-table tbody tr{
       display:grid;
       grid-template-columns: 1fr 1fr;
       grid-template-areas:
-        "team   team"      /* 1행: 팀/대표자(풀폭) */
-        "tour   region"    /* 2행: 대회 · 지역 */
-        "catdiv created"   /* 3행: 종별·디비전 · 신청일시 */
-        "uniform uniform"  /* 4행: 유니폼(풀폭) */
-        "actions actions"; /* 5행: 액션(풀폭) */
-      gap:10px 12px;
-      align-items:center;
-    }
-    /* 각 칸을 그리드 영역에 매핑 (열 순서는 고정: 1=대회,2=지역,3=팀/대표자,4=유니폼,5=종별·디비전,6=신청일시,7=액션) */
-    #teamsTable.responsive-table td:nth-child(3){ grid-area: team; }
-    #teamsTable.responsive-table td:nth-child(1){ grid-area: tour; }
-    #teamsTable.responsive-table td:nth-child(2){ grid-area: region; }
-    #teamsTable.responsive-table td:nth-child(5){ grid-area: catdiv; }
-    #teamsTable.responsive-table td:nth-child(6){ grid-area: created; }
-    #teamsTable.responsive-table td:nth-child(4){ grid-area: uniform; text-align:center; }
-    #teamsTable.responsive-table td:nth-child(7){ grid-area: actions; }
-  
-    /* 라벨(헤더텍스트) 중 불필요한 것은 숨김 */
-    #teamsTable.responsive-table td:nth-child(3)::before,  /* 팀/대표자 */
-    #teamsTable.responsive-table td:nth-child(7)::before{  /* 액션 */
-      display:none;
-    }
-  
-    /* 팀명 강조, 대표자/연락처는 세부 텍스트 톤 */
-    #teamsTable.responsive-table td:nth-child(3) b{ font-size:15px; }
-    #teamsTable.responsive-table td:nth-child(3) .muted{ display:block; margin-top:2px; }
-  
-    /* 종별·디비전 두 줄(기존 클래스 유지) */
-    #teamsTable .td-catdiv .cat-line{ font-weight:600; line-height:1.1; }
-    #teamsTable .td-catdiv .div-line{ color:var(--muted); margin-top:2px; line-height:1.1; }
-  
-    /* 신청일시는 우측 정렬보다 가독성 위해 기본 정렬 유지(필요시 text-align:right 로 교체 가능) */
-    #teamsTable .td-created{ text-align:left; }
-  
-    /* 액션 버튼 정렬 */
-    #teamsTable .actions-cell{ justify-content:flex-end; gap:8px; }
-  
-    /* 긴 텍스트 넘침 방지 */
-    #teamsTable.responsive-table td{ min-width:0; }
-    #teamsTable.responsive-table td .ellipsis{ max-width:100%; }
-  }
-  /* === Admin: 참가팀 명단 - 모바일 3행 카드 (≤640px) === */
-  @media (max-width:640px){
-    /* 카드 그리드(대회 열 제거 기준, 열 순서: 1=지역,2=팀,3=유니폼,4=종별·디비전,5=신청,6=액션) */
-    #teamsTable.responsive-table tbody tr{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-areas:
-        "team   region"    /* 1행: 팀/대표자  | 지역 */
+        "team   region"    /* 1행: 팀/대표자 | 지역 */
         "catdiv created"   /* 2행: 종별·디비전 | 신청일시 */
-        "uniform actions"; /* 3행: 유니폼      | 액션 */
+        "uniform actions"; /* 3행: 유니폼 | 액션 */
       gap:10px 12px;
       align-items:center;
     }
-    /* 각 칸 매핑 (대회 열 제거 반영) */
+    /* 각 칸 매핑 (열 순서: 1=지역,2=팀,3=유니폼,4=종별·디비전,5=신청,6=액션) */
     #teamsTable.responsive-table td:nth-child(2){ grid-area: team; }
     #teamsTable.responsive-table td:nth-child(1){ grid-area: region; }
     #teamsTable.responsive-table td:nth-child(3){ grid-area: uniform; text-align:center; }
     #teamsTable.responsive-table td:nth-child(4){ grid-area: catdiv; }
     #teamsTable.responsive-table td:nth-child(5){ grid-area: created; }
     #teamsTable.responsive-table td:nth-child(6){ grid-area: actions; }
-  
+
     /* 라벨 보정: 팀/액션 라벨 숨김 */
     #teamsTable.responsive-table td:nth-child(2)::before,
     #teamsTable.responsive-table td:nth-child(6)::before{ display:none; }
-  
-    /* 팀명 강조, 대표자/연락처는 보조톤 */
+
+    /* 팀명 강조 */
     #teamsTable.responsive-table td:nth-child(2) b{ font-size:15px; }
     #teamsTable.responsive-table td:nth-child(2) .muted{ display:block; margin-top:2px; }
-  
+
     /* 넘침 방지 */
     #teamsTable.responsive-table td{ min-width:0; }
   }
+
   /* 참가팀 명단: 선택 대회명 칩 스타일 */
   #selectedTourInfo .chip{
     display:inline-block;
@@ -377,36 +316,33 @@
       <h3 style="margin:0;font-size:16px">참가팀 명단</h3>
       <div class="toolbar">
         <input id="searchText" placeholder="팀명/대표자/연락처 검색" style="width:160px">
-      <!-- ▼ 추가: 선택된 대회명 표시 -->
-      <div id="selectedTourInfo" class="muted" style="margin:-2px 0 8px;display:none"></div>
         <button class="btn" id="searchBtn">검색</button>
       </div>
     </div>
 
-  <div id="selectedTourInfo" class="muted tour-summary" style="margin:-2px 0 8px"></div>
+    <!-- 선택된 대회 표시 (하나만 유지) -->
+    <div id="selectedTourInfo" class="muted tour-summary" style="margin:-2px 0 8px"></div>
 
     <div style="overflow:auto">
       <table id="teamsTable" class="responsive-table">
-      <colgroup>
-        <!-- (삭제) <col class="col-tournament" /> -->
-        <col class="col-region" />
-        <col class="col-team" />
-        <col class="col-uniform" />
-        <col class="col-catdiv" />
-        <col class="col-created" />
-        <col class="col-actions" />
-      </colgroup>
-      <thead>
-        <tr>
-          <!-- (삭제) <th>대회</th> -->
-          <th>지역</th>
-          <th>팀 / 대표자</th>
-          <th>유니폼</th>
-          <th>종별·디비전</th>
-          <th>신청일시</th>
-          <th></th>
-        </tr>
-      </thead>
+        <colgroup>
+          <col class="col-region" />
+          <col class="col-team" />
+          <col class="col-uniform" />
+          <col class="col-catdiv" />
+          <col class="col-created" />
+          <col class="col-actions" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>지역</th>
+            <th>팀 / 대표자</th>
+            <th>유니폼</th>
+            <th>종별·디비전</th>
+            <th>신청일시</th>
+            <th></th>
+          </tr>
+        </thead>
         <tbody id="teamsTbody"></tbody>
       </table>
     </div>
@@ -441,6 +377,7 @@ const pad=n=>String(n).padStart(2,'0');
 const phonePretty=s=> (s||'').replace(/\D/g,'').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
 function fmtDate(v){  if(!v) return '';  const d=new Date(v);  if(isNaN(d)) return String(v);  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
 function fmtDateShort(v){  if(!v) return '';  const d=new Date(v);  if(isNaN(d)) return String(v);  const yy = String(d.getFullYear()).slice(-2);  return `${yy}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+
 /* === Admin: 모바일 카드용 라벨 주입 === */
 function applyDataLabelsToTable(table){
   if(!table) return;
@@ -455,7 +392,6 @@ function applyDataLabelsToTable(table){
     });
   });
 }
-/* 페이지 내 모든 responsive-table에 적용 */
 function applyResponsiveLabels(){
   document.querySelectorAll('table.responsive-table').forEach(applyDataLabelsToTable);
 }
@@ -516,18 +452,16 @@ function openPopoverCentered(title, bodyEl, actionsEl){ popTitle.textContent = t
 function closePopover(){ pop.classList.remove('show'); overlay.classList.remove('show'); setTimeout(()=>{ pop.style.display='none'; popBody.innerHTML=''; popActions.innerHTML=''; },120); }
 overlay.addEventListener('click', closePopover);
 popCloseBtn.addEventListener('click', closePopover);
-// 추후 백엔드 연동 스위치
-const ENABLE_DELETE_API = true; // 백엔드 연동 활성화
+
+/* ========= 삭제(팀) 확인 ========= */
+const ENABLE_DELETE_API = true;
 async function confirmDeleteTeamAdmin(teamId, teamName){
-  // 관리자코드 확인
   let adminCode = ($('#adminCode').value || '').trim();
   if (!adminCode){
-    await new Promise(res => openAdminCodeFloating(()=> res())); // 코드 입력 팝업
+    await new Promise(res => openAdminCodeFloating(()=> res()));
     adminCode = ($('#adminCode').value || '').trim();
     if (!adminCode) return;
   }
-
-  // 확인 팝업
   const body = el(`<div>
     <div style="margin:6px 0 10px">팀 <b>${teamName || teamId}</b> 를 삭제합니다. 이 작업은 되돌릴 수 없습니다.</div>
     <div class="muted">Players/Teams에서 해당 팀 관련 데이터가 제거됩니다.</div>
@@ -537,31 +471,22 @@ async function confirmDeleteTeamAdmin(teamId, teamName){
   const ok      = el(`<button class="btn danger">영구 삭제</button>`);
   actions.appendChild(cancel); actions.appendChild(ok);
   cancel.addEventListener('click', closePopover);
-ok.addEventListener('click', async ()=>{
-  // (기존) closePopover(); 는 유지
-  closePopover();
-
-  if (!ENABLE_DELETE_API){
-    alert('프런트 배치 완료: 백엔드 연동 후 활성화됩니다.');
-    return;
-  }
-
-  try{
-    // 삭제 재입력 방지 토글 (팝업은 이미 닫혔으니 중복호출만 방지되면 OK)
-    ok.disabled = true; ok.textContent = '삭제 중…';
-
-    const payload = { teamId, adminCode };
-    const j = await postJSONCompat(['deleteTeamAdmin','deleteteamadmin','delete_team_admin'], payload);
-    if (!isSuccessResponse(j)) throw new Error(j?.error || '삭제 실패');
-
-    await loadTeams();
-    alert('삭제되었습니다.');
-  }catch(e){
-    alert('삭제 중 오류: ' + (e.message||e));
-  }finally{
-    ok.disabled = false; ok.textContent = '영구 삭제';
-  }
-});
+  ok.addEventListener('click', async ()=>{
+    closePopover();
+    if (!ENABLE_DELETE_API){ alert('프런트 배치 완료: 백엔드 연동 후 활성화됩니다.'); return; }
+    try{
+      ok.disabled = true; ok.textContent = '삭제 중…';
+      const payload = { teamId, adminCode };
+      const j = await postJSONCompat(['deleteTeamAdmin','deleteteamadmin','delete_team_admin'], payload);
+      if (!isSuccessResponse(j)) throw new Error(j?.error || '삭제 실패');
+      await loadTeams();
+      alert('삭제되었습니다.');
+    }catch(e){
+      alert('삭제 중 오류: ' + (e.message||e));
+    }finally{
+      ok.disabled = false; ok.textContent = '영구 삭제';
+    }
+  });
   openPopoverCentered('팀 삭제(관리자)', body, actions);
 }
 
@@ -579,7 +504,6 @@ function openAdminCodeFloating(onOk){
   `);
   const pw = body.querySelector('#popAdminCode');
   body.querySelector('#popAdminEye').addEventListener('click', ()=>{ pw.type = (pw.type==='password'?'text':'password'); });
-
   const actions=el(`<div></div>`);
   const cancel=el(`<button class="btn">취소</button>`);
   const ok=el(`<button class="btn primary">확인</button>`);
@@ -589,7 +513,7 @@ function openAdminCodeFloating(onOk){
   openPopoverCentered('관리코드 확인', body, actions);
 }
 
-/* ========= 목록 ========= */
+/* ========= 목록 / 필터 ========= */
 let TOURS={}, TOUR_ARRAY=[], CURRENT_TOUR_ID='', CURRENT_TOUR_OBJ=null;
 
 async function health(){
@@ -597,15 +521,13 @@ async function health(){
   if(j && (j.ok || j.status==='ok' || j.success || j.rows!==undefined)){
     setHealth('#22c55e','연결 정상'); return true;
   }
-  setHealth('#ef4444','연결 실패'+(j && (j.error?(' - '+j.error): (j.raw?' (로그인/권한 필요 의심)':'')) || ''));
+  setHealth('#ef4444','연결 실패'+(j && (j.error?(' - '+j.error):(j.raw?' (로그인/권한 필요 의심)':'')) || ''));
   return false;
 }
 
 async function loadTournaments(){
   const j = await getJSON(apiUrl('tournaments'));
-  // 배열 채우기
   TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
-  // 배열 → id 맵 인덱싱 (tourId/TourID 모두 지원)
   TOURS = {};
   for (const t of TOUR_ARRAY) {
     const id = String((t && (t.tourId || t.TourID)) || '').trim();
@@ -631,7 +553,6 @@ function renderTournamentList(){
     el.addEventListener('click', async () => {
       if (!(await confirmDiscardIfDirty())) return;
       const id = el.getAttribute('data-id');
-      // 맵 우선, 없으면 배열에서 찾아서 보완
       const t  = TOURS[id] || (TOUR_ARRAY || []).find(x => String((x.tourId || x.TourID) || '') === id) || null;
       CURRENT_TOUR_OBJ = t || null;
       await loadTourToForm(t, true);
@@ -666,10 +587,8 @@ function normalizeTeamRow(r){
     awayHex:(r.uniformAway||'').toLowerCase(), createdAt:r.createdAt||'', editCode:r.editCode||''
   };
 }
-function telHref(s){
-  const d = String(s||'').replace(/\D/g,'');
-  return d ? `tel:${d}` : '';
-}
+function telHref(s){ const d = String(s||'').replace(/\D/g,''); return d ? `tel:${d}` : ''; }
+
 function rowTeam(v){
   const openBtn = `<a href="#" class="btn primary open-view" data-id="${v.teamId}" title="TeamView(새 탭)">열기</a>`;
   const delBtn  = `<a href="#" class="btn danger del-team" data-id="${v.teamId}" data-team="${(v.teamName||'').replace(/"/g,'&quot;')}" title="팀 삭제(관리자)">삭제</a>`;
@@ -678,9 +597,7 @@ function rowTeam(v){
     <td>
       <div class="ellipsis" title="${v.teamName||''}"><b>${v.teamName||''}</b></div>
       <div class="muted ellipsis" title="${(v.managerName||'')+' · '+(v.managerPhone||'')}">
-        ${v.managerName||''} · ${
-          v.managerPhone ? `<a href="${telHref(v.managerPhone)}" style="color:inherit;text-decoration:none">${v.managerPhone}</a>` : ''
-        }
+        ${v.managerName||''} · ${ v.managerPhone ? `<a href="${telHref(v.managerPhone)}" style="color:inherit;text-decoration:none">${v.managerPhone}</a>` : '' }
       </div>
     </td>
     <td class="td-uniform"><div class="jersey">${jerseySVG(v.homeHex,'HOME')}${jerseySVG(v.awayHex,'AWAY')}</div></td>
@@ -692,6 +609,7 @@ function rowTeam(v){
     <td class="actions-cell" style="text-align:right; display:flex; gap:8px; justify-content:flex-end">${openBtn}${delBtn}</td>
   </tr>`;
 }
+
 async function loadTeams(){
   const tourId=($('#tourFilter').value||'').trim();
   const j=await getJSON(apiUrl('teams', tourId?{tourId}:{}) );
@@ -704,72 +622,32 @@ async function loadTeams(){
       return [v.tourName,v.region,v.teamName,v.managerName,v.managerPhone,v.category,v.division].join(' ').toLowerCase().includes(q);
     });
   }
-  $('#teamsTbody').innerHTML=rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') || `<tr><td colspan="7" class="muted">데이터 없음</td></tr>`;
-  /* 선택된 대회명 표시 */
+  document.getElementById('teamsTbody').innerHTML =
+    rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') ||
+    `<tr><td colspan="6" class="muted">데이터 없음</td></tr>`;
+
+  /* 선택된 대회 표시 (이름·기간·상태) */
   (function(){
     const box = document.getElementById('selectedTourInfo');
     if (!box) return;
-  
     const selId = ($('#tourFilter').value||'').trim();
-    if (!selId){
-      box.style.display = 'none';
-      box.textContent = '';
-      return;
-    }
-  
+    if (!selId){ box.style.display='none'; box.textContent=''; return; }
     const t = TOURS[selId] || (TOUR_ARRAY||[]).find(x => String(x.tourId||x.TourID||'') === selId);
-    if (t && (t.name||'').trim()){
-      const name = (t.name||'').trim();
-      box.style.display = '';
-      box.innerHTML = `<span class="chip" title="${name}">${name}</span>`;
-    }else{
-      box.style.display = 'none';
-      box.textContent = '';
-    }
-  })();
-  /* 선택 대회 요약 표시 */
-  (function(){
-    const box = document.getElementById('selectedTourInfo');
-    const selId = (document.getElementById('tourFilter').value||'').trim();
-    if (!box) return;
-    if (!selId){
-      box.textContent = ''; // 전체 대회일 때는 감춤
-      return;
-    }
-    // 선택된 대회 객체 찾기
-    const t = TOURS[selId] || (TOUR_ARRAY||[]).find(x => String(x.tourId||x.TourID||'')===selId);
-    if (!t){ box.textContent=''; return; }
+    if (!t){ box.style.display='none'; box.textContent=''; return; }
     const period = (t.start||t.end) ? `${toInputDateOnly(t.start)} ~ ${toInputDateOnly(t.end)}` : '일정미정';
-    const st     = calcStatus(t.regStart||t['reg.start']||t.reg_start||t.regStartDate||'', t.regEnd||t['reg.end']||t.reg_end||t.regEndDate||'');
+    const st = calcStatus(t.regStart||t['reg.start']||t.reg_start||t.regStartDate||'', t.regEnd||t['reg.end']||t.reg_end||t.regEndDate||'');
+    box.style.display='';
     box.innerHTML = `
       <span class="badge" style="background:#f1f5fb;border-color:#e4ecf7;color:#334155">${(t.name||'(무제)')}</span>
       <span class="badge" style="background:#f8fafc;border-color:#e5e7eb;color:#334155">${period}</span>
       ${statusBadgeHtml(st)}
     `;
   })();
-  /* 선택 대회 요약 표시 */
-  (function(){
-    const box = document.getElementById('selectedTourInfo');
-    const selId = (document.getElementById('tourFilter').value||'').trim();
-    if (!box) return;
-    if (!selId){
-      box.textContent = ''; // 전체 대회일 때는 감춤
-      return;
-    }
-    // 선택된 대회 객체 찾기
-    const t = TOURS[selId] || (TOUR_ARRAY||[]).find(x => String(x.tourId||x.TourID||'')===selId);
-    if (!t){ box.textContent=''; return; }
-    const period = (t.start||t.end) ? `${toInputDateOnly(t.start)} ~ ${toInputDateOnly(t.end)}` : '일정미정';
-    const st     = calcStatus(t.regStart||t['reg.start']||t.reg_start||t.regStartDate||'', t.regEnd||t['reg.end']||t.reg_end||t.regEndDate||'');
-    box.innerHTML = `
-      <span class="badge" style="background:#f1f5fb;border-color:#e4ecf7;color:#334155">${(t.name||'(무제)')}</span>
-      <span class="badge" style="background:#f8fafc;border-color:#e5e7eb;color:#334155">${period}</span>
-      ${statusBadgeHtml(st)}
-    `;
-  })();
-  /* 추가: 모바일 카드 라벨 주입 */
+
+  /* 모바일 카드 라벨 주입 */
   applyResponsiveLabels();
 }
+
 document.getElementById('teamsTbody').addEventListener('click', (e)=>{
   const open = e.target.closest('.open-view');
   if (open){
@@ -780,7 +658,6 @@ document.getElementById('teamsTbody').addEventListener('click', (e)=>{
     window.open(url, '_blank', 'noopener');
     return;
   }
-
   const del = e.target.closest('.del-team');
   if (del){
     e.preventDefault();
@@ -797,10 +674,8 @@ let DIV_STATE=[];
 let FORM_LOCKED=true, DIRTY=false;
 function setLocked(locked){
   FORM_LOCKED = locked;
-
   const area = $('#formArea');
   if (locked) area.classList.add('locked'); else area.classList.remove('locked');
-
   document.querySelectorAll('[data-editable]').forEach(e => e.disabled = locked);
 
   const admin = $('#adminCode');
@@ -814,16 +689,11 @@ function setLocked(locked){
   $('#clearAllDivBtn').disabled = locked || DIV_STATE.length === 0;
 
   const editBtn = $('#editBtn');
-  if (editBtn) {
-    editBtn.disabled = locked ? !CURRENT_TOUR_ID : true;
-
-  }
+  if (editBtn) editBtn.disabled = locked ? !CURRENT_TOUR_ID : true;
 }
+
 document.getElementById('addPlaceBtn').addEventListener('click', () => {
-  if (FORM_LOCKED) {
-    alert('상단 "수정" 버튼을 눌러 편집을 해제하세요.');
-    return;
-  }
+  if (FORM_LOCKED) { alert('상단 "수정" 버튼을 눌러 편집을 해제하세요.'); return; }
   openPlaceFloating('', (name) => {
     const row = makePlaceRow({ name });
     document.getElementById('placeList').appendChild(row);
@@ -925,7 +795,6 @@ function openDivFloating(){
 
   const sel = body.querySelector('#popGroupSel');
   sel.innerHTML = Object.keys(DIVISION_PRESETS).map(g=>`<option value="${g}">${g}</option>`).join('');
-
   const checks = body.querySelector('#popDivChecks');
   const youthWrap = body.querySelector('#youthPairWrap');
   const youthDivRadios = body.querySelector('#youthDivRadios');
@@ -939,17 +808,8 @@ function openDivFloating(){
     if (g === '유소년부'){
       youthWrap.style.display = '';
       checks.innerHTML = `<div class="muted">※ 유소년은 아래에서 종별/연령을 하나씩 선택 후 <b>+ 쌍 추가</b>를 누르세요.</div>`;
-
-      youthDivRadios.innerHTML = `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          ${opts.map(v=>`<label class="chip"><input type="radio" name="y_div" value="${v}"> ${v}</label>`).join('')}
-        </div>`;
-
-      youthAgeRadios.innerHTML = `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          ${YOUTH_AGE_LABELS.map(a=>`<label class="chip"><input type="radio" name="y_age" value="${a}"> ${a}</label>`).join('')}
-        </div>`;
-
+      youthDivRadios.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;">${opts.map(v=>`<label class="chip"><input type="radio" name="y_div" value="${v}"> ${v}</label>`).join('')}</div>`;
+      youthAgeRadios.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;">${YOUTH_AGE_LABELS.map(a=>`<label class="chip"><input type="radio" name="y_age" value="${a}"> ${a}</label>`).join('')}</div>`;
       const btnAdd = body.querySelector('#btnAddPair');
       btnAdd.onclick = ()=>{
         const div = (body.querySelector('input[name="y_div"]:checked')||{}).value || '';
@@ -959,27 +819,16 @@ function openDivFloating(){
         const pair = `${div} ${age}`;
         let set = DIV_STATE.find(s=>s.group===g);
         if(!set){ set = { group: g, divisions: [] }; DIV_STATE.push(set); }
-        if(!(set.divisions||[]).includes(pair)){
-          set.divisions.push(pair);
-          DIRTY = true;
-          refreshDivUI();
-        }else{
-          alert('이미 추가된 쌍입니다.');
-        }
+        if(!(set.divisions||[]).includes(pair)){ set.divisions.push(pair); DIRTY = true; refreshDivUI(); }
+        else{ alert('이미 추가된 쌍입니다.'); }
       };
-
     }else{
       youthWrap.style.display = 'none';
       youthDivRadios.innerHTML = '';
       youthAgeRadios.innerHTML = '';
-
-      checks.innerHTML = `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          ${opts.map(v=>`<label class="chip"><input type="checkbox" value="${v}" ${picked.includes(v)?'checked':''}> ${v}</label>`).join('')}
-        </div>`;
+      checks.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;">${opts.map(v=>`<label class="chip"><input type="checkbox" value="${v}" ${picked.includes(v)?'checked':''}> ${v}</label>`).join('')}</div>`;
     }
   }
-
   sel.addEventListener('change', ()=>render(sel.value));
   render(sel.value);
 
@@ -988,25 +837,20 @@ function openDivFloating(){
   const ok = el(`<button class="btn primary">적용</button>`);
   actions.appendChild(cancel); actions.appendChild(ok);
   cancel.addEventListener('click', closePopover);
-
   ok.addEventListener('click', ()=>{
     const g = sel.value;
-
     if (g === '유소년부'){
       if(!(DIV_STATE.find(s=>s.group===g)?.divisions||[]).length){
         return alert('추가된 쌍이 없습니다. 아래에서 종별/연령을 선택 후 "+ 쌍 추가"를 눌러주세요.');
       }
     }else{
-      const pickedDiv = [...checks.querySelectorAll('input:checked')].map(i=>i.value);
+      const pickedDiv = [...document.querySelectorAll('#popDivChecks input:checked')].map(i=>i.value);
       if(!pickedDiv.length) return alert('종별을 선택하세요.');
       let set = DIV_STATE.find(s=>s.group===g);
       if(!set){ set = { group: g, divisions: [] }; DIV_STATE.push(set); }
       pickedDiv.forEach(v=>{ if(!set.divisions.includes(v)) set.divisions.push(v); });
     }
-
-    DIRTY = true;
-    refreshDivUI();
-    closePopover();
+    DIRTY = true; refreshDivUI(); closePopover();
   });
 
   openPopoverCentered('구분/종별 선택', body, actions);
@@ -1026,20 +870,8 @@ function makePlaceRow(init={name:''}){
 }
 function getPlaces(){ return [...document.querySelectorAll('#placeList .place-item')].map(it=>it.getValue()).filter(p=>p.name); }
 function setPlaces(list){ const box=$('#placeList'); box.innerHTML=''; (list&&list.length?list:[]).forEach(v=>{ const nm=(typeof v==='string')?v:(v?.name||v?.address||''); box.appendChild(makePlaceRow({name:nm})); }); }
-function openPlaceFloating(initName,onApply){
-  if (FORM_LOCKED){ if (!CURRENT_TOUR_ID) setLocked(false); else { alert('상단 "수정" 버튼을 눌러 편집을 해제하세요.'); return; } }
-  const body=el(`<div><label>장소명</label><input id="popPlaceName" placeholder="예: 서울특별시학생체육관" style="width:100%;border:1px solid #e6ecf5;border-radius:12px;padding:12px"/></div>`);
-  body.querySelector('#popPlaceName').value=initName||'';
-  const actions=el(`<div></div>`);
-  const cancel=el(`<button class="btn">취소</button>`);
-  const ok=el(`<button class="btn primary">적용</button>`);
-  actions.appendChild(cancel); actions.appendChild(ok);
-  cancel.addEventListener('click', closePopover);
-  ok.addEventListener('click',()=>{ const name=body.querySelector('#popPlaceName').value.trim(); if(!name) return alert('장소명을 입력하세요.'); onApply(name); DIRTY=true; closePopover(); });
-  openPopoverCentered(initName?'장소명 수정':'장소 추가', body, actions);
-}
 
-/* ========= 포스터: 업로드/미리보기 ========= */
+/* ========= 포스터 ========= */
 let POSTER_DATA_URL='', POSTER_CLEAR=false;
 function extractDriveId(u){
   const s=String(u||'').trim();
@@ -1092,7 +924,6 @@ async function renderPoster(){
         <input type="file" id="posterInput" accept="image/*" style="display:none">
       </div>`;
     $('#posterCopy').disabled=true; $('#posterClear').disabled=true;
-    // stale dataset 제거
     $('#posterCopy').dataset.copyUrl = '';
     wirePosterInteractions();
   }else{
@@ -1152,12 +983,11 @@ async function loadTourToForm(t, locked=true){
   $('#tourId').value   = id;
   $('#tourName').value = t?.name || '';
   $('#tourUrl').value  = t?.url  || '';
-    // 결제 정보 로드
+
   $('#fee').value     = t?.fee     || '';
   $('#account').value = t?.account || '';
-  // 대회 전환 시, 이전 대회의 제거/업로드 임시 상태를 반드시 초기화
-  POSTER_DATA_URL = '';
-  POSTER_CLEAR = false;
+
+  POSTER_DATA_URL = ''; POSTER_CLEAR = false;
   await renderPoster();
 
   $('#tourStart').value= toInputDateOnly(t?.start);
@@ -1169,8 +999,10 @@ async function loadTourToForm(t, locked=true){
   $('#editDeadlineAt').value = toInputDT(t?.editDeadlineAt);
   updateStatusBadge();
 
-  let divSets=t?.divSets; if(!Array.isArray(divSets)||!divSets.length){ const m=t?.divs||{}; divSets=Object.keys(m).map(g=>({group:g,divisions:m[g]||[]})); }
-  DIV_STATE=(divSets||[]).map(s=>({group:s.group, divisions:[...(s.divisions||[])]})); refreshDivUI();
+  let divSets=t?.divSets; 
+  if(!Array.isArray(divSets)||!divSets.length){ const m=t?.divs||{}; divSets=Object.keys(m).map(g=>({group:g,divisions:m[g]||[]})); }
+  DIV_STATE=(divSets||[]).map(s=>({group:s.group, divisions:[...(s.divisions||[])]})); 
+  refreshDivUI();
 
   setPlaces(Array.isArray(t?.places)?t.places:[]);
   $('#adminCode').value=''; DIRTY=false; setLocked(locked);
@@ -1217,9 +1049,7 @@ async function doSave(){
     'reg.start.date': $('#regStart').value || '', 'reg.end.date': $('#regEnd').value || '',
     divs_json: JSON.stringify(divs)
   };
-  if (POSTER_DATA_URL && !POSTER_CLEAR) {
-    base.posterDataUrl = POSTER_DATA_URL;
-  }
+  if (POSTER_DATA_URL && !POSTER_CLEAR) base.posterDataUrl = POSTER_DATA_URL;
 
   try{
     const j=await postJSONCompat(['upsertTournament','upsert_tournament','UPSERTTOURNAMENT'], base);
@@ -1263,20 +1093,55 @@ async function doDelete(){
 }
 
 /* ========= 상단 버튼/탐색 ========= */
-$('#settingsBtn').addEventListener('click', ()=>{ const cur=(conf.appUrl||'').trim(); const val=prompt('Apps Script Web App URL을 입력하세요 (…/exec):',cur); if(val===null) return; if(!validWebAppUrl(val)) { alert('URL 형식이 올바르지 않습니다. (…/exec)'); return; } conf.appUrl=(val||'').trim(); store.save(conf); alert('설정이 저장되었습니다. 새로고침합니다.'); location.reload(); });
-$('#reloadBtn').addEventListener('click', async ()=>{ if(!(await confirmDiscardIfDirty())) return; await health(); await loadTournaments(); await loadTeams(); await renderPoster(); });
-$('#newTourBtn').addEventListener('click', async ()=>{ if(!(await confirmDiscardIfDirty())) return; clearTourForm(); });
-$('#editBtn').addEventListener('click', ()=>{ if(!CURRENT_TOUR_ID) return alert('수정할 대회를 먼저 선택하세요.'); openAdminCodeFloating(()=>{ $('#tourFormTitle').textContent='대회 수정 (편집중)'; }); });
+document.getElementById('settingsBtn').addEventListener('click', ()=>{
+  const cur=(conf.appUrl||'').trim();
+  const val=prompt('Apps Script Web App URL을 입력하세요 (…/exec):',cur);
+  if(val===null) return;
+  if(!validWebAppUrl(val)) { alert('URL 형식이 올바르지 않습니다. (…/exec)'); return; }
+  conf.appUrl=(val||'').trim(); store.save(conf);
+  alert('설정이 저장되었습니다. 새로고침합니다.'); location.reload();
+});
+document.getElementById('reloadBtn').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  try{
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const prev = btn.textContent; btn.textContent = '새로고침 중…';
+    if(!(await confirmDiscardIfDirty())) return;
+    await health(); await loadTournaments(); await loadTeams(); await renderPoster();
+    if (typeof applyResponsiveLabels === 'function') applyResponsiveLabels();
+    btn.textContent = prev;
+  }catch(err){
+    alert('새로고침 실패: ' + (err?.message || err));
+  }finally{
+    const btn = document.getElementById('reloadBtn'); if(btn){ btn.disabled=false; btn.textContent='새로고침'; }
+  }
+});
+document.getElementById('newTourBtn').addEventListener('click', async ()=>{
+  if(!(await confirmDiscardIfDirty())) return; clearTourForm();
+});
+document.getElementById('editBtn').addEventListener('click', ()=>{
+  if(!CURRENT_TOUR_ID) return alert('수정할 대회를 먼저 선택하세요.');
+  openAdminCodeFloating(()=>{ $('#tourFormTitle').textContent='대회 수정 (편집중)'; });
+});
 
-$('#tourFilter').addEventListener('change', async ()=>{ if(!(await confirmDiscardIfDirty())){ $('#tourFilter').value=''; return; } await loadTeams(); });
-$('#searchBtn').addEventListener('click', loadTeams);
-$('#searchText').addEventListener('keydown', e=>{ if(e.key==='Enter') loadTeams(); });
+document.getElementById('tourFilter').addEventListener('change', async ()=>{
+  if(!(await confirmDiscardIfDirty())){ $('#tourFilter').value=''; return; }
+  await loadTeams();
+});
+document.getElementById('searchBtn').addEventListener('click', loadTeams);
+document.getElementById('searchText').addEventListener('keydown', e=>{ if(e.key==='Enter') loadTeams(); });
 
 document.getElementById('saveTourBtn').addEventListener('click', doSave);
 document.getElementById('deleteTourBtn').addEventListener('click', doDelete);
 
 /* ========= 부팅 ========= */
-(async function boot(){ await health(); await loadTournaments(); await loadTeams(); await renderPoster(); })();
+(async function boot(){
+  await health();
+  await loadTournaments();
+  await loadTeams();
+  await renderPoster();
+})();
 </script>
 </body>
 </html>
