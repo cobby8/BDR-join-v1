@@ -555,24 +555,24 @@
     if(nextbar) nextbar.style.display='flex';
   }
 
-  $('#tourSelect').addEventListener('change',async e=>{
-    const id=e.target.value; currentTour=id?TOUR_MAP[id]:null;
+  $('#tourSelect').addEventListener('change', async e => {
+    const id = e.target.value;
+    currentTour = id ? TOUR_MAP[id] : null;
     renderTourInfo(currentTour);
-    await renderPosterStrict(id||'');
+    await renderPosterStrict(id || '');
     fillCategoriesFromTour(currentTour);
+  
+    // ✅ 서버 기준 수정마감/접수기간 보정 (핸들러 내부로 이동)
+    if (id) {
+      try {
+        const meta = await apiGet('tournament_meta', { tourId: id });
+        if (meta && meta.ok) {
+          const cell = document.getElementById('editDeadlineCell');
+          if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
+        }
+      } catch (e) { /* 네트워크 오류 시 무시 */ }
+    }
   });
-  // 서버 기준 수정마감/접수기간 보정
-  if (id) {
-    try {
-      const meta = await apiGet('tournament_meta', { tourId: id });
-      if (meta && meta.ok) {
-        const cell = document.getElementById('editDeadlineCell');
-        if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
-        // 원한다면 접수기간도 서버시각 기준으로 교체:
-        // const reg = document.querySelector('#tourInfo .kv b:nth-child(9)') ... (생략)
-      }
-    } catch (e) { /* 네트워크 오류 시 무시 */ }
-  }
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
