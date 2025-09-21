@@ -188,6 +188,8 @@ async function getJSON(u){
 }
 const A4_TARGET_WIDTH = 2480; // px (A4 가로폭 기준 약 300DPI 품질)
 const JPG_QUALITY = 0.92;     // JPEG 품질
+const A4_TARGET_HEIGHT = 3508; // px (A4 세로 @300DPI)
+const A4_MARGIN_MM = 6;        // 인쇄와 동일한 여백
 
 /* ============ 유틸 ============ */
 const $=s=>document.querySelector(s);
@@ -211,126 +213,107 @@ async function saveViewAsJPG(){
   const players = document.getElementById('playersCard');
   if(!team || !players) throw new Error('캡처할 영역을 찾을 수 없습니다.');
 
-  // 1) 오프스크린 컨테이너 구성(헤더 제외)
+  // 인쇄와 동일하게 "출석 체크된 행만" 남기기
+  applyPrintKeepRows();
+
   const wrap = document.querySelector('.wrap');
   const baseWidth = wrap?.offsetWidth || 980;
-  const bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
 
+  // A4 내부(여백 제외) 폭/높이(px)
+  const A4_MM = 210;
+  const innerW = Math.round(A4_TARGET_WIDTH * (A4_MM - 2 * A4_MARGIN_MM) / A4_MM);
+  const innerH = Math.round(A4_TARGET_HEIGHT * (A4_MM - 2 * A4_MARGIN_MM) / A4_MM);
+  const marginPx = Math.round((A4_TARGET_WIDTH / A4_MM) * A4_MARGIN_MM);
+
+  // 오프스크린 컨테이너 생성
+  const bg = '#ffffff'; // 인쇄와 동일한 흰 배경
   const tempHost = document.createElement('div');
   tempHost.style.position = 'fixed';
   tempHost.style.left = '-10000px';
   tempHost.style.top = '0';
   tempHost.style.width = baseWidth + 'px';
   tempHost.style.boxSizing = 'border-box';
-  tempHost.style.padding = '14px';
+  tempHost.style.padding = '0';        // 여백은 캔버스에서 처리
   tempHost.style.background = bg;
 
+  // 헤더 제외, 카드 2개 복제
   const teamClone = team.cloneNode(true);
   const playersClone = players.cloneNode(true);
 
-  // 체크박스의 '표시 상태'가 복제 시 사라지는 브라우저가 있어 강제 동기화
+  // 체크박스 상태 동기화
   const oChecks = Array.from(players.querySelectorAll('input[type=checkbox]'));
   const cChecks = Array.from(playersClone.querySelectorAll('input[type=checkbox]'));
   cChecks.forEach((c,i)=>{ if(oChecks[i]) c.checked = !!oChecks[i].checked; });
 
-  tempHost.appendChild(teamClone);
-  tempHost.appendChild(playersClone);
+  // 인쇄 레이아웃과 동일하게 보이도록 보정 스타일 주입(= @media print 내용 복제)
+  const photoStyle = document.createElement('style');
+  photoStyle.textContent = `
+    /* 인쇄 레이아웃 복제 */
+    .photo-a4 header, .photo-a4 .toolbar, .photo-a4 .th-actions { display:none !important; }
+    .photo-a4 .wrap { max-width:none; width:100%; margin:0; padding:0; }
+    .photo-a4 .card { box-shadow:none; border:1px solid #e5e7eb; border-radius:8px; margin:0 0 10px 0; padding:10px; }
+    .photo-a4 .table-wrap{ overflow:visible }
+    .photo-a4 table{ width:100%; border-spacing:0; table-layout:fixed }
+    .photo-a4 td, .photo-a4 th { padding:8px }
+    .photo-a4 tr{ break-inside:avoid }
+    .photo-a4 tbody tr { display:none }
+    .photo-a4 tbody tr.print-keep { display:table-row }
+  `;
+
+  // 캡처용 루트 구성 (.photo-a4 클래스 부여)
+  const root = document.createElement('div');
+  root.className = 'photo-a4';
+  const innerWrap = document.createElement('div');
+  innerWrap.className = 'wrap';
+  innerWrap.appendChild(teamClone);
+  innerWrap.appendChild(playersClone);
+  root.appendChild(innerWrap);
+
+  tempHost.appendChild(photoStyle);
+  tempHost.appendChild(root);
   document.body.appendChild(tempHost);
 
-  const targetW = A4_TARGET_WIDTH;               // 2480px (필요 시 조정)
-  const scale   = targetW / baseWidth;
+  // 콘텐츠 실제 높이 측정 → A4 내부 높이에 맞춰 스케일 결정(넘치면 자동 축소)
+  const contentH = tempHost.offsetHeight;
+  const scaleByW = innerW / baseWidth;
+  const scaleByH = innerH / contentH;
+  const scale = Math.min(scaleByW, scaleByH);
 
-  // 2) 먼저 foreignObject 시도 → 실패 시 html2canvas 폴백
+  // 1) foreignObject 시도 → 2) 실패 시 html2canvas 폴백
   try{
-    const canvas = await renderByForeignObject(tempHost, targetW, scale, bg);
+    const canvas = await renderByForeignObjectA4(tempHost, scale, innerW, innerH, marginPx, bg);
     await downloadCanvasAsJPG(canvas);
   }catch(e){
-    // 모바일/웹뷰 등에서 실패할 수 있음 → 폴백 경로
-    const canvas = await renderByHtml2Canvas(tempHost, targetW, baseWidth, bg);
+    const canvas = await renderByHtml2CanvasA4(tempHost, scale, innerW, innerH, marginPx, bg);
     await downloadCanvasAsJPG(canvas);
   }finally{
     tempHost.remove();
   }
 }
 
-/* foreignObject 방식: 데스크톱/크롬 등에서 고품질 */
-async function renderByForeignObject(container, targetW, scale, bg){
-  // 전체 스타일 텍스트 수집
-  const styleTexts = Array.from(document.querySelectorAll('style'))
-    .map(s => s.innerHTML).join('\n');
-
-  // 실제 렌더 높이 계산
-  const targetH = Math.ceil(container.offsetHeight * scale);
-
-  const inner = `
-    <div xmlns="http://www.w3.org/1999/xhtml"
-         style="transform-origin:0 0; transform:scale(${scale});
-                width:${container.offsetWidth}px; box-sizing:border-box; background:${bg};">
-      <style>${styleTexts}</style>
-      ${container.innerHTML}
-    </div>
-  `;
-
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${targetW}" height="${targetH}">
-      <foreignObject x="0" y="0" width="100%" height="100%">${inner}</foreignObject>
-    </svg>
-  `;
-  const blob = new Blob([svg], { type:'image/svg+xml;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  await new Promise((res, rej)=>{
-    img.onload = res;
-    img.onerror = ()=>rej(new Error('foreignObject 렌더 실패'));
-    img.src = url;
+async function renderByHtml2CanvasA4(container, scale, innerW, innerH, marginPx, bg){
+  if(typeof html2canvas !== 'function') throw new Error('html2canvas를 불러오지 못했습니다.');
+  const rawCanvas = await html2canvas(container, {
+    backgroundColor: '#ffffff',
+    scale, useCORS: true, allowTaint: false, foreignObjectRendering: false, logging: false
   });
 
+  // A4 캔버스에 여백 포함 배치
   const canvas = document.createElement('canvas');
-  canvas.width = targetW;
-  canvas.height = targetH;
+  canvas.width  = A4_TARGET_WIDTH;
+  canvas.height = A4_TARGET_HEIGHT;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(img, 0, 0);
-  URL.revokeObjectURL(url);
-  return canvas;
-}
 
-/* html2canvas 폴백: 모바일/웹뷰에서도 안정적으로 동작 */
-async function renderByHtml2Canvas(container, targetW, baseWidth, bg){
-  if(typeof html2canvas !== 'function'){
-    throw new Error('html2canvas를 불러오지 못했습니다.');
-  }
-  const scale = targetW / baseWidth; // 목표 폭에 맞추기
-  const canvas = await html2canvas(container, {
-    backgroundColor: '#ffffff',
-    scale,
-    useCORS: true,
-    allowTaint: false,
-    foreignObjectRendering: false, // 모바일 이슈 회피
-    logging: false
-  });
-  return canvas;
-}
+  // rawCanvas는 scale 반영된 결과물이므로, 내부 영역 중앙 상단(여백 위치)에 맞춰 그리기
+  // 높이가 내부 높이를 넘으면 비율로 한번 더 축소
+  const fitScale = Math.min(innerW / rawCanvas.width, innerH / rawCanvas.height, 1);
+  const drawW = Math.round(rawCanvas.width * fitScale);
+  const drawH = Math.round(rawCanvas.height * fitScale);
 
-/* 공통 저장 루틴 */
-function downloadCanvasAsJPG(canvas){
-  return new Promise((resolve, reject)=>{
-    const now = new Date();
-    const filenameSafe = (document.getElementById('pageTitle')?.textContent || 'TeamView')
-      .replace(/[\\/:*?"<>|]/g,'_');
-    canvas.toBlob(blob=>{
-      if(!blob) return reject(new Error('이미지 변환 실패'));
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `TeamView_${filenameSafe}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); resolve(); }, 200);
-    }, 'image/jpeg', JPG_QUALITY);
-  });
+  ctx.drawImage(rawCanvas, marginPx, marginPx, drawW, drawH);
+  return canvas;
 }
 
 /* ============ 렌더러 ============ */
