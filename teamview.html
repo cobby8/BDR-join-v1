@@ -157,6 +157,11 @@
   #teamCard .kvs{ grid-template-columns: 90px 1fr; column-gap: 12px; } /* 라벨 고정폭 + 값(칩) 전체 확장 */
   #teamCard .kvs .kv-v{ min-width: 0; }                   /* 값 영역도 축소 허용 (ellipsis 작동) */
   #teamCard .kvs .kv-chip{ display:block; width:100%; }    /* 칩을 값 영역 너비 100%로 */
+
+  /* 칩의 초기 inline width(60%/50%/70%)를 강제로 무효화 → 값 영역 100% 채우기 */
+  #teamCard .kvs .kv-chip{ display:block; width:100% !important; }
+  /* 칩의 초기 inline width(60%/50%/70%)를 강제로 무효화 → 값 영역 100% 채우기 */
+  #teamCard .kvs .kv-chip{ display:block; width:100% !important; }
 </style>
 </head>
 <body>
@@ -457,6 +462,10 @@ function fillKV(id, text){
   if(!el) return;
   el.textContent = text || '-';
   el.classList.remove('skeleton','skeleton-pill');
+  // 초기 로딩용으로 심어둔 width:60% 같은 inline 스타일 제거
+  if (el.style) {
+    el.style.removeProperty('width');  // width만 제거
+  }
 }
 
 function renderTeamCard(team){
