@@ -55,11 +55,6 @@
   .skeleton-pill{height:24px;border-radius:999px;display:inline-block}
   @keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
 
-  /* (기존) 모바일 숨김: 카드 모드가 우선 적용되므로 이 규칙은 데스크톱에만 사실상 영향 */
-  @media (max-width: 640px) {
-    .col-pos, .col-elite, .col-age, .col-birth { /* 카드 모드에서 다시 표시하므로 여기서는 무효화됨 */ }
-  }
-
   /* 선발출전 동그라미(등번호) – 데스크톱 */
   td.backno{ position:relative; font-weight:700 }
   tr:has(.chk-starter:checked) td.backno::after{
@@ -80,53 +75,64 @@
     table{width:100%;border-spacing:0;table-layout:fixed}
     td,th{padding:8px}
     tr{break-inside:avoid}
-    tbody tr{ display:none }
-    tbody tr.print-keep{ display:table-row }
+    tbody tr{ display:table-row !important } /* 인쇄는 원래 테이블로 */
+    thead{ display:table-header-group !important }
+    table, tbody, td{ display:table !important }
+    /* 출석 체크된 행만 인쇄 */
+    tbody tr{ display:none !important }
+    tbody tr.print-keep{ display:table-row !important }
   }
 
   /* =========================
-     모바일 카드 레이아웃 (≤640px)
+     모바일 카드(두 줄 그리드) ≤640px
      ========================= */
   @media (max-width: 640px){
-    /* 폰트/여백 자동 조절 */
     body { font-size: clamp(14px, 3.8vw, 16px); }
     h1 { font-size: clamp(16px, 4.4vw, 18px); }
 
-    /* thead 숨기고 tr을 카드처럼 */
+    /* 헤더 숨기고 카드 모드 사용 */
     thead { display:none; }
-    table, tbody, tr, td { display:block; width:100%; }
+    table, tbody { display:block; width:100%; }
     tbody tr{
+      display:grid;
+      /* 1행: 등번호 | 이름 | 포지션 | 출석
+         2행: 생년월일 | 만나이 | 선출 | 선발 */
+      grid-template-columns: 0.9fr 1.5fr 1fr 0.9fr;
+      grid-template-areas:
+        "no name pos attend"
+        "birth age elite starter";
+      gap:10px 12px;
       background:#fff;
       border:1px solid #e5e7eb;
-      border-radius:12px;
+      border-radius:14px;
       margin:10px 0;
-      padding:6px 8px;
+      padding:10px;
       position:relative;
     }
-    /* 각 셀: 라벨 + 값 (data-label) */
-    td{
-      border:none;
-      border-radius:0;
-      padding:8px 6px 4px;
-    }
+    td{ border:none; border-radius:0; padding:6px 4px; display:block; }
     td::before{
       content: attr(data-label);
       display:block;
       font-size:12px;
       color:#6b7280;
       margin-bottom:4px;
+      line-height:1.2;
     }
 
-    /* 첫 셀(등번호)와 이름은 상단에서 조금 더 강조 */
-    td.backno{
-      font-size:18px;
-      font-weight:800;
-      padding-top:10px;
-    }
-    /* 이름은 다음 줄 굵게 */
-    td.namecell{ font-weight:700; }
+    /* 각 칸 위치 지정 */
+    td.c-no{ grid-area:no; font-size:18px; font-weight:800; }
+    td.c-name{ grid-area:name; font-weight:700; }
+    td.c-pos{ grid-area:pos; }
+    td.c-att{ grid-area:attend; text-align:center }
+    td.c-birth{ grid-area:birth; }
+    td.c-age{ grid-area:age; }
+    td.c-elite{ grid-area:elite; }
+    td.c-starter{ grid-area:starter; text-align:center }
 
-    /* 기존 동그라미는 tr 전체의 오른쪽 상단으로 이동 */
+    /* 체크박스 터치 영역 확대 */
+    .chk-attend, .chk-starter{ width:22px; height:22px; }
+
+    /* 데스크톱 동그라미 제거 → 카드 우상단에 통합 표기 */
     tr:has(.chk-starter:checked) td.backno::after{ content:none; }
     tbody tr:has(.chk-starter:checked)::after{
       content:"◯";
@@ -134,21 +140,10 @@
       font-size:16px; color:#0f172a;
     }
 
-    /* 데스크톱용 숨김 보정: 카드에서는 모두 보임 */
-    .col-pos, .col-elite, .col-age, .col-birth, .col-att, .col-start { display:block !important; }
-
-    /* 데스크톱의 헤더 아래 액션 버튼은 숨김 → 모바일 전용 액션 바 사용 */
+    /* 데스크톱용 헤더-하위 액션 숨김, 모바일 액션바 On */
     .th-actions{ display:none !important; }
-
-    /* 모바일 전용 액션 바 */
-    .mobile-actions{
-      display:flex; gap:6px; align-items:center; flex-wrap:wrap;
-    }
-    .mobile-actions .btn-mini{
-      padding:7px 10px;
-      font-size:12px;
-      border-radius:10px;
-    }
+    .mobile-actions{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+    .mobile-actions .btn-mini{ padding:7px 10px; font-size:12px; border-radius:10px; }
   }
 </style>
 </head>
@@ -318,8 +313,7 @@ async function saveViewAsJPG(){
     .photo-a4 table{ width:100%; border-spacing:0; table-layout:fixed }
     .photo-a4 td, .photo-a4 th { padding:8px }
     .photo-a4 tr{ break-inside:avoid }
-    .photo-a4 tbody tr { display:none }
-    .photo-a4 tbody tr.print-keep { display:table-row }
+    .photo-a4 tbody tr { display:table-row }
   `;
 
   const root = document.createElement('div');
@@ -489,14 +483,14 @@ function renderPlayers(rows){
     const key  = rowKey(r);
     const st = saved[key] || { a:false, s:false };
     return `<tr data-key="${key}">
-      <td class="backno ellipsis" data-label="등번호">${no||'-'}</td>
-      <td class="namecell ellipsis" data-label="선수이름">${name||''}</td>
-      <td class="col-pos ellipsis" data-label="포지션">${pos||''}</td>
-      <td class="col-birth ellipsis" data-label="생년월일">${birth||''}</td>
-      <td class="col-age ellipsis" data-label="만나이">${age||''}</td>
-      <td class="col-elite ellipsis" data-label="선출">${elite||''}</td>
-      <td class="col-att" data-label="출석"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
-      <td class="col-start" data-label="선발출전"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
+      <td class="backno ellipsis c-no"    data-label="등번호">${no||'-'}</td>
+      <td class="namecell ellipsis c-name" data-label="선수이름">${name||''}</td>
+      <td class="col-pos ellipsis c-pos"   data-label="포지션">${pos||''}</td>
+      <td class="col-att c-att"            data-label="출석"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
+      <td class="col-birth ellipsis c-birth" data-label="생년월일">${birth||''}</td>
+      <td class="col-age ellipsis c-age"     data-label="만나이">${age||''}</td>
+      <td class="col-elite ellipsis c-elite" data-label="선출">${elite||''}</td>
+      <td class="col-start c-starter"        data-label="선발출전"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
     </tr>`;
   }).join('');
   $('#countInfo').textContent = `${rows.length}명`;
