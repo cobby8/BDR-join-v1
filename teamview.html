@@ -11,7 +11,7 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
   .wrap{max-width:980px;margin:20px auto;padding:0 14px 64px}
-  header{display:flex;justify-content:space-between;align-items:center;margin:8px 0 14px}
+  header{display:flex;justify-content:space-between;align-items:center;margin:8px 0 14px;gap:10px;flex-wrap:wrap}
   h1{font-size:18px;margin:0}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .btn{padding:8px 12px;border-radius:12px;border:1px solid #dfe6ee;background:#fff;cursor:pointer}
@@ -32,7 +32,7 @@
   .table-wrap{overflow:auto}
   table{width:100%;border-collapse:separate;border-spacing:0 8px;table-layout:fixed}
 
-  /* 🔧 최신 기준: 모든 열 폭 auto */
+  /* 최신 기준: 모든 열 폭 auto */
   col.no, col.name, col.pos, col.birth, col.age, col.elite, col.att, col.strt { width:auto }
 
   th{font-size:12px;color:#5b6472;text-align:left;padding:0 10px}
@@ -40,7 +40,7 @@
   tr td:first-child{border-left:1px solid #eef2f7;border-radius:12px 0 0 12px}
   tr td:last-child{border-right:1px solid #eef2f7;border-radius:0 12px 12px 0}
 
-  /* 헤더 액션 버튼(헤더 아래 배치) */
+  /* 헤더 액션 버튼(헤더 아래 배치: 데스크톱) */
   .th-actions{margin-top:4px;display:flex;gap:6px;justify-content:center}
   .btn-mini{font-size:11px;padding:3px 6px;border-radius:8px;border:1px solid #dfe6ee;background:#fff;cursor:pointer}
   .btn-mini:hover{border-color:#cbd5e1}
@@ -55,12 +55,12 @@
   .skeleton-pill{height:24px;border-radius:999px;display:inline-block}
   @keyframes sh{0%{background-position:-200px 0}100%{background-position:200px 0}}
 
-  /* 모바일 숨김 */
+  /* (기존) 모바일 숨김: 카드 모드가 우선 적용되므로 이 규칙은 데스크톱에만 사실상 영향 */
   @media (max-width: 640px) {
-    .col-pos, .col-elite, .col-age, .col-birth { display:none; }
+    .col-pos, .col-elite, .col-age, .col-birth { /* 카드 모드에서 다시 표시하므로 여기서는 무효화됨 */ }
   }
 
-  /* 선발출전 동그라미(등번호) */
+  /* 선발출전 동그라미(등번호) – 데스크톱 */
   td.backno{ position:relative; font-weight:700 }
   tr:has(.chk-starter:checked) td.backno::after{
     content:"◯";
@@ -68,11 +68,11 @@
     font-size:16px; color:#0f172a;
   }
 
-  /* ===== Print: 화면 비율 그대로, A4 폭에 맞춰 확대/축소 ===== */
+  /* ===== Print: A4 폭에 맞춰 확대/축소 ===== */
   @page { size: A4 portrait; margin: 6mm; }
   @media print{
     html, body { width: 210mm; }
-    header,.toolbar,.th-actions{display:none !important}
+    header,.toolbar,.th-actions,.mobile-actions{display:none !important}
     body{background:#fff}
     .wrap{max-width:none;width:100%;margin:0;padding:0}
     .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px;margin:6mm 0 0 0;padding:10px}
@@ -80,10 +80,75 @@
     table{width:100%;border-spacing:0;table-layout:fixed}
     td,th{padding:8px}
     tr{break-inside:avoid}
-
-    /* 출석 체크된 행만 인쇄 (호환성 위해 클래스 방식) */
     tbody tr{ display:none }
     tbody tr.print-keep{ display:table-row }
+  }
+
+  /* =========================
+     모바일 카드 레이아웃 (≤640px)
+     ========================= */
+  @media (max-width: 640px){
+    /* 폰트/여백 자동 조절 */
+    body { font-size: clamp(14px, 3.8vw, 16px); }
+    h1 { font-size: clamp(16px, 4.4vw, 18px); }
+
+    /* thead 숨기고 tr을 카드처럼 */
+    thead { display:none; }
+    table, tbody, tr, td { display:block; width:100%; }
+    tbody tr{
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      margin:10px 0;
+      padding:6px 8px;
+      position:relative;
+    }
+    /* 각 셀: 라벨 + 값 (data-label) */
+    td{
+      border:none;
+      border-radius:0;
+      padding:8px 6px 4px;
+    }
+    td::before{
+      content: attr(data-label);
+      display:block;
+      font-size:12px;
+      color:#6b7280;
+      margin-bottom:4px;
+    }
+
+    /* 첫 셀(등번호)와 이름은 상단에서 조금 더 강조 */
+    td.backno{
+      font-size:18px;
+      font-weight:800;
+      padding-top:10px;
+    }
+    /* 이름은 다음 줄 굵게 */
+    td.namecell{ font-weight:700; }
+
+    /* 기존 동그라미는 tr 전체의 오른쪽 상단으로 이동 */
+    tr:has(.chk-starter:checked) td.backno::after{ content:none; }
+    tbody tr:has(.chk-starter:checked)::after{
+      content:"◯";
+      position:absolute; right:10px; top:10px;
+      font-size:16px; color:#0f172a;
+    }
+
+    /* 데스크톱용 숨김 보정: 카드에서는 모두 보임 */
+    .col-pos, .col-elite, .col-age, .col-birth, .col-att, .col-start { display:block !important; }
+
+    /* 데스크톱의 헤더 아래 액션 버튼은 숨김 → 모바일 전용 액션 바 사용 */
+    .th-actions{ display:none !important; }
+
+    /* 모바일 전용 액션 바 */
+    .mobile-actions{
+      display:flex; gap:6px; align-items:center; flex-wrap:wrap;
+    }
+    .mobile-actions .btn-mini{
+      padding:7px 10px;
+      font-size:12px;
+      border-radius:10px;
+    }
   }
 </style>
 </head>
@@ -105,7 +170,6 @@
       <div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div id="teamTitle" style="font-size:18px;font-weight:700">팀 정보를 불러오는 중…</div>
-          <!-- 왼쪽 배지 = 지역 -->
           <span class="badge" id="leftBadge"></span>
         </div>
         <div class="muted" id="teamSub" style="margin-top:4px">Team ID: <span id="teamIdTxt"></span></div>
@@ -125,13 +189,16 @@
   </div>
 
   <div class="card" id="playersCard">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap">
       <h3 style="margin:0;font-size:16px">선수 명단</h3>
-      <div class="muted" id="countInfo"></div>
+      <div class="mobile-actions" aria-hidden="false">
+        <button type="button" class="btn-mini" id="btnAttendToggle">전체체크/해제</button>
+        <button type="button" class="btn-mini" id="btnAllStarterOff">선발 전체해제</button>
+      </div>
+      <div class="muted" id="countInfo" style="margin-left:auto"></div>
     </div>
     <div class="table-wrap">
       <table>
-        <!-- 열 순서: 번호, 이름, 포지션, 생년월일, 만나이, 선출, 출석, 선발출전 -->
         <colgroup>
           <col class="no"><col class="name"><col class="pos"><col class="birth"><col class="age"><col class="elite"><col class="att"><col class="strt">
         </colgroup>
@@ -145,14 +212,14 @@
             <th class="col-elite">선출</th>
             <th class="col-att">
               출석
-            <div class="th-actions">
-              <button type="button" class="btn-mini" id="btnAttendToggle">전체체크/해제</button>
-            </div>
+              <div class="th-actions">
+                <button type="button" class="btn-mini" id="btnAttendToggle_desktop">전체체크/해제</button>
+              </div>
             </th>
             <th class="col-start">
               선발출전
               <div class="th-actions">
-                <button type="button" class="btn-mini" id="btnAllStarterOff">전체해제</button>
+                <button type="button" class="btn-mini" id="btnAllStarterOff_desktop">전체해제</button>
               </div>
             </th>
           </tr>
@@ -186,10 +253,10 @@ async function getJSON(u){
     const t=await r.text(); try{ return JSON.parse(t); }catch{ return {ok:false,error:'JSON 파싱 실패', raw:t.slice(0,280)}; }
   }catch(e){ return {ok:false,error:String(e && e.message || e)}; }
 }
-const A4_TARGET_WIDTH = 2480; // px (A4 가로폭 기준 약 300DPI 품질)
-const JPG_QUALITY = 0.92;     // JPEG 품질
-const A4_TARGET_HEIGHT = 3508; // px (A4 세로 @300DPI)
-const A4_MARGIN_MM = 6;        // 인쇄와 동일한 여백
+const A4_TARGET_WIDTH = 2480; // px
+const JPG_QUALITY = 0.92;
+const A4_TARGET_HEIGHT = 3508; // px
+const A4_MARGIN_MM = 6;
 
 /* ============ 유틸 ============ */
 const $=s=>document.querySelector(s);
@@ -208,6 +275,7 @@ function rowKey(r){
   return `${String(no).trim()}::${String(name).trim()}`;
 }
 
+/* ============ 사진 저장: 기존 그대로 ============ */
 async function saveViewAsJPG(){
   const team = document.getElementById('teamCard');
   const players = document.getElementById('playersCard');
@@ -219,37 +287,31 @@ async function saveViewAsJPG(){
   const wrap = document.querySelector('.wrap');
   const baseWidth = wrap?.offsetWidth || 980;
 
-  // A4 내부(여백 제외) 폭/높이(px)
   const A4_MM = 210;
   const innerW = Math.round(A4_TARGET_WIDTH * (A4_MM - 2 * A4_MARGIN_MM) / A4_MM);
   const innerH = Math.round(A4_TARGET_HEIGHT * (A4_MM - 2 * A4_MARGIN_MM) / A4_MM);
   const marginPx = Math.round((A4_TARGET_WIDTH / A4_MM) * A4_MARGIN_MM);
 
-  // 오프스크린 컨테이너 생성
-  const bg = '#ffffff'; // 인쇄와 동일한 흰 배경
+  const bg = '#ffffff';
   const tempHost = document.createElement('div');
   tempHost.style.position = 'fixed';
   tempHost.style.left = '-10000px';
   tempHost.style.top = '0';
   tempHost.style.width = baseWidth + 'px';
   tempHost.style.boxSizing = 'border-box';
-  tempHost.style.padding = '0';        // 여백은 캔버스에서 처리
+  tempHost.style.padding = '0';
   tempHost.style.background = bg;
 
-  // 헤더 제외, 카드 2개 복제
   const teamClone = team.cloneNode(true);
   const playersClone = players.cloneNode(true);
 
-  // 체크박스 상태 동기화
   const oChecks = Array.from(players.querySelectorAll('input[type=checkbox]'));
   const cChecks = Array.from(playersClone.querySelectorAll('input[type=checkbox]'));
   cChecks.forEach((c,i)=>{ if(oChecks[i]) c.checked = !!oChecks[i].checked; });
 
-  // 인쇄 레이아웃과 동일하게 보이도록 보정 스타일 주입(= @media print 내용 복제)
   const photoStyle = document.createElement('style');
   photoStyle.textContent = `
-    /* 인쇄 레이아웃 복제 */
-    .photo-a4 header, .photo-a4 .toolbar, .photo-a4 .th-actions { display:none !important; }
+    .photo-a4 header, .photo-a4 .toolbar, .photo-a4 .th-actions, .photo-a4 .mobile-actions { display:none !important; }
     .photo-a4 .wrap { max-width:none; width:100%; margin:0; padding:0; }
     .photo-a4 .card { box-shadow:none; border:1px solid #e5e7eb; border-radius:8px; margin:0 0 10px 0; padding:10px; }
     .photo-a4 .table-wrap{ overflow:visible }
@@ -260,7 +322,6 @@ async function saveViewAsJPG(){
     .photo-a4 tbody tr.print-keep { display:table-row }
   `;
 
-  // 캡처용 루트 구성 (.photo-a4 클래스 부여)
   const root = document.createElement('div');
   root.className = 'photo-a4';
   const innerWrap = document.createElement('div');
@@ -273,13 +334,11 @@ async function saveViewAsJPG(){
   tempHost.appendChild(root);
   document.body.appendChild(tempHost);
 
-  // 콘텐츠 실제 높이 측정 → A4 내부 높이에 맞춰 스케일 결정(넘치면 자동 축소)
   const contentH = tempHost.offsetHeight;
   const scaleByW = innerW / baseWidth;
   const scaleByH = innerH / contentH;
   const scale = Math.min(scaleByW, scaleByH);
 
-  // 1) foreignObject 시도 → 2) 실패 시 html2canvas 폴백
   try{
     const canvas = await renderByForeignObjectA4(tempHost, scale, innerW, innerH, marginPx, bg);
     await downloadCanvasAsJPG(canvas);
@@ -298,7 +357,6 @@ async function renderByHtml2CanvasA4(container, scale, innerW, innerH, marginPx,
     scale, useCORS: true, allowTaint: false, foreignObjectRendering: false, logging: false
   });
 
-  // A4 캔버스에 여백 포함 배치
   const canvas = document.createElement('canvas');
   canvas.width  = A4_TARGET_WIDTH;
   canvas.height = A4_TARGET_HEIGHT;
@@ -306,8 +364,6 @@ async function renderByHtml2CanvasA4(container, scale, innerW, innerH, marginPx,
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // rawCanvas는 scale 반영된 결과물이므로, 내부 영역 중앙 상단(여백 위치)에 맞춰 그리기
-  // 높이가 내부 높이를 넘으면 비율로 한번 더 축소
   const fitScale = Math.min(innerW / rawCanvas.width, innerH / rawCanvas.height, 1);
   const drawW = Math.round(rawCanvas.width * fitScale);
   const drawH = Math.round(rawCanvas.height * fitScale);
@@ -401,7 +457,6 @@ function renderTeamCard(team){
   const catdiv    = [team.category||'', team.division||''].filter(Boolean).join(' · ');
   const mgr       = [team.managerName||'', phonePretty(team.managerPhone||'')].filter(Boolean).join(' · ');
 
-  // 왼쪽 배지 = 지역, 우측 첫 줄 = 대회명
   $('#leftBadge').textContent = regionStr || '';
   $('#kv1Label').textContent = '대회명';
   fillKV('kvRegion', tourName);
@@ -434,14 +489,14 @@ function renderPlayers(rows){
     const key  = rowKey(r);
     const st = saved[key] || { a:false, s:false };
     return `<tr data-key="${key}">
-      <td class="backno ellipsis">${no||'-'}</td>
-      <td class="ellipsis">${name||''}</td>
-      <td class="col-pos ellipsis">${pos||''}</td>
-      <td class="col-birth ellipsis">${birth||''}</td>
-      <td class="col-age ellipsis">${age||''}</td>
-      <td class="col-elite ellipsis">${elite||''}</td>
-      <td class="col-att"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
-      <td class="col-start"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
+      <td class="backno ellipsis" data-label="등번호">${no||'-'}</td>
+      <td class="namecell ellipsis" data-label="선수이름">${name||''}</td>
+      <td class="col-pos ellipsis" data-label="포지션">${pos||''}</td>
+      <td class="col-birth ellipsis" data-label="생년월일">${birth||''}</td>
+      <td class="col-age ellipsis" data-label="만나이">${age||''}</td>
+      <td class="col-elite ellipsis" data-label="선출">${elite||''}</td>
+      <td class="col-att" data-label="출석"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
+      <td class="col-start" data-label="선발출전"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
     </tr>`;
   }).join('');
   $('#countInfo').textContent = `${rows.length}명`;
@@ -471,13 +526,12 @@ async function boot(){
   }
 }
 
-/* ============ 유틸: 체크 일괄 적용 ============ */
+/* ============ 일괄 체크 ============ */
 function setCheckedAll(selector, value){
   const inputs = document.querySelectorAll(selector);
   inputs.forEach(inp=>{
     if(inp.checked !== value){
       inp.checked = value;
-      // 변경 이벤트 발생시켜 저장 로직 실행
       inp.dispatchEvent(new Event('change', { bubbles:true }));
     }
   });
@@ -500,26 +554,22 @@ document.getElementById('btnShare').addEventListener('click', async ()=>{
   }catch(e){}
 });
 document.getElementById('btnSaveJpg').addEventListener('click', async ()=>{
-  try{
-    await saveViewAsJPG();
-  }catch(e){
-    alert('이미지 저장 중 오류: ' + (e && e.message ? e.message : e));
-  }
+  try{ await saveViewAsJPG(); }catch(e){ alert('이미지 저장 중 오류: ' + (e && e.message ? e.message : e)); }
 });
 
-/* ============ 헤더 액션 버튼 동작 ============ */
+/* ============ 액션 버튼 (데스크톱/모바일 공통 id 처리) ============ */
 document.addEventListener('click', (e)=>{
   const id = (e.target && e.target.id) || '';
-  if(id === 'btnAttendToggle'){
+  if(id === 'btnAttendToggle' || id === 'btnAttendToggle_desktop'){
     const nodes = Array.from(document.querySelectorAll('.chk-attend'));
-    const shouldCheck = nodes.some(n => !n.checked); // 하나라도 미체크면 전체 체크
+    const shouldCheck = nodes.some(n => !n.checked);
     setCheckedAll('.chk-attend', shouldCheck);
-  }else if(id === 'btnAllStarterOff'){
+  }else if(id === 'btnAllStarterOff' || id === 'btnAllStarterOff_desktop'){
     setCheckedAll('.chk-starter', false);
   }
 });
 
-/* ============ 인쇄: 출석 체크된 행만 살리기(화면 비율 유지) ============ */
+/* ============ 인쇄: 출석 체크된 행만 인쇄 ============ */
 function applyPrintKeepRows(){
   const rows = document.querySelectorAll('#playersTbody tr');
   rows.forEach(tr=>{
