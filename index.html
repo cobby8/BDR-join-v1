@@ -473,6 +473,19 @@
   const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
   const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 
+  async function fetchTourMeta(tourId){
+    if(!tourId) return null;
+    try { const m = await apiGet('tournament_meta', { tourId }); return (m && m.ok) ? m : null; }
+    catch { return null; }
+  }
+  function isPast(nowIso, targetIso){
+    if(!targetIso) return false;
+    const now = new Date(nowIso || Date.now());
+    const tgt = new Date(targetIso);
+    if (isNaN(tgt)) return false;
+    return now > tgt;
+  }
+
   function summarizeDivs(divs){
     try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`; }); return parts.length?parts.join(' / '):'-'; }
     catch{ return '-'; }
@@ -535,6 +548,7 @@
       <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
       <b>장소</b><div>${parsePlaces(t.places)}</div>
       <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
+      <b>수정 마감</b><div id="editDeadlineCell">${t.editDeadlineAt ? fmtDT(t.editDeadlineAt) : '— (미설정)'}</div>
       ${(!t.url || /^data:image\//i.test(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`}
     </div>`;
     box.style.display='block';
@@ -547,6 +561,18 @@
     await renderPosterStrict(id||'');
     fillCategoriesFromTour(currentTour);
   });
+  // 서버 기준 수정마감/접수기간 보정
+  if (id) {
+    try {
+      const meta = await apiGet('tournament_meta', { tourId: id });
+      if (meta && meta.ok) {
+        const cell = document.getElementById('editDeadlineCell');
+        if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
+        // 원한다면 접수기간도 서버시각 기준으로 교체:
+        // const reg = document.querySelector('#tourInfo .kv b:nth-child(9)') ... (생략)
+      }
+    } catch (e) { /* 네트워크 오류 시 무시 */ }
+  }
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
@@ -862,6 +888,10 @@
       if(!json.ok){ alert('오류: '+(json.error||'fail')); return; }
       ownerEdit={teamId,name,phone};
       await fillFormFromTeam_(json.team||{}, json.players||[]);
+      if (currentTour && currentTour.tourId) {
+        const meta = await fetchTourMeta(currentTour.tourId);
+        if (meta && meta.editDeadlineAt) show('수정 마감: ' + fmtDT(meta.editDeadlineAt));
+      }
       show('신청서가 불러와졌습니다. 수정 후 제출하세요.');
       $$('.step').forEach(s=>s.classList.remove('active')); $('#step1').classList.add('active'); window.scrollTo({top:0,behavior:'smooth'});
     }catch(e){ alert('네트워크 오류'); }
@@ -1041,6 +1071,31 @@ function showFloatingPanelAfterSubmit(){
   $('#submitBtn').addEventListener('click', async ()=>{
     if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
     if (!validatePlayersStrict()) return; // ▼ 선수명단 엄격 검증 추가
+
+    // ✨ 제출/수정 전 "수정마감" 확인
+    {
+      const tourId = ($('#tourSelect').value || '').trim();
+      const meta = await fetchTourMeta(tourId);
+      const isEditing = Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode);
+    
+      if (meta && meta.editDeadlineAt) {
+        if (isPast(meta.now, meta.editDeadlineAt)) {
+          alert('수정 마감이 지났습니다. 더 이상 신청서 변경이 불가합니다.');
+          return; // 차단
+        } else {
+          const msg = isEditing
+            ? `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?`
+            : `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?`;
+          if (!confirm(msg)) return; // 사용자 취소
+        }
+      } else {
+        // 마감 미설정인 경우에도 안내(선택): 필요 없으면 이 블록 제거 가능
+        const msg = isEditing
+          ? '현재 수정 마감이 설정되어 있지 않습니다.\n수정을 진행할까요?'
+          : '현재 수정 마감이 설정되어 있지 않습니다.\n제출을 진행할까요?';
+        if (!confirm(msg)) return;
+      }
+    }
 
     const province=$('#province').value.trim(), city=$('#city').value.trim();
 
