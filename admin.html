@@ -110,6 +110,30 @@
   /* 액션 버튼은 우측 정렬 유지 */
   table.responsive-table td:last-child .actions-cell{ justify-content:flex-end; }
 }
+  /* === Admin: 대회관리 폼 모바일 오버플로우 수습 === */
+  @media (max-width:640px){
+    /* 그리드/플렉스 자식이 줄어들 수 있게 */
+    #formArea .grid > *,
+    #formArea .row-2 > *,
+    #formArea .place-item > * { min-width:0; }
+  
+    /* 길이 긴 텍스트(예: URL) 줄바꿈 허용 */
+    #formArea input,
+    #formArea textarea { word-break:break-all; }
+  
+    /* 장소 행(place-item)은 세로 스택 */
+    #formArea .place-item{ grid-template-columns:1fr; }
+  
+    /* 포스터 메타/프리뷰는 줄바꿈 허용 */
+    #formArea .poster-meta{ flex-wrap:wrap; row-gap:6px; }
+    #formArea .poster-preview{ gap:8px; }
+    #formArea .poster-preview img{ max-width:100%; height:auto; }
+  
+    /* 칩/필도 박스 안에서 잘리도록 */
+    #formArea .pill,
+    #formArea .chip,
+    #formArea .badge{ max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+  }
 </style>
 </head>
 <body>
@@ -239,7 +263,6 @@
             </div>
           </div>
           <div class="toolbar" style="justify-content:flex-end;gap:8px">
-            <button class="btn" id="setEditDeadlineBtn" data-editable disabled>수정 마감만 반영</button>
             <button class="btn danger" id="deleteTourBtn" data-editable disabled>삭제</button>
             <button class="btn primary" id="saveTourBtn" data-editable disabled>저장</button>
           </div>
@@ -619,8 +642,6 @@ function setLocked(locked){
   const editBtn = $('#editBtn');
   if (editBtn) {
     editBtn.disabled = locked ? !CURRENT_TOUR_ID : true;
-
-  document.getElementById('setEditDeadlineBtn').disabled = locked || !CURRENT_TOUR_ID;
 
   }
 }
@@ -1078,29 +1099,6 @@ $('#searchText').addEventListener('keydown', e=>{ if(e.key==='Enter') loadTeams(
 
 document.getElementById('saveTourBtn').addEventListener('click', doSave);
 document.getElementById('deleteTourBtn').addEventListener('click', doDelete);
-
-  // ✨ 수정 마감만 반영
-document.getElementById('setEditDeadlineBtn').addEventListener('click', async ()=>{
-  if (!CURRENT_TOUR_ID) return alert('대회를 먼저 선택하세요.');
-  let adminCode = ($('#adminCode').value || '').trim();
-  if (!adminCode) return openAdminCodeFloating(()=> document.getElementById('setEditDeadlineBtn').click());
-
-  const editAt = ($('#editDeadlineAt').value || '').trim(); // ''이면 마감 해제
-  if (!confirm(editAt ? `수정 마감 시각을\n${fmtDate(editAt)} 로 설정합니다.` : '수정 마감을 해제합니다.')) return;
-
-  try{
-    const payload = { tourId: CURRENT_TOUR_ID, adminCode, editDeadlineAt: editAt };
-    const j = await postJSONCompat(
-      ['tournament/setEditDeadline','tournament_seteditdeadline'],
-      payload
-    );
-    if (!isSuccessResponse(j)) throw new Error(j?.error || '반영 실패');
-
-    alert('수정 마감이 반영되었습니다.');
-  }catch(e){
-    alert('오류: ' + (e.message || e));
-  }
-});
 
 /* ========= 부팅 ========= */
 (async function boot(){ await health(); await loadTournaments(); await loadTeams(); await renderPoster(); })();
