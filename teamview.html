@@ -206,64 +206,62 @@ function rowKey(r){
   return `${String(no).trim()}::${String(name).trim()}`;
 }
 
-  async function saveViewAsJPG(){
-  // 캡처 대상: 상단 헤더 제외, 카드 두 개만 사진으로 저장
+async function saveViewAsJPG(){
   const team = document.getElementById('teamCard');
   const players = document.getElementById('playersCard');
-  if(!team || !players){ alert('캡처할 영역을 찾을 수 없습니다.'); return; }
+  if(!team || !players) throw new Error('캡처할 영역을 찾을 수 없습니다.');
 
-  // 현재 화면 기준 폭/높이 측정
   const baseWrap = document.querySelector('.wrap');
   const baseWidth = (baseWrap && baseWrap.offsetWidth) ? baseWrap.offsetWidth : 980;
-  const totalHeight = team.offsetHeight + players.offsetHeight + 28; // 카드 간 여백 포함(대략)
 
-  // 목표 렌더 크기 (A4 폭 맞춤)
-  const targetW = A4_TARGET_WIDTH;
-  const scale = targetW / baseWidth;
+  // 화면상 높이(대략) → 스케일링해서 타깃 높이 계산
+  const gap = 28; // 카드 간 여백
+  const totalHeight = team.offsetHeight + players.offsetHeight + gap;
+
+  const targetW = A4_TARGET_WIDTH;       // 예: 2480
+  const scale   = targetW / baseWidth;
   const targetH = Math.ceil(totalHeight * scale);
 
-  // 캡처용 DOM 복제(헤더 제외)
-  const container = document.createElement('div');
-  container.style.width = baseWidth + 'px';
-  container.style.padding = '14px';
-  container.style.boxSizing = 'border-box';
-  container.style.background = getComputedStyle(document.body).backgroundColor || '#ffffff';
-
-  const teamClone = team.cloneNode(true);
-  const playersClone = players.cloneNode(true);
-  container.appendChild(teamClone);
-  container.appendChild(playersClone);
-
-  // 현재 문서 <style>들을 foreignObject 안에 주입 (스타일 유지)
+  // 문서의 <style>들을 수집해 foreignObject 내부로 주입
   const styleTexts = Array.from(document.querySelectorAll('style'))
     .map(s => s.innerHTML)
     .join('\n');
-  const inlineStyles = `<style>${styleTexts}</style>`;
 
-  // foreignObject용 HTML (XHTML 네임스페이스 지정)
-  const innerHTML = `
-    ${inlineStyles}
-    <div xmlns="http://www.w3.org/1999/xhtml" style="width:${baseWidth}px; box-sizing:border-box;">
-      ${container.innerHTML}
+  // 배경색
+  const bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
+
+  // XHTML 루트 1개만 두고, 그 안에 스타일 + 카드 2개를 넣는다
+  const xhtml = `
+    <div xmlns="http://www.w3.org/1999/xhtml"
+         style="width:${baseWidth}px; box-sizing:border-box; padding:14px; background:${bg};">
+      <style>${styleTexts}</style>
+      ${team.outerHTML}
+      ${players.outerHTML}
     </div>
   `;
 
-  // SVG + foreignObject로 캔버스에 그리기
+  // SVG with foreignObject
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${targetW}" height="${targetH}">
       <foreignObject width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml" style="transform-origin: 0 0; transform: scale(${scale});">
-          ${innerHTML}
+        <div xmlns="http://www.w3.org/1999/xhtml"
+             style="transform-origin:0 0; transform:scale(${scale});">
+          ${xhtml}
         </div>
       </foreignObject>
     </svg>
   `;
+
   const svgBlob = new Blob([svg], { type:'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(svgBlob);
 
   const img = new Image();
   img.crossOrigin = 'anonymous';
-  await new Promise((res, rej)=>{ img.onload=()=>res(); img.onerror=rej; img.src=url; });
+  await new Promise((res, rej)=>{
+    img.onload = ()=>res();
+    img.onerror = ()=>rej(new Error('SVG 렌더 실패(스타일 중첩/구조 오류 가능).'));
+    img.src = url;
+  });
 
   const canvas = document.createElement('canvas');
   canvas.width = targetW;
@@ -274,19 +272,21 @@ function rowKey(r){
   ctx.drawImage(img, 0, 0);
   URL.revokeObjectURL(url);
 
-  // 파일 저장
   const now = new Date();
   const filenameSafe = (document.getElementById('pageTitle')?.textContent || 'TeamView')
     .replace(/[\\/:*?"<>|]/g,'_');
-  canvas.toBlob(blob=>{
-    if(!blob){ alert('이미지 변환에 실패했습니다.'); return; }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `TeamView_${filenameSafe}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.jpg`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 200);
-  }, 'image/jpeg', JPG_QUALITY);
+
+  await new Promise((resolve, reject)=>{
+    canvas.toBlob(blob=>{
+      if(!blob) return reject(new Error('이미지 변환 실패'));
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `TeamView_${filenameSafe}_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); resolve(); }, 200);
+    }, 'image/jpeg', JPG_QUALITY);
+  });
 }
 
 /* ============ 렌더러 ============ */
@@ -414,7 +414,13 @@ document.getElementById('btnShare').addEventListener('click', async ()=>{
     }
   }catch(e){}
 });
-document.getElementById('btnSaveJpg').addEventListener('click', ()=>saveViewAsJPG().catch(e=>alert('이미지 저장 중 오류: '+e)));
+document.getElementById('btnSaveJpg').addEventListener('click', async ()=>{
+  try{
+    await saveViewAsJPG();
+  }catch(e){
+    alert('이미지 저장 중 오류: ' + (e && e.message ? e.message : e));
+  }
+});
 
 /* ============ 헤더 액션 버튼 동작 ============ */
 document.addEventListener('click', (e)=>{
