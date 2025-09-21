@@ -549,11 +549,11 @@ function renderPlayers(rows){
     return `<tr data-key="${key}">
       <td class="backno ellipsis c-no"    data-label="등번호">${no||'-'}</td>
       <td class="namecell ellipsis c-name" data-label="선수이름">${name||''}</td>
-      <td class="col-pos ellipsis c-pos"   data-label="포지션">${pos||''}</td>
-      <td class="col-att c-att"            data-label="출석"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
+      <td class="col-pos ellipsis c-pos"     data-label="포지션">${pos||''}</td>
       <td class="col-birth ellipsis c-birth" data-label="생년월일">${birth||''}</td>
       <td class="col-age ellipsis c-age"     data-label="만나이">${age||''}</td>
       <td class="col-elite ellipsis c-elite" data-label="선출">${elite||''}</td>
+      <td class="col-att c-att"              data-label="출석"><input type="checkbox" class="chk-attend"${st.a?' checked':''} aria-label="출석"></td>
       <td class="col-start c-starter"        data-label="선발출전"><input type="checkbox" class="chk-starter"${st.s?' checked':''} aria-label="선발출전"></td>
     </tr>`;
   }).join('');
