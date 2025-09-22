@@ -187,6 +187,12 @@
     align-items: center;
     gap:8px 10px;   /* 세로 8, 가로 10으로 여백 최적화 */
   }
+  /* 편집모드 아닐 때 포스터 드롭 비활성화 표시 */
+  .poster-drop.disabled{
+    cursor: not-allowed;
+    opacity: .6;
+    pointer-events: none; /* 클릭/드래그 모두 차단 */
+  }
 </style>
 </head>
 <body>
@@ -720,7 +726,10 @@ function setLocked(locked){
      - 수정모드: 삭제버튼/모집팀수 인풋 활성화
      - 저장 후(잠금): 삭제버튼 제거/인풋 비활성(표시만)
   */
+  /* 기존: refreshDivUI(); 아래에 추가 */
   refreshDivUI();
+  /* ★ 잠금 상태 변경 시 포스터 UI도 잠금/편집 상태 반영 */
+  renderPoster();
 }
 
 
@@ -988,13 +997,15 @@ async function renderPoster(){
 
   if(!showUrl){
     prev.innerHTML = `
-      <div class="poster-drop" id="posterDrop">
+      <div class="poster-drop ${FORM_LOCKED ? 'disabled' : ''}" id="posterDrop">
         이미지를 드래그하거나 클릭해 업로드
         <input type="file" id="posterInput" accept="image/*" style="display:none">
       </div>`;
-    $('#posterCopy').disabled=true; $('#posterClear').disabled=true;
+    $('#posterCopy').disabled = true;
+    $('#posterClear').disabled = true;
     $('#posterCopy').dataset.copyUrl = '';
-    wirePosterInteractions();
+    /* ★ 잠금일 때는 상호작용 자체를 연결하지 않음 */
+    if (!FORM_LOCKED) wirePosterInteractions();
   }else{
     prev.innerHTML = `<img id="posterImg" src="" alt="poster"> <div class="muted">${POSTER_DATA_URL?'업로드(미저장)':'현재 저장된 포스터'}</div>`;
     const img=$('#posterImg');
@@ -1002,12 +1013,15 @@ async function renderPoster(){
     const tryNext=()=>{ if(i>=variants.length){ img.removeAttribute('src'); return; } img.src=variants[i++]; };
     img.onerror=tryNext; img.onload=()=>{};
     tryNext();
-    $('#posterCopy').disabled=false; $('#posterClear').disabled=false;
+    $('#posterCopy').disabled = false;           // 복사 기능은 읽기전용에서도 허용
+    $('#posterClear').disabled = FORM_LOCKED;    // ★ 잠금이면 삭제 비활성
     $('#posterCopy').dataset.copyUrl = variants[0] || showUrl;
   }
 }
 function wirePosterInteractions(){
   const drop=document.getElementById('posterDrop');
+    /* ★ 편집 모드에서만 업로드 허용 */
+    if (FORM_LOCKED) return;
   const input=document.getElementById('posterInput');
   if(!drop||!input) return;
   drop.addEventListener('click', ()=> input.click());
@@ -1017,6 +1031,7 @@ function wirePosterInteractions(){
   input.addEventListener('change', e=>{ const f=e.target.files?.[0]; if(f) handlePosterFile(f); });
 }
 async function handlePosterFile(file){
+  if (FORM_LOCKED) { alert('편집 모드에서만 포스터를 첨부할 수 있습니다. 상단 "수정"을 눌러 편집을 해제하세요.'); return; }
   try{ POSTER_DATA_URL = await fileToJpegDataUrl(file, 1024, 0.8); POSTER_CLEAR=false; await renderPoster(); markDirty(); }
   catch(e){ alert('이미지 처리 중 오류: '+e.message); }
 }
@@ -1038,7 +1053,13 @@ document.getElementById('posterCopy').addEventListener('click', async ()=>{
   if(!url) return;
   try{ await navigator.clipboard.writeText(url); alert('복사되었습니다.'); }catch{ alert('복사 실패'); }
 });
-document.getElementById('posterClear').addEventListener('click', async ()=>{ POSTER_DATA_URL=''; POSTER_CLEAR=true; await renderPoster(); markDirty(); });
+document.getElementById('posterClear').addEventListener('click', async ()=>{
+  if (FORM_LOCKED) { alert('편집 모드에서만 포스터를 제거할 수 있습니다.'); return; }
+  POSTER_DATA_URL = '';
+  POSTER_CLEAR = true;
+  await renderPoster();
+  markDirty();
+});
 
 /* ========= 로드/저장 ========= */
 function updateStatusBadge(){ const rs=$('#regStart').value||''; const re=$('#regEnd').value||''; $('#tourStatusBadge').innerHTML=statusBadgeHtml(calcStatus(rs,re)); }
