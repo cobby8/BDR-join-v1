@@ -1121,6 +1121,11 @@ async function doSave(){
   const { divs, divCaps } = buildDivPayload();
 
   const base={
+    // (추가) 포스터를 변경/삭제하지 않았다면 기존 값을 함께 보낸다
+    if (!POSTER_CLEAR && !POSTER_DATA_URL) {
+      base.posterId  = (CURRENT_TOUR_OBJ && CURRENT_TOUR_OBJ.posterId)  || '';
+      base.posterUrl = (CURRENT_TOUR_OBJ && CURRENT_TOUR_OBJ.posterUrl) || '';
+    }
     tourId:($('#tourId').value||'').trim(),
     name,
     url:($('#tourUrl').value||'').trim(),
