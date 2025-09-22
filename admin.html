@@ -42,7 +42,6 @@
 
   /* 표 기본 */
   table{width:100%;border-collapse:separate;border-spacing:0 10px;table-layout:fixed}
-  /* 최종 확정 컬럼 폭 (대회 열 제거 반영) */
   col.col-region{width:18%}
   col.col-team{width:26%}
   col.col-uniform{width:14%}
@@ -86,9 +85,21 @@
   /* 신청일시 좌정렬 */
   .td-created{ text-align:left; }
 
+  /* 모집팀수 인풋 */
+  .cap-input{
+    width:78px; padding:8px 10px; border:1px solid #e6ecf5; border-radius:10px; font-size:12px;
+  }
+  .cap-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .cap-chip{
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid #e6ecf5; background:#fff; border-radius:999px; padding:6px 10px; font-size:12px;
+  }
+  .cap-chip b{ font-weight:700 }
+  .cap-chip .remove{ border:0; background:transparent; cursor:pointer; color:#ef4444; font-size:14px; line-height:1 }
+  .cap-note{ color:#64748b; font-size:12px; }
+
   /* === Admin: 모바일 카드 레이아웃 (≤640px) === */
   @media (max-width:640px){
-    /* thead 숨기고 tr을 카드처럼 */
     table.responsive-table thead{ display:none; }
     table.responsive-table, 
     table.responsive-table tbody, 
@@ -102,26 +113,14 @@
       margin:10px 0;
       padding:10px;
     }
-    table.responsive-table td{
-      border:none;
-      padding:8px 6px 4px;
-    }
-    /* 라벨(헤더 텍스트) 노출 */
+    table.responsive-table td{ border:none; padding:8px 6px 4px; }
     table.responsive-table td::before{
       content: attr(data-label);
-      display:block;
-      font-size:12px;
-      color:#6b7280;
-      margin-bottom:4px;
-      line-height:1.2;
+      display:block; font-size:12px; color:#6b7280; margin-bottom:4px; line-height:1.2;
     }
-    /* 액션 버튼 우측 정렬 유지 */
     table.responsive-table td:last-child .actions-cell{ justify-content:flex-end; }
 
-    /* 대회관리 폼 모바일 오버플로우 수습 */
-    #formArea .grid > *,
-    #formArea .row-2 > *,
-    #formArea .place-item > * { min-width:0; }
+    #formArea .grid > *, #formArea .row-2 > *, #formArea .place-item > * { min-width:0; }
     #formArea input, #formArea textarea { word-break:break-all; }
     #formArea .place-item{ grid-template-columns:1fr; }
     #formArea .poster-meta{ flex-wrap:wrap; row-gap:6px; }
@@ -129,18 +128,16 @@
     #formArea .poster-preview img{ max-width:100%; height:auto; }
     #formArea .pill, #formArea .chip, #formArea .badge{ max-width:100%; overflow:hidden; text-overflow:ellipsis; }
 
-    /* 참가팀 명단 - 모바일 3행 카드 (대회열 제거 기준) */
     #teamsTable.responsive-table tbody tr{
       display:grid;
       grid-template-columns: 1fr 1fr;
       grid-template-areas:
-        "team   region"    /* 1행: 팀/대표자 | 지역 */
-        "catdiv created"   /* 2행: 종별·디비전 | 신청일시 */
-        "uniform actions"; /* 3행: 유니폼 | 액션 */
+        "team   region"
+        "catdiv created"
+        "uniform actions";
       gap:10px 12px;
       align-items:center;
     }
-    /* 각 칸 매핑 (열 순서: 1=지역,2=팀,3=유니폼,4=종별·디비전,5=신청,6=액션) */
     #teamsTable.responsive-table td:nth-child(2){ grid-area: team; }
     #teamsTable.responsive-table td:nth-child(1){ grid-area: region; }
     #teamsTable.responsive-table td:nth-child(3){ grid-area: uniform; text-align:center; }
@@ -148,30 +145,18 @@
     #teamsTable.responsive-table td:nth-child(5){ grid-area: created; }
     #teamsTable.responsive-table td:nth-child(6){ grid-area: actions; }
 
-    /* 라벨 보정: 팀/액션 라벨 숨김 */
     #teamsTable.responsive-table td:nth-child(2)::before,
     #teamsTable.responsive-table td:nth-child(6)::before{ display:none; }
 
-    /* 팀명 강조 */
     #teamsTable.responsive-table td:nth-child(2) b{ font-size:15px; }
     #teamsTable.responsive-table td:nth-child(2) .muted{ display:block; margin-top:2px; }
-
-    /* 넘침 방지 */
     #teamsTable.responsive-table td{ min-width:0; }
   }
 
-  /* 참가팀 명단: 선택 대회명 칩 스타일 */
   #selectedTourInfo .chip{
-    display:inline-block;
-    padding:6px 10px;
-    border-radius:999px;
-    background:#f1f5fb;
-    border:1px solid #e4ecf7;
-    color:#334155;
-    max-width:100%;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
+    display:inline-block; padding:6px 10px; border-radius:999px;
+    background:#f1f5fb; border:1px solid #e4ecf7; color:#334155;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
 </style>
 </head>
@@ -224,7 +209,9 @@
         </div>
 
         <label class="muted" style="margin-top:8px">종별 설정</label>
-        <div class="muted" style="margin-top:-6px">편집 모드에서만 <b>+ 구분/종별 추가</b> 사용 가능. 신규 대회는 버튼만 보입니다.</div>
+        <div class="muted" style="margin-top:-6px">
+          편집 모드에서만 <b>+ 구분/종별 추가</b> 사용 가능. 각 종별(또는 유소년 쌍) 우측에 <b>모집팀수</b>를 입력하세요.
+        </div>
         <div id="divSetList" class="grid" style="margin-top:8px"></div>
         <div class="toolbar" style="margin-top:6px;justify-content:space-between">
           <button class="btn danger" id="clearAllDivBtn" data-editable disabled>종별구분 전체 삭제</button>
@@ -626,7 +613,7 @@ async function loadTeams(){
     rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') ||
     `<tr><td colspan="6" class="muted">데이터 없음</td></tr>`;
 
-  /* 선택된 대회 표시 (이름·기간·상태) */
+  /* 선택된 대회 표시 */
   (function(){
     const box = document.getElementById('selectedTourInfo');
     if (!box) return;
@@ -644,7 +631,6 @@ async function loadTeams(){
     `;
   })();
 
-  /* 모바일 카드 라벨 주입 */
   applyResponsiveLabels();
 }
 
@@ -670,7 +656,7 @@ document.getElementById('teamsTbody').addEventListener('click', (e)=>{
 });
 
 /* ========= 상태/잠금 ========= */
-let DIV_STATE=[];
+let DIV_STATE=[]; // [{group, entries:[{code, cap}]}]
 let FORM_LOCKED=true, DIRTY=false;
 function setLocked(locked){
   FORM_LOCKED = locked;
@@ -686,7 +672,7 @@ function setLocked(locked){
   $('#deleteTourBtn').disabled = locked || !CURRENT_TOUR_ID;
   $('#addDivSetBtn').disabled  = locked;
   $('#addPlaceBtn').disabled   = locked;
-  $('#clearAllDivBtn').disabled = locked || DIV_STATE.length === 0;
+  $('#clearAllDivBtn').disabled = locked || (DIV_STATE.length === 0);
 
   const editBtn = $('#editBtn');
   if (editBtn) editBtn.disabled = locked ? !CURRENT_TOUR_ID : true;
@@ -715,9 +701,30 @@ const DIVISION_PRESETS = {
 };
 const YOUTH_AGE_LABELS = Array.from({length: 12}, (_, i) => 'U' + (7 + i));
 
+function getStateByGroup(group){
+  let st = DIV_STATE.find(s=>s.group===group);
+  if(!st){ st = { group, entries: [] }; DIV_STATE.push(st); }
+  if(!Array.isArray(st.entries)) st.entries = [];
+  return st;
+}
+function coerceEntriesFromDivisions(group, divisions, capsMap){
+  const entries = [];
+  (divisions||[]).forEach(v=>{
+    if(!v) return;
+    if(typeof v==='string'){
+      const cap = (capsMap && Number.isFinite(Number(capsMap[v]))) ? Number(capsMap[v]) : null;
+      entries.push({ code: v, cap });
+    }else if(v && typeof v==='object' && v.code){
+      const cap = (v.cap!=null)?Number(v.cap): (capsMap && Number.isFinite(Number(capsMap[v.code]))) ? Number(capsMap[v.code]) : null;
+      entries.push({ code: v.code, cap: Number.isFinite(cap)?cap:null });
+    }
+  });
+  return entries;
+}
+
 function renderDivRow(container, set, editable){
   const group = set.group;
-  const divisions = set.divisions || [];
+  const entries = set.entries || [];
 
   const row = el(`<div class="place-item"></div>`);
   const left = el(`<div style="display:flex;align-items:center;gap:8px"><b>${group}</b></div>`);
@@ -733,39 +740,48 @@ function renderDivRow(container, set, editable){
   left.appendChild(delSmall);
   row.appendChild(left);
 
-  const chipsDiv = el(`<div class="chips"></div>`);
-  if (group === '유소년부'){
-    chipsDiv.innerHTML = divisions.length
-      ? divisions.map(pair=>`<span class="chip" data-type="pair" data-v="${pair}" title="${editable?'클릭하여 제거':''}">${pair}${editable?' ×':''}</span>`).join('')
-      : `<span class="muted">쌍(종별·연령) 미선택</span>`;
-    if (editable){
-      chipsDiv.querySelectorAll('.chip[data-type="pair"]').forEach(c=>{
-        c.addEventListener('click',()=>{
-          const v=c.getAttribute('data-v');
-          const st=DIV_STATE.find(s=>s.group===group);
-          if(st){ st.divisions=(st.divisions||[]).filter(x=>x!==v); DIRTY=true; refreshDivUI(); }
+  // 중간: cap 입력 리스트
+  const mid = el(`<div class="cap-row"></div>`);
+  if(entries.length){
+    entries.forEach((ent, idx)=>{
+      const code = ent.code;
+      const cap = (ent.cap ?? '');
+      const chip = el(`
+        <label class="cap-chip">
+          <b>${code}</b>
+          ${editable ? `<input class="cap-input" type="number" min="0" step="1" value="${cap!==''?cap:''}" placeholder="모집" data-editable>` 
+                     : `<span class="cap-note">${Number.isFinite(+cap)?`모집 ${cap}팀`:'모집 미설정'}</span>`}
+          ${editable ? `<button class="remove" title="제거">×</button>` : ``}
+        </label>
+      `);
+      if(editable){
+        const inp = chip.querySelector('.cap-input');
+        inp.addEventListener('input', ()=>{
+          const v = inp.value.trim();
+          ent.cap = v==='' ? null : Math.max(0, parseInt(v,10)||0);
+          DIRTY = true;
         });
-      });
-    }
+        const rm = chip.querySelector('.remove');
+        rm.addEventListener('click', ()=>{
+          const st = getStateByGroup(group);
+          st.entries = st.entries.filter((_,i)=>i!==idx);
+          DIRTY = true; refreshDivUI();
+        });
+      }
+      mid.appendChild(chip);
+    });
   }else{
-    chipsDiv.innerHTML = divisions.length 
-      ? divisions.map(v=>`<span class="chip" data-type="div" data-v="${v}" title="${editable?'클릭하여 제거':''}">${v}${editable?' ×':''}</span>`).join('')
-      : `<span class="muted">종별 미선택</span>`;
-    if (editable){
-      chipsDiv.querySelectorAll('.chip[data-type="div"]').forEach(c=>{
-        c.addEventListener('click',()=>{
-          const v=c.getAttribute('data-v');
-          const st=DIV_STATE.find(s=>s.group===group);
-          if(st){ st.divisions=(st.divisions||[]).filter(x=>x!==v); DIRTY=true; refreshDivUI(); }
-        });
-      });
-    }
+    mid.appendChild(el(`<span class="muted">항목 없음</span>`));
   }
-  row.appendChild(chipsDiv);
+  row.appendChild(mid);
+
+  // 우측 여분 칸 2개 유지
   row.appendChild(el(`<div></div>`));
   row.appendChild(el(`<div></div>`));
+
   container.appendChild(row);
 }
+
 function refreshDivUI(){
   const box = $('#divSetList');
   box.innerHTML = '';
@@ -774,6 +790,7 @@ function refreshDivUI(){
   $('#addDivSetBtn').disabled = FORM_LOCKED;
   $('#clearAllDivBtn').disabled = FORM_LOCKED || DIV_STATE.length === 0;
 }
+
 function openDivFloating(){
   const body = el(`
     <div>
@@ -787,7 +804,7 @@ function openDivFloating(){
         <div id="youthAgeRadios" style="margin-top:8px"></div>
         <div style="margin-top:10px;display:flex;gap:8px">
           <button class="btn" id="btnAddPair">+ 쌍 추가</button>
-          <span class="muted">추가된 쌍은 상위 칩 영역에 표시됩니다.</span>
+          <span class="muted">추가된 쌍은 상위 목록에 표시됩니다.</span>
         </div>
       </div>
     </div>
@@ -802,12 +819,12 @@ function openDivFloating(){
 
   function render(g){
     const opts = DIVISION_PRESETS[g] || [];
-    const existing = DIV_STATE.find(s=>s.group===g) || {};
-    const picked = existing.divisions || [];
+    const st = getStateByGroup(g);
+    const pickedCodes = new Set((st.entries||[]).map(e=>e.code));
 
     if (g === '유소년부'){
       youthWrap.style.display = '';
-      checks.innerHTML = `<div class="muted">※ 유소년은 아래에서 종별/연령을 하나씩 선택 후 <b>+ 쌍 추가</b>를 누르세요.</div>`;
+      checks.innerHTML = `<div class="muted">※ 유소년은 아래에서 종별/연령을 하나씩 선택 후 <b>+ 쌍 추가</b>.</div>`;
       youthDivRadios.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;">${opts.map(v=>`<label class="chip"><input type="radio" name="y_div" value="${v}"> ${v}</label>`).join('')}</div>`;
       youthAgeRadios.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;">${YOUTH_AGE_LABELS.map(a=>`<label class="chip"><input type="radio" name="y_age" value="${a}"> ${a}</label>`).join('')}</div>`;
       const btnAdd = body.querySelector('#btnAddPair');
@@ -817,16 +834,19 @@ function openDivFloating(){
         if(!div) return alert('종별을 선택하세요.');
         if(!age) return alert('연령을 선택하세요.');
         const pair = `${div} ${age}`;
-        let set = DIV_STATE.find(s=>s.group===g);
-        if(!set){ set = { group: g, divisions: [] }; DIV_STATE.push(set); }
-        if(!(set.divisions||[]).includes(pair)){ set.divisions.push(pair); DIRTY = true; refreshDivUI(); }
-        else{ alert('이미 추가된 쌍입니다.'); }
+        if(!pickedCodes.has(pair)){
+          st.entries.push({ code: pair, cap: null });
+          DIRTY = true; refreshDivUI();
+        }else{
+          alert('이미 추가된 항목입니다.');
+        }
       };
+      checks.innerHTML += '';
     }else{
       youthWrap.style.display = 'none';
       youthDivRadios.innerHTML = '';
       youthAgeRadios.innerHTML = '';
-      checks.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;">${opts.map(v=>`<label class="chip"><input type="checkbox" value="${v}" ${picked.includes(v)?'checked':''}> ${v}</label>`).join('')}</div>`;
+      checks.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;">${opts.map(v=>`<label class="chip"><input type="checkbox" value="${v}" ${pickedCodes.has(v)?'checked':''}> ${v}</label>`).join('')}</div>`;
     }
   }
   sel.addEventListener('change', ()=>render(sel.value));
@@ -839,18 +859,22 @@ function openDivFloating(){
   cancel.addEventListener('click', closePopover);
   ok.addEventListener('click', ()=>{
     const g = sel.value;
-    if (g === '유소년부'){
-      if(!(DIV_STATE.find(s=>s.group===g)?.divisions||[]).length){
-        return alert('추가된 쌍이 없습니다. 아래에서 종별/연령을 선택 후 "+ 쌍 추가"를 눌러주세요.');
-      }
+    if (g !== '유소년부'){
+      const selected = [...body.querySelectorAll('#popDivChecks input:checked')].map(i=>i.value);
+      const st = getStateByGroup(g);
+      // 추가
+      selected.forEach(code=>{
+        if(!(st.entries||[]).some(e=>e.code===code)){
+          st.entries.push({ code, cap: null });
+        }
+      });
+      // 체크 해제된 항목 제거
+      st.entries = st.entries.filter(e=> selected.includes(e.code));
+      DIRTY = true; refreshDivUI(); closePopover();
     }else{
-      const pickedDiv = [...document.querySelectorAll('#popDivChecks input:checked')].map(i=>i.value);
-      if(!pickedDiv.length) return alert('종별을 선택하세요.');
-      let set = DIV_STATE.find(s=>s.group===g);
-      if(!set){ set = { group: g, divisions: [] }; DIV_STATE.push(set); }
-      pickedDiv.forEach(v=>{ if(!set.divisions.includes(v)) set.divisions.push(v); });
+      // 유소년은 이미 +쌍 추가로만 반영되므로 바로 닫기
+      closePopover();
     }
-    DIRTY = true; refreshDivUI(); closePopover();
   });
 
   openPopoverCentered('구분/종별 선택', body, actions);
@@ -999,14 +1023,22 @@ async function loadTourToForm(t, locked=true){
   $('#editDeadlineAt').value = toInputDT(t?.editDeadlineAt);
   updateStatusBadge();
 
-  let divSets=t?.divSets; 
-  if(!Array.isArray(divSets)||!divSets.length){ const m=t?.divs||{}; divSets=Object.keys(m).map(g=>({group:g,divisions:m[g]||[]})); }
-  DIV_STATE=(divSets||[]).map(s=>({group:s.group, divisions:[...(s.divisions||[])]})); 
+  // === 모집팀수와 종별 불러오기 ===
+  let divSets=t?.divSets;
+  if(!Array.isArray(divSets)||!divSets.length){
+    const m=t?.divs||{};
+    divSets=Object.keys(m).map(g=>({group:g,divisions:m[g]||[]}));
+  }
+  const caps = t?.divCaps || t?.div_caps || {};
+  DIV_STATE = (divSets||[]).map(s=>{
+    return { group: s.group, entries: coerceEntriesFromDivisions(s.group, s.divisions||[], caps) };
+  });
   refreshDivUI();
 
   setPlaces(Array.isArray(t?.places)?t.places:[]);
   $('#adminCode').value=''; DIRTY=false; setLocked(locked);
 }
+
 function clearTourForm(){
   CURRENT_TOUR_ID=''; CURRENT_TOUR_OBJ=null;
   $('#tourFormTitle').textContent='대회 등록';
@@ -1019,12 +1051,29 @@ function clearTourForm(){
 }
 document.getElementById('toggleCodeBtn').addEventListener('click',()=>{ const i=$('#adminCode'); i.type=(i.type==='password'?'text':'password'); });
 
+function buildDivPayload(){
+  // divs: { 그룹: [코드, ...] }
+  // divCaps: { 코드(or 유소년쌍): 모집팀수 }
+  const divs = {};
+  const divCaps = {};
+  (DIV_STATE||[]).forEach(s=>{
+    if(!divs[s.group]) divs[s.group]=[];
+    (s.entries||[]).forEach(ent=>{
+      if(!divs[s.group].includes(ent.code)) divs[s.group].push(ent.code);
+      if(ent.cap!==null && ent.cap!==undefined && Number.isFinite(Number(ent.cap))){
+        divCaps[ent.code] = Number(ent.cap);
+      }
+    });
+  });
+  return { divs, divCaps };
+}
+
 async function doSave(){
   const name=($('#tourName').value||'').trim(); if(!name) return alert('대회명을 입력하세요.');
   let adminCode=($('#adminCode').value||'').trim();
   if(!adminCode){ return openAdminCodeFloating(()=> doSave()); }
 
-  const divs={}; DIV_STATE.forEach(s=>{ if(!divs[s.group]) divs[s.group]=[]; (s.divisions||[]).forEach(d=>{ if(!divs[s.group].includes(d)) divs[s.group].push(d); }); });
+  const { divs, divCaps } = buildDivPayload();
 
   const base={
     tourId:($('#tourId').value||'').trim(),
@@ -1036,13 +1085,17 @@ async function doSave(){
     regEnd:   $('#regEnd').value   || '',
     editDeadlineAt: ($('#editDeadlineAt').value || ''),
     status:   calcStatus($('#regStart').value||'',$('#regEnd').value||''),
-    divSets:  DIV_STATE,
+    // 저장 포맷 (구버전 호환 + 신버전)
+    divSets:  (DIV_STATE||[]).map(s=>({group:s.group, divisions:(s.entries||[]).map(e=>e.code)})),
     divs,
+    divCaps,                    // ★ 신규: 코드→모집팀수 맵
+    div_caps_json: JSON.stringify(divCaps), // 백엔드가 소문자/스네이크 케이스를 기대할 수도 있으니 같이 전송
     places:  getPlaces(),
     fee:     ($('#fee').value || '').trim(),
     account: ($('#account').value || '').trim(),
     adminCode,
     posterClear: POSTER_CLEAR ? true : undefined,
+    // 일부 백엔드 호환 키 유지
     'reg.start': $('#regStart').value || '', 'reg.end': $('#regEnd').value || '',
     reg_start: $('#regStart').value || '',   reg_end: $('#regEnd').value || '',
     regStartDate: $('#regStart').value || '', regEndDate: $('#regEnd').value || '',
@@ -1142,6 +1195,28 @@ document.getElementById('deleteTourBtn').addEventListener('click', doDelete);
   await loadTeams();
   await renderPoster();
 })();
+
+/* ========= 장소 팝업 (원 코드에서 사용되던 부분 보완) ========= */
+function openPlaceFloating(initName, onOk){
+  const body = el(`
+    <div>
+      <label>장소명</label>
+      <input id="placeNameInput" style="width:100%;padding:10px;border:1px solid #e6ecf5;border-radius:12px" value="${(initName||'').replace(/"/g,'&quot;')}">
+    </div>
+  `);
+  const actions=el(`<div></div>`);
+  const cancel=el(`<button class="btn">취소</button>`);
+  const ok=el(`<button class="btn primary">확인</button>`);
+  actions.appendChild(cancel); actions.appendChild(ok);
+  cancel.addEventListener('click', closePopover);
+  ok.addEventListener('click', ()=>{
+    const v = (body.querySelector('#placeNameInput').value||'').trim();
+    if(!v) return alert('장소명을 입력하세요.');
+    if(typeof onOk==='function') onOk(v);
+    closePopover();
+  });
+  openPopoverCentered('장소', body, actions);
+}
 </script>
 </body>
 </html>
