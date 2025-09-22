@@ -221,6 +221,7 @@
           <label>디비전</label>
           <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
           <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
+          <div class="muted" id="divCapHint" style="display:none"></div> <!-- ★ 추가 -->
         </div>
       </div>
 
@@ -449,7 +450,26 @@
 
   /* ===== 대회 목록 ===== */
   let TOUR_MAP={}, currentTour=null;
+  /* ★ 추가: 선택된 대회의 디비전별 현재 신청팀수 */
+  let CUR_DIV_COUNT = {};  // 예: { "D4": 12, "i2 U12": 8 }
 
+  /* ★ 추가: 선택 대회 신청팀수(디비전별) 불러오기 */
+  async function loadAppliedCounts(tourId){
+    CUR_DIV_COUNT = {};
+    if(!tourId) return;
+    try{
+      const j = await apiGet('teams', { tourId });
+      const rows = (j && Array.isArray(j.rows)) ? j.rows : [];
+      rows.forEach(r=>{
+        const dv = String(r.division || '').trim();
+        if(!dv) return;
+        CUR_DIV_COUNT[dv] = (CUR_DIV_COUNT[dv]||0) + 1;
+      });
+    }catch(e){
+      // 네트워크 실패 시 카운트는 비워둠
+    }
+  }  
+  
   async function loadTournaments(){
     const json = await apiGet('tournaments');
     if(!(json && (json.ok || Array.isArray(json.rows)))){
@@ -556,11 +576,16 @@
   }
 
   $('#tourSelect').addEventListener('change', async e => {
-    const id = e.target.value;
     currentTour = id ? TOUR_MAP[id] : null;
     renderTourInfo(currentTour);
     await renderPosterStrict(id || '');
+    
+    /* ★ 추가: 먼저 신청팀수 집계 */
+    await loadAppliedCounts(id);
+    
+    /* ★ 이어서 카테고리/디비전 UI 작성 */
     fillCategoriesFromTour(currentTour);
+    updateDivisionHint();
   
     // ✅ 서버 기준 수정마감/접수기간 보정 (핸들러 내부로 이동)
     if (id) {
@@ -576,6 +601,51 @@
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
+
+  /* ★ 추가: divCaps 읽기(문자/객체 호환) */
+  function getDivCapsObj(){
+    if(!currentTour) return {};
+    let caps = currentTour.divCaps;
+    // 혹시 문자열로 내려온 경우 파싱
+    if (typeof caps === 'string') {
+      try { caps = JSON.parse(caps); } catch { caps = {}; }
+    }
+    return (caps && typeof caps === 'object') ? caps : {};
+  }
+  
+  /* ★ 추가: 특정 디비전 모집정원 숫자 추출 (없으면 null) */
+  function getCapForDivision(dv){
+    const caps = getDivCapsObj();
+    const raw = caps && (caps[dv]);
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  
+  /* ★ 추가: 옵션 표시 라벨 구성 (예: "D4 (12/16)" 또는 "D4 (12/-)") */
+  function formatDivisionLabel(dv){
+    const applied = CUR_DIV_COUNT[dv] || 0;
+    const cap = getCapForDivision(dv);
+    return cap!=null ? `${dv} (${applied}/${cap})` : `${dv} (${applied}/-)`;
+  }
+  
+  /* ★ 추가: 선택된 디비전의 힌트 문구 업데이트 */
+  function updateDivisionHint(){
+    const box = $('#divCapHint');
+    if(!box){ return; }
+    const dv = $('#division').value || '';
+    if(!dv){ box.style.display='none'; box.textContent=''; return; }
+    const applied = CUR_DIV_COUNT[dv] || 0;
+    const cap = getCapForDivision(dv);
+    if(cap==null){
+      box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
+    }else{
+      const left = Math.max(0, cap - applied);
+      box.textContent = applied >= cap
+        ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
+        : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
+    }
+    box.style.display='';
+  }
 
   function resetCategoryDivisionUI(){
     categorySelect.value = '';
@@ -598,6 +668,8 @@
   }
 
   categorySelect.addEventListener('change',e=>{
+    /* ★ 추가: 디비전 선택 바뀔 때 힌트 갱신 */
+    divisionSelect.addEventListener('change', updateDivisionHint);
     const cat=e.target.value;
     divisionSelect.innerHTML='';
     if(!currentTour || !cat){
@@ -613,7 +685,18 @@
     }
     divisionSelect.disabled=false;
     divisionSelect.appendChild(new Option('선택',''));
-    arr.forEach(dv=>divisionSelect.appendChild(new Option(dv,dv)));
+    arr.forEach(dv=>{
+      const label = formatDivisionLabel(dv);
+      const opt = new Option(label, dv);
+      const cap = getCapForDivision(dv);
+      const applied = CUR_DIV_COUNT[dv] || 0;
+      if (cap!=null && applied >= cap) {
+        opt.disabled = true;               // 정원 도달 시 선택 불가
+        opt.textContent = label + ' [마감]';
+      }
+      divisionSelect.appendChild(opt);
+    });
+    updateDivisionHint();
   });
 
   /* ===== 유니폼 SVG/색상 ===== */
@@ -1166,8 +1249,12 @@ function showFloatingPanelAfterSubmit(){
     const initialId = $('#tourSelect').value || '';
     const initialTour = initialId ? TOUR_MAP[initialId] : null;
     renderTourInfo(initialTour);
+    
     if (initialId) await renderPosterStrict(initialId);
-
+    if (initialId){
+      await renderPosterStrict(initialId);
+      await loadAppliedCounts(initialId);  // ★ 추가
+    }
     if (editTeamId && editCode){
       try{
         const j = await apiGet('getteam', { teamId: editTeamId, code: editCode });
