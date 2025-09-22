@@ -85,18 +85,33 @@
   /* 신청일시 좌정렬 */
   .td-created{ text-align:left; }
 
-  /* 모집팀수 인풋 */
-  .cap-input{
-    width:78px; padding:8px 10px; border:1px solid #e6ecf5; border-radius:10px; font-size:12px;
-  }
-  .cap-row{ display:flex; flex-wrap:wrap; gap:8px; }
-  .cap-chip{
-    display:inline-flex; align-items:center; gap:8px;
-    border:1px solid #e6ecf5; background:#fff; border-radius:999px; padding:6px 10px; font-size:12px;
-  }
-  .cap-chip b{ font-weight:700 }
-  .cap-chip .remove{ border:0; background:transparent; cursor:pointer; color:#ef4444; font-size:14px; line-height:1 }
-  .cap-note{ color:#64748b; font-size:12px; }
+/* 모집팀수 인풋 + 디비전 4열 그리드(반응형) */
+.cap-input{
+  width:78px; min-width:78px;
+  padding:8px 10px; border:1px solid #e6ecf5; border-radius:10px; font-size:12px;
+}
+/* PC 4열, 줄어들면 3→2→1열 */
+.cap-row{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:10px;
+  align-items:stretch;
+}
+/* cap-row가 .place-item 그리드의 2번째~끝 칼럼을 가로지르도록 */
+.place-item .cap-row{ grid-column: 2 / -1; }
+
+@media (max-width:1024px){ .cap-row{ grid-template-columns:repeat(3, minmax(0,1fr)); } }
+@media (max-width:800px){  .cap-row{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+@media (max-width:520px){  .cap-row{ grid-template-columns:1fr; } }
+
+.cap-chip{
+  display:flex; align-items:center; justify-content:space-between;
+  border:1px solid #e6ecf5; background:#fff; border-radius:999px; padding:8px 12px; font-size:12px;
+  width:100%; box-sizing:border-box;  /* 한 칸을 꽉 채워 보기 좋게 */
+}
+.cap-chip b{ font-weight:700; white-space:nowrap; }
+.cap-chip .remove{ border:0; background:transparent; cursor:pointer; color:#ef4444; font-size:14px; line-height:1 }
+.cap-note{ color:#64748b; font-size:12px; }
 
   /* === Admin: 모바일 카드 레이아웃 (≤640px) === */
   @media (max-width:640px){
@@ -676,7 +691,14 @@ function setLocked(locked){
 
   const editBtn = $('#editBtn');
   if (editBtn) editBtn.disabled = locked ? !CURRENT_TOUR_ID : true;
+  
+  /* ★ 편집 상태 변경 시 디비전 칩을 재렌더링하여
+     - 수정모드: 삭제버튼/모집팀수 인풋 활성화
+     - 저장 후(잠금): 삭제버튼 제거/인풋 비활성(표시만)
+  */
+  refreshDivUI();
 }
+
 
 document.getElementById('addPlaceBtn').addEventListener('click', () => {
   if (FORM_LOCKED) { alert('상단 "수정" 버튼을 눌러 편집을 해제하세요.'); return; }
@@ -742,7 +764,9 @@ function renderDivRow(container, set, editable){
 
   // 중간: cap 입력 리스트
   const mid = el(`<div class="cap-row"></div>`);
+  mid.style.gridColumn = '2 / -1';
   if(entries.length){
+    // ... (칩 추가 로직 그대로)
     entries.forEach((ent, idx)=>{
       const code = ent.code;
       const cap = (ent.cap ?? '');
@@ -774,10 +798,6 @@ function renderDivRow(container, set, editable){
     mid.appendChild(el(`<span class="muted">항목 없음</span>`));
   }
   row.appendChild(mid);
-
-  // 우측 여분 칸 2개 유지
-  row.appendChild(el(`<div></div>`));
-  row.appendChild(el(`<div></div>`));
 
   container.appendChild(row);
 }
