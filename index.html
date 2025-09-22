@@ -575,17 +575,20 @@
     if(nextbar) nextbar.style.display='flex';
   }
 
-  $('#tourSelect').addEventListener('change', async e => {
-    currentTour = id ? TOUR_MAP[id] : null;
-    renderTourInfo(currentTour);
-    await renderPosterStrict(id || '');
+    $('#tourSelect').addEventListener('change', async e => {
+      const id = e.target.value;        // ★★ 반드시 추가
+      currentTour = id ? TOUR_MAP[id] : null;
+      renderTourInfo(currentTour);
+      await renderPosterStrict(id || '');
     
-    /* ★ 추가: 먼저 신청팀수 집계 */
-    await loadAppliedCounts(id);
+      /* ★ 추가: 먼저 신청팀수 집계 */
+      await loadAppliedCounts(id);
     
-    /* ★ 이어서 카테고리/디비전 UI 작성 */
-    fillCategoriesFromTour(currentTour);
-    updateDivisionHint();
+      /* ★ 이어서 카테고리/디비전 UI 작성 */
+      fillCategoriesFromTour(currentTour);
+      updateDivisionHint();
+      // ...
+    });
   
     // ✅ 서버 기준 수정마감/접수기간 보정 (핸들러 내부로 이동)
     if (id) {
@@ -601,6 +604,7 @@
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
+  divisionSelect.addEventListener('change', updateDivisionHint);  // ★ 권장: 여기서 1회만 등록
 
   /* ★ 추가: divCaps 읽기(문자/객체 호환) */
   function getDivCapsObj(){
