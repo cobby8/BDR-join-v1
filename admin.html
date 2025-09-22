@@ -87,36 +87,39 @@
 
 /* 모집팀수 인풋 + 디비전 4열 그리드(반응형) */
 .cap-input{
-  width:78px; min-width:78px;
-  padding:8px 10px; border:1px solid #e6ecf5; border-radius:10px; font-size:12px;
+  width:clamp(56px, 20vw, 78px);   /* 공간이 없으면 자동으로 더 얇아짐 */
+  min-width:56px;
+  padding:6px 8px;
+  border:1px solid #e6ecf5; border-radius:10px;
+  font-size:clamp(11px, 0.9vw, 12px);
 }
 /* PC 4열, 줄어들면 3→2→1열 */
+/* PC/Narrow 모두 대응: 칩 칸을 자동으로 늘리고 줄이는 유동 그리드 */
 .cap-row{
   display:grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 한 칸 최소 160px 확보, 더 공간 있으면 알아서 여러 칸 배치 */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap:10px;
   align-items:stretch;
-  grid-auto-rows:minmax(44px,auto);  /* ★ 행 높이 확보로 겹침 방지 */
-  overflow:visible;                  /* ★ 내부 요소가 잘리지 않게 */
+  grid-auto-rows:minmax(44px,auto);
+  overflow:visible;
 }
-/* cap-row가 .place-item 그리드의 2번째~끝 칼럼을 가로지르도록 */
+/* place-item 안에서는 칩 영역이 제목 오른쪽 전폭 사용 */
 .place-item .cap-row{ grid-column: 2 / -1; }
 
-@media (max-width:1024px){ .cap-row{ grid-template-columns:repeat(3, minmax(0,1fr)); } }
-@media (max-width:800px){  .cap-row{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
-@media (max-width:520px){  .cap-row{ grid-template-columns:1fr; } }
-
 .cap-chip{
-  display:inline-flex; align-items:center; gap:10px;
+  display:flex; align-items:center; gap:8px;
   border:1px solid #e6ecf5; background:#fff; border-radius:999px;
-  padding:8px 12px; font-size:12px;
-  flex:0 1 auto;               /* 칩은 내용에 맞게 */
-  min-width:140px;             /* 너무 작아지지 않게 */
-  white-space:nowrap;          /* ★ 항상 한 줄 */
+  padding:6px 10px;
+  /* 셀(그리드 칸) 가로폭을 꽉 채우되, 안에서 유연하게 줄어듦 */
+  width:100%; min-width:0;
+  font-size:clamp(11px, 0.9vw, 12px);
+  white-space:nowrap;
+  box-sizing:border-box;
 }
-.cap-chip b{ font-weight:700; white-space:nowrap; }
+.cap-chip b{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cap-chip .remove{ border:0; background:transparent; cursor:pointer; color:#ef4444; font-size:14px; line-height:1 }
-.cap-note{ color:#64748b; font-size:12px; }
+.cap-note{ color:#64748b; font-size:clamp(11px, 0.9vw, 12px); }
 
   /* === Admin: 모바일 카드 레이아웃 (≤640px) === */
   @media (max-width:640px){
@@ -178,10 +181,11 @@
     background:#f1f5fb; border:1px solid #e4ecf7; color:#334155;
     max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  /* 디비전 행을 제목+칩 2칼럼으로 촘촘히 */
+  /* 제목 + 칩 2칼럼을 촘촘히 */
   .place-item.div-row{
-    grid-template-columns: auto 1fr;  /* 제목은 내용폭, 칩들은 남은폭 */
+    grid-template-columns: auto 1fr;
     align-items: center;
+    gap:8px 10px;   /* 세로 8, 가로 10으로 여백 최적화 */
   }
 </style>
 </head>
