@@ -1120,39 +1120,44 @@ async function doSave(){
 
   const { divs, divCaps } = buildDivPayload();
 
-  const base={
-    // (추가) 포스터를 변경/삭제하지 않았다면 기존 값을 함께 보낸다
-    if (!POSTER_CLEAR && !POSTER_DATA_URL) {
-      base.posterId  = (CURRENT_TOUR_OBJ && CURRENT_TOUR_OBJ.posterId)  || '';
-      base.posterUrl = (CURRENT_TOUR_OBJ && CURRENT_TOUR_OBJ.posterUrl) || '';
-    }
-    tourId:($('#tourId').value||'').trim(),
+  const base = {
+    tourId: ($('#tourId').value || '').trim(),
     name,
-    url:($('#tourUrl').value||'').trim(),
+    url: ($('#tourUrl').value || '').trim(),
     start: $('#tourStart').value || '',
     end:   $('#tourEnd').value   || '',
     regStart: $('#regStart').value || '',
     regEnd:   $('#regEnd').value   || '',
     editDeadlineAt: ($('#editDeadlineAt').value || ''),
-    status:   calcStatus($('#regStart').value||'',$('#regEnd').value||''),
+    status:   calcStatus($('#regStart').value||'', $('#regEnd').value||''),
     // 저장 포맷 (구버전 호환 + 신버전)
-    divSets:  (DIV_STATE||[]).map(s=>({group:s.group, divisions:(s.entries||[]).map(e=>e.code)})),
+    divSets: (DIV_STATE||[]).map(s => ({ group:s.group, divisions:(s.entries||[]).map(e=>e.code) })),
     divs,
-    divCaps,                    // ★ 신규: 코드→모집팀수 맵
-    div_caps_json: JSON.stringify(divCaps), // 백엔드가 소문자/스네이크 케이스를 기대할 수도 있으니 같이 전송
+    divCaps,                                   // ★ 신규: 코드→모집팀수 맵
+    div_caps_json: JSON.stringify(divCaps),    // 호환 키 함께 전송
     places:  getPlaces(),
     fee:     ($('#fee').value || '').trim(),
     account: ($('#account').value || '').trim(),
     adminCode,
     posterClear: POSTER_CLEAR ? true : undefined,
     // 일부 백엔드 호환 키 유지
-    'reg.start': $('#regStart').value || '', 'reg.end': $('#regEnd').value || '',
-    reg_start: $('#regStart').value || '',   reg_end: $('#regEnd').value || '',
+    'reg.start': $('#regStart').value || '',  'reg.end': $('#regEnd').value || '',
+    reg_start:   $('#regStart').value || '',  reg_end:  $('#regEnd').value || '',
     regStartDate: $('#regStart').value || '', regEndDate: $('#regEnd').value || '',
     'reg.start.date': $('#regStart').value || '', 'reg.end.date': $('#regEnd').value || '',
     divs_json: JSON.stringify(divs)
   };
-  if (POSTER_DATA_URL && !POSTER_CLEAR) base.posterDataUrl = POSTER_DATA_URL;
+  
+  // (★추가) 포스터를 변경/삭제하지 않았다면 기존 값을 함께 보낸다
+  if (!POSTER_CLEAR && !POSTER_DATA_URL) {
+    base.posterId  = (CURRENT_TOUR_OBJ && CURRENT_TOUR_OBJ.posterId)  || '';
+    base.posterUrl = (CURRENT_TOUR_OBJ && CURRENT_TOUR_OBJ.posterUrl) || '';
+  }
+  
+  // 새 업로드가 있을 때만 dataURL 전송
+  if (POSTER_DATA_URL && !POSTER_CLEAR) {
+    base.posterDataUrl = POSTER_DATA_URL;
+  }
 
   try{
     const j=await postJSONCompat(['upsertTournament','upsert_tournament','UPSERTTOURNAMENT'], base);
