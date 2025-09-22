@@ -96,6 +96,8 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap:10px;
   align-items:stretch;
+  grid-auto-rows:minmax(44px,auto);  /* ★ 행 높이 확보로 겹침 방지 */
+  overflow:visible;                  /* ★ 내부 요소가 잘리지 않게 */
 }
 /* cap-row가 .place-item 그리드의 2번째~끝 칼럼을 가로지르도록 */
 .place-item .cap-row{ grid-column: 2 / -1; }
@@ -105,9 +107,12 @@
 @media (max-width:520px){  .cap-row{ grid-template-columns:1fr; } }
 
 .cap-chip{
-  display:flex; align-items:center; justify-content:space-between;
-  border:1px solid #e6ecf5; background:#fff; border-radius:999px; padding:8px 12px; font-size:12px;
-  width:100%; box-sizing:border-box;  /* 한 칸을 꽉 채워 보기 좋게 */
+  display:inline-flex; align-items:center; gap:10px;
+  border:1px solid #e6ecf5; background:#fff; border-radius:999px;
+  padding:8px 12px; font-size:12px;
+  flex:0 1 auto;               /* 칩은 내용에 맞게 */
+  min-width:140px;             /* 너무 작아지지 않게 */
+  white-space:nowrap;          /* ★ 항상 한 줄 */
 }
 .cap-chip b{ font-weight:700; white-space:nowrap; }
 .cap-chip .remove{ border:0; background:transparent; cursor:pointer; color:#ef4444; font-size:14px; line-height:1 }
@@ -172,6 +177,11 @@
     display:inline-block; padding:6px 10px; border-radius:999px;
     background:#f1f5fb; border:1px solid #e4ecf7; color:#334155;
     max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  /* 디비전 행을 제목+칩 2칼럼으로 촘촘히 */
+  .place-item.div-row{
+    grid-template-columns: auto 1fr;  /* 제목은 내용폭, 칩들은 남은폭 */
+    align-items: center;
   }
 </style>
 </head>
@@ -295,7 +305,7 @@
           <div>
             <label>대회관리 코드 (필수)</label>
             <div class="input-icon">
-              <input id="adminCode" type="password" placeholder="이 대회를 관리할 비밀번호" data-editable autocomplete="new-password" readonly>
+              <input id="adminCode" type="password" placeholder="이 대회를 관리할 비밀번호" data-editable autocomplete="current-password" name="password" readonly>
               <button class="eye-btn" id="toggleCodeBtn" title="보기/숨기기">👁️</button>
             </div>
             <div style="margin-top:8px">
@@ -505,6 +515,16 @@ function openAdminCodeFloating(onOk){
     </div>
   `);
   const pw = body.querySelector('#popAdminCode');
+    pw.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      const code = pw.value.trim();
+      if(!code) return alert('관리코드를 입력하세요.');
+      $('#adminCode').value = code;
+      setLocked(false);
+      if(typeof onOk === 'function') onOk(code);
+      closePopover();
+    }
+  });
   body.querySelector('#popAdminEye').addEventListener('click', ()=>{ pw.type = (pw.type==='password'?'text':'password'); });
   const actions=el(`<div></div>`);
   const cancel=el(`<button class="btn">취소</button>`);
@@ -749,6 +769,7 @@ function renderDivRow(container, set, editable){
   const entries = set.entries || [];
 
   const row = el(`<div class="place-item"></div>`);
+  row.classList.add('div-row');   // ★ 제목과 칩이 붙어 보이도록 2칼럼 레이아웃 적용
   const left = el(`<div style="display:flex;align-items:center;gap:8px"><b>${group}</b></div>`);
   const delSmall = el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
   delSmall.addEventListener('click',()=>{ 
