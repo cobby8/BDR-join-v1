@@ -79,6 +79,10 @@
   .chip:disabled{opacity:.45;border-style:solid;cursor:not-allowed}
   .chip small{opacity:.8;font-weight:600}
   .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;margin-bottom: 10px;}
+  /* 성능 최적화 */
+  .step{ content-visibility:auto; contain-intrinsic-size: 800px; } /* 아직 안 보이는 스텝은 렌더링 지연 */
+  .poster-wrap{ content-visibility:auto; contain-intrinsic-size: 420px; }
+  .floating-card{ contain: content; } /* 플로팅 패널의 페인트 범위 격리 */
 </style>
 </head>
 <body>
@@ -86,6 +90,7 @@
   <div class="card">
     <div class="brand">
       <img id="bdrLogo" alt="BDR" src="BDR(배경없음).png">
+           loading="lazy" decoding="async" fetchpriority="low" width="120" height="31">
       <div class="conn" title="Apps Script 연결 상태">
         <span id="connDot" class="dot warn">●</span>
         <button class="btn-sm" id="formSettingsBtn" type="button" title="Web App URL 설정">⚙️</button>
@@ -103,6 +108,7 @@
       <!-- 포스터 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
         <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer">
+             loading="lazy" decoding="async" fetchpriority="low" width="800" height="420">
         <div class="caption">대회 포스터</div>
       </div>
 
@@ -310,7 +316,8 @@
           <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
         </div>
         <div id="qr" style="display:none;margin-top:8px;text-align:center">
-          <img alt="수정 링크 QR" style="width:140px;height:140px;border-radius:12px;border:1px solid #e6ecf5;background:#fff">
+          <img alt="수정 링크 QR" style="width:140px;height:140px;border-radius:12px;border:1px solid #e6ecf5;background:#fff"
+     loading="lazy" decoding="async">
         </div>
       </div>
     </div>
@@ -371,6 +378,23 @@
     return u.toString();
   }
 
+    /* ===== 로컬 캐시 (15분 TTL) ===== */
+  const TOURN_CACHE_KEY = 'BDR_TOURN_CACHE_V1';
+  const TOURN_CACHE_TTL = 15 * 60 * 1000; // 15분
+  
+  function getCache(k){
+    try{
+      const raw = localStorage.getItem(k);
+      if(!raw) return null;
+      const {ts, data} = JSON.parse(raw);
+      if(!ts || Date.now() - ts > TOURN_CACHE_TTL) return null;
+      return data;
+    }catch{ return null; }
+  }
+  function setCache(k, data){
+    try{ localStorage.setItem(k, JSON.stringify({ts:Date.now(), data})); }catch{}
+  }
+  
   async function getJSONFlex(u){
     try{
       const r = await fetch(u, { cache:'no-store', mode:'cors', credentials:'omit', redirect:'follow' });
@@ -418,6 +442,8 @@
     if(state==='ok') dot.classList.add('ok'); else if(state==='bad') dot.classList.add('bad'); else dot.classList.add('warn');
     if(tip) dot.title = tip;
   }
+
+  divisionSelect.addEventListener('change', updateDivisionHint); // ★ 전역 1회만
 
   (function fixLogo(){
     const el=$('#bdrLogo');
@@ -471,24 +497,55 @@
   }  
   
   async function loadTournaments(){
+    // 1) 캐시 먼저 시도
+    let cached = getCache(TOURN_CACHE_KEY);
+    if(cached && Array.isArray(cached.rows)) {
+      hydrateTournaments(cached);
+      // 캐시 즉시 사용 후, 백그라운드로 최신화 (사용자 체감 개선)
+      refreshTournamentsSilently();
+      return;
+    }
+    // 2) 캐시 없으면 네트워크
     const json = await apiGet('tournaments');
     if(!(json && (json.ok || Array.isArray(json.rows)))){
       setConn('bad', (json && (json.error || (json.raw && '로그인/권한 필요'))) || '연결 실패');
       return;
     }
-    setConn('ok','연결 정상');
-
-    const sel=$('#tourSelect'); sel.innerHTML='<option value="">대회를 선택하세요</option>';
-    TOUR_MAP = {};
-    (json.rows||[]).forEach(t=>{
-      TOUR_MAP[t.TourID||t.tourId]=t;
-      const opt=document.createElement('option');
-      opt.value=t.TourID||t.tourId;
-      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:''; 
-      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
-      sel.appendChild(opt);
-    });
+    setCache(TOURN_CACHE_KEY, json);
+    hydrateTournaments(json);
   }
+  
+  function hydrateTournaments(json){
+    setConn('ok','연결 정상');
+    const rows = json.rows || [];
+    TOUR_MAP = {};
+    const sel = $('#tourSelect');
+    // 대량 옵션은 fragment로 일괄 삽입(리플로우 1회)
+    const frag = document.createDocumentFragment();
+    const first = new Option('대회를 선택하세요', '');
+    frag.appendChild(first);
+  
+    rows.forEach(t=>{
+      const id = t.TourID || t.tourId;
+      TOUR_MAP[id] = t;
+      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
+      frag.appendChild(new Option(`${t.name}${t.status?' ('+t.status+')':''}${period}`, id));
+    });
+    sel.innerHTML='';
+    sel.appendChild(frag);
+  }
+  
+  async function refreshTournamentsSilently(){
+    try{
+      const j = await apiGet('tournaments');
+      if(j && (j.ok || Array.isArray(j.rows))){
+        setCache(TOURN_CACHE_KEY, j);
+        // 이미 선택/렌더된 상태를 크게 건드리지 않기 위해 무소음 갱신은 생략하거나,
+        // 필요 시 현재 선택 유지 후 옵션만 교체할 수 있음(지금은 생략: 체감 깜빡임 방지)
+      }
+    }catch{}
+  }
+
   const pad2=n=>String(n).padStart(2,'0');
   const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
   const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
@@ -554,6 +611,10 @@
 
     let idx=0;
     const tryNext=()=>{ if(idx>=urls.length){ wrap.style.display='none'; img.removeAttribute('src'); return; } img.src = urls[idx++]; };
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.fetchPriority = 'low';
+    img.width = 800; img.height = 420; // CLS 방지
     img.onload = ()=>{ wrap.style.display='block'; };
     img.onerror= ()=>{ tryNext(); };
     tryNext();
@@ -670,8 +731,6 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
   categorySelect.addEventListener('change',e=>{
-    /* ★ 추가: 디비전 선택 바뀔 때 힌트 갱신 */
-    divisionSelect.addEventListener('change', updateDivisionHint);
     const cat=e.target.value;
     divisionSelect.innerHTML='';
     if(!currentTour || !cat){
@@ -770,6 +829,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
     div.innerHTML = `<div class="row row-3">
       <div><label>선수 이름</label><input data-key="name" placeholder="이름"></div>
       <div><label>등번호</label><input data-key="number" inputmode="numeric" placeholder="예: 7"></div>
+      const num = div.querySelector('[data-key="number"]');num.addEventListener('input', e=> e.target.value = (e.target.value||'').replace(/\D+/g,''));
       <div><label>포지션</label><select data-key="position"><option value="">선택</option><option>G</option><option>F</option><option>C</option></select></div>
     </div>
     <div class="row row-2" style="margin-top:8px">
@@ -784,7 +844,11 @@ $('#tourSelect').addEventListener('change', async (e) => {
   // ▼ 아래 위치의 버튼을 클릭해서 카드 추가
   $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
   // 기본 5명 생성
-  for(let i=0;i<5;i++) $('#addPlayerBtn').click();
+  (function initFivePlayers(){
+    const frag = document.createDocumentFragment();
+    for(let i=0;i<5;i++) frag.appendChild(createPlayerCard());
+    $('#players').appendChild(frag);
+  })();
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
@@ -1225,8 +1289,14 @@ function showFloatingPanelAfterSubmit(){
         if (!(ownerEdit || (editTeamId&&editCode))){
           const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
           $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
-          const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
-        }
+          const img = $('#qr img');
+          const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
+          if('requestIdleCallback' in window){
+            requestIdleCallback(makeQR, {timeout: 1000});
+          }else{
+            setTimeout(makeQR, 0);
+          }
+
         showFloatingPanelAfterSubmit();
       }else{
         alert('오류: '+(json.error||'unknown'));
