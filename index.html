@@ -1008,50 +1008,67 @@
     if(cached && (Date.now()-cached.ts) < DIVCOUNT_TTL){
       if(token===lastTourChangeToken){
         CUR_DIV_COUNT = {...cached.data};
-        // 열려있는 카테고리만 라벨 갱신
         if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
       }
       return;
     }
+
     // 진행 중 요청 취소
     if(appliedCountsAbort) appliedCountsAbort.abort();
     appliedCountsAbort = new AbortController();
 
-    // 1) 경량 엔드포인트들 우선 시도(후보)
+    // 1) 경량 엔드포인트들 우선 시도
     const candidateGets = [
       ['teams_count', { tourId }],
       ['teamsCount',  { tourId }],
       ['team_counts', { tourId }],
       ['teamCounts',  { tourId }],
-      ['teams/count', { tourId }]
+      ['teams/count', { tourId }],
     ];
     let counts = null;
-    for(const [path, params] of candidateGets){
+
+    for (const [path, params] of candidateGets){
       const j = await apiGet(path, params, { signal: appliedCountsAbort.signal });
-      if(j && j.ok && j.counts && typeof j.counts==='object'){
-        counts = j.counts; break;
+      if (j && j.ok && j.counts && typeof j.counts === 'object'){
+        counts = normalizeCountsToTourDivs(j.counts, TOUR_MAP[tourId]);
+        break;
       }
-      if(j && j.rows && Array.isArray(j.rows)){ // 혹시 rows로 내려줄 수도
-        // rows: [{division:'D4', count:12}, ...]
-        const m={}; j.rows.forEach(r=>{ if(r.division) m[r.division]=Number(r.count||0)||0; }); counts = m; break;
+      if (j && j.rows && Array.isArray(j.rows)){
+        const m = {};
+        j.rows.forEach(r=>{
+          const key = (r.division ?? r.Division ?? r.div ?? r.DIV ?? r['디비전'] ?? '').toString();
+          const cnt = Number(r.count ?? r.cnt ?? r.total ?? r['팀수'] ?? 0) || 0;
+          if(key) m[key] = (m[key]||0) + cnt;
+        });
+        counts = normalizeCountsToTourDivs(m, TOUR_MAP[tourId]);
+        break;
       }
-      if(j && j.error==='ABORTED') return; // 최신 선택으로 취소됨
+      if (j && j.error === 'ABORTED') return; // 최신 선택으로 취소됨
     }
-    
-    if(j && j.ok && j.counts && typeof j.counts==='object'){
-      counts = normalizeCountsToTourDivs(j.counts, TOUR_MAP[tourId]);  // ★ 추가
-      break;
+
+    // 2) 폴백: 무거운 teams 읽기
+    if(!counts){
+      const j = await apiGet('teams', { tourId }, { signal: appliedCountsAbort.signal });
+      if (j && Array.isArray(j.rows)){
+        const m = {};
+        j.rows.forEach(r=>{
+          const dvRaw = (r.division ?? r.Division ?? r.div ?? r.DIV ?? r['디비전'] ?? '').toString();
+          const dv = dvRaw.replace(/\s+/g,' ').trim();
+          if(dv) m[dv] = (m[dv]||0) + 1;
+        });
+        counts = normalizeCountsToTourDivs(m, TOUR_MAP[tourId]);
+      }
+      if (j && j.error === 'ABORTED') return;
     }
-    if(j && j.rows && Array.isArray(j.rows)){
-      const m={}; j.rows.forEach(r=>{
-        // rows: [{division:'D6', count:12}, ...] 다양한 키 대비
-        const key = (r.division ?? r.Division ?? r.div ?? r.DIV ?? r['디비전'] ?? '').toString();
-        const cnt = Number(r.count ?? r.cnt ?? r.total ?? r['팀수'] ?? 0) || 0;
-        if(key) m[key] = (m[key]||0) + cnt;
-      });
-      counts = normalizeCountsToTourDivs(m, TOUR_MAP[tourId]);          // ★ 추가
-      break;
-    }
+
+    if (token !== lastTourChangeToken) return; // 구 선택에 대한 응답이면 무시
+
+    CUR_DIV_COUNT = counts || {};
+    divCountCache.set(tourId, { ts: Date.now(), data: CUR_DIV_COUNT });
+
+    if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
+    updateDivisionHint();
+  }
 
     // 2) 폴백: 무거운 teams 읽기
     if(!counts){
@@ -1373,51 +1390,6 @@ $('#submitBtn').addEventListener('click', async (e)=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
     });
-
-    const payload={team, players, base: location.origin + location.pathname};
-    let candidates = ['registerteam','registerTeam'];
-    if (ownerEdit && ownerEdit.teamId){
-      payload.teamId = ownerEdit.teamId; payload.name = ownerEdit.name; payload.phone = ownerEdit.phone;
-      candidates = ['updateteambyowner','updateTeamByOwner'];
-    } else if (editTeamId && editCode){
-      payload.teamId = editTeamId; payload.editCode = editCode;
-      candidates = ['updateteam','updateTeam'];
-    }
-
-    const json = await apiPost(candidates, payload);
-    if(json && json.ok){
-      ok = true;
-      btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
-      btn.classList.add('done');
-      show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
-      if (!(ownerEdit || (editTeamId&&editCode))){
-        const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-        $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block'; $('#qr').style.display='block';
-        const img = $('#qr img');
-        const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
-        if('requestIdleCallback' in window){ requestIdleCallback(makeQR, {timeout: 1000}); } else { setTimeout(makeQR, 0); }
-      }
-      showFloatingPanelAfterSubmit();
-      // 성공 시 계속 잠금 유지(중복 제출 방지)
-      return;
-    }else{
-      alert('오류: '+(json && (json.error||'unknown') || 'unknown'));
-      ok = false;
-    }
-  }catch(err){
-    alert('제출 실패: '+(err && err.message || err));
-    ok = false;
-  }finally{
-    if(!ok){
-      // 실패 시에만 버튼/플래그 복구
-      __SUBMITTING__ = false;
-      btn.disabled = false;
-      btn.classList.remove('loading');
-      btn.textContent = bak;
-    }
-    // 성공이면 __SUBMITTING__은 true로 유지(잠금)
-  }
-});
 
     const payload={team, players, base: location.origin + location.pathname};
     let candidates = ['registerteam','registerTeam'];
