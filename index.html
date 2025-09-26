@@ -1055,22 +1055,6 @@
     updateDivisionHint();
   }
 
-    // 2) 폴백: 무거운 teams 읽기
-    if(!counts){
-      const j = await apiGet('teams', { tourId }, { signal: appliedCountsAbort.signal });
-      if(j && Array.isArray(j.rows)){
-        const m={};
-        j.rows.forEach(r=>{
-          // division 필드 다양한 케이스 흡수
-          const dvRaw = (r.division ?? r.Division ?? r.div ?? r.DIV ?? r['디비전'] ?? '').toString();
-          const dv = dvRaw.replace(/\s+/g,' ').trim();
-          if(dv) m[dv] = (m[dv]||0) + 1;
-        });
-        counts = normalizeCountsToTourDivs(m, TOUR_MAP[tourId]);  // ★ 추가
-      }
-      if(j && j.error==='ABORTED') return;
-    }
-
     if(token!==lastTourChangeToken) return; // 구 선택에 대한 응답이면 무시
 
     CUR_DIV_COUNT = counts || {};
