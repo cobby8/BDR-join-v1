@@ -363,7 +363,7 @@
       <button class="chip" id="copyPayBtn" type="button">📋 두 줄 모두 복사</button>
     </div>
   </div>
-
+</div>
 <script>
   /* ===== 연결 설정/헬퍼 ===== */
   const DEFAULT_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
@@ -1046,21 +1046,6 @@
       if (j && j.error === 'ABORTED') return; // 최신 선택으로 취소됨
     }
 
-    // 2) 폴백: 무거운 teams 읽기
-    if(!counts){
-      const j = await apiGet('teams', { tourId }, { signal: appliedCountsAbort.signal });
-      if (j && Array.isArray(j.rows)){
-        const m = {};
-        j.rows.forEach(r=>{
-          const dvRaw = (r.division ?? r.Division ?? r.div ?? r.DIV ?? r['디비전'] ?? '').toString();
-          const dv = dvRaw.replace(/\s+/g,' ').trim();
-          if(dv) m[dv] = (m[dv]||0) + 1;
-        });
-        counts = normalizeCountsToTourDivs(m, TOUR_MAP[tourId]);
-      }
-      if (j && j.error === 'ABORTED') return;
-    }
-
     if (token !== lastTourChangeToken) return; // 구 선택에 대한 응답이면 무시
 
     CUR_DIV_COUNT = counts || {};
@@ -1401,36 +1386,39 @@ $('#submitBtn').addEventListener('click', async (e)=>{
       candidates = ['updateteam','updateTeam'];
     }
 
-    const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
-    try{
-      const json = await apiPost(candidates, payload);
-      if(json.ok){
-        btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
-        btn.classList.add('done');
-        show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
-        if (!(ownerEdit || (editTeamId&&editCode))){
-          const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-          $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block'; $('#qr').style.display='block';
-          const img = $('#qr img');
-          const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
-          if('requestIdleCallback' in window){ requestIdleCallback(makeQR, {timeout: 1000}); } else { setTimeout(makeQR, 0); }
-        }
-        showFloatingPanelAfterSubmit();
-      }else{
-        alert('오류: '+(json.error||'unknown'));
-        btn.disabled=false; btn.textContent=bak;
-      }
-    }catch(err){
-      alert('제출 실패: '+(err&&err.message||err));
-      btn.disabled=false; btn.textContent=bak;
-    }
-  });
+    const json = await apiPost(candidates, payload);
+    if(json && json.ok){
+      ok = true;
+      btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
+      btn.classList.add('done');
+      show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
 
-  $('#copyEditLinkBtn').addEventListener('click', async ()=>{
-    const val=$('#editLinkInput').value;
-    try{ await navigator.clipboard.writeText(val); show('링크가 복사되었습니다.'); }
-    catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
-  });
+      if (!(ownerEdit || (editTeamId&&editCode))){
+        const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+        $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block'; $('#qr').style.display='block';
+        const img = $('#qr img');
+        const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
+        if('requestIdleCallback' in window){ requestIdleCallback(makeQR, {timeout: 1000}); } else { setTimeout(makeQR, 0); }
+      }
+
+      showFloatingPanelAfterSubmit();
+      return; // 성공 시 버튼 잠금 유지
+    }else{
+      alert('오류: '+(json && (json.error||'unknown') || 'unknown'));
+      ok = false;
+    }
+  }catch(err){
+    alert('제출 실패: '+(err && err.message || err));
+    ok = false;
+  }finally{
+    if(!ok){
+      __SUBMITTING__ = false;
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      btn.textContent = bak;
+    }
+  }
+});
 
   /* ===== 부트 ===== */
   async function boot(forceReload){
