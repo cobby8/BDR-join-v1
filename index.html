@@ -642,7 +642,7 @@
         }
       }).catch(()=>{});
       // 디비전 카운트 로딩(스마트)
-      loadAppliedCountsSmart(id, token);
+      loadAppliedCountsSmart(id, token, true);
     }
   });
 
@@ -946,9 +946,10 @@
     return true;
   }
 
-  async function loadAppliedCountsSmart(tourId, token){
-    // 캐시 우선
-    const cached = divCountCache.get(tourId);
+  // ✅ force=true 이면 캐시 무시하고 강제 새로고침
+  async function loadAppliedCountsSmart(tourId, token, force=false){
+    // 캐시 우선(단, force=false일 때만)
+    const cached = !force && divCountCache.get(tourId);
     if(cached && (Date.now()-cached.ts) < DIVCOUNT_TTL){
       if(token===lastTourChangeToken){
         CUR_DIV_COUNT = {...cached.data};
@@ -977,7 +978,6 @@
         const j = await apiGet(path, params, { signal: appliedCountsAbort.signal });
         if(j && j.error==='ABORTED') return;
         if(j && j.ok && j.counts && typeof j.counts==='object'){
-          // 예: { "D1": "12", "D2": 7 } → 숫자화
           const out={};
           Object.entries(j.counts).forEach(([k,v])=>{
             const key = String(k||'').trim();
@@ -986,7 +986,6 @@
           counts = out; break;
         }
         if(j && Array.isArray(j.rows)){
-          // 예: rows: [{division:'D4', count:12}, ...]
           const out={};
           j.rows.forEach(r=>{
             const key = String(r.division||r.Division||'').trim();
@@ -999,7 +998,7 @@
       if(counts) break;
     }
   
-    // 2) 폴백: 무거운 teams 읽기 (파라미터 키 다양화)
+    // 2) 폴백: 전체 teams 읽어서 집계 (파라미터 키 다양화)
     if(!counts){
       for(const params of paramVariants){
         const j = await apiGet('teams', params, { signal: appliedCountsAbort.signal });
@@ -1366,6 +1365,22 @@
           const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
           if('requestIdleCallback' in window){ requestIdleCallback(makeQR, {timeout: 1000}); } else { setTimeout(makeQR, 0); }
         }
+        // ✅ 신규 제출이면 현재 디비전 카운트 즉시 +1 하고 UI 재렌더
+        try{
+          const isEditingNow = Boolean(ownerEdit || (editTeamId && editCode));
+          if(!isEditingNow){
+            const tourId = document.getElementById('tourSelect').value.trim();
+            const dv = (document.getElementById('division').value || '').trim();
+            if(tourId && dv){
+              CUR_DIV_COUNT[dv] = (Number(CUR_DIV_COUNT[dv])||0) + 1;
+              // 캐시도 업데이트
+              divCountCache.set(tourId, { ts: Date.now(), data: { ...CUR_DIV_COUNT } });
+              // 라벨/힌트 갱신
+              if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
+              updateDivisionHint();
+            }
+          }
+        }catch(_){}
         showFloatingPanelAfterSubmit();
       }else{
         alert('오류: '+(json.error||'unknown'));
