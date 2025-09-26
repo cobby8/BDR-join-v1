@@ -4,14 +4,22 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>BDR 참가신청서 v1.1</title>
+
+<!-- 네트워크 최적화 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="dns-prefetch" href="https://drive.google.com">
+<link rel="preconnect" href="https://drive.google.com" crossorigin>
+<link rel="dns-prefetch" href="https://chart.googleapis.com">
+
 <style>
   :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:24px; --red:#ef4444; --muted:#6b7684 }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
   .wrap{max-width:980px;margin:28px auto;padding:16px}
   .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;position:relative}
+  @media (max-width:520px){ .card{ box-shadow:0 4px 16px #1769ff14 } } /* 모바일 페인트 부담 ↓ */
   h1{font-size:28px;margin:0 0 10px}
   .section-title{font-weight:800;margin:18px 0 8px}
   label{display:block;font-weight:700;margin:14px 0 6px}
@@ -45,7 +53,7 @@
   #tourInfo .kv b{color:#111}
   .poster-wrap{display:none;margin-top:8px;text-align:center}
   .poster-wrap img{max-width:100%;max-height:420px;border:1px solid #e6ecf5;border-radius:14px;background:#fff;object-fit:contain;box-shadow:var(--shadow)}
-  .poster-wrap .caption{font-size:12px;color:#var(--muted);margin-top:6px}
+  .poster-wrap .caption{font-size:12px;color:var(--muted);margin-top:6px}
   .color-grid{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
   .color-btn{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
   .color-confirm{padding:10px 14px;border:1px solid #cdd6e1;border-radius:12px;background:#fff;cursor:pointer;font-weight:700;display:none}
@@ -56,7 +64,7 @@
   .jersey{width:100%;height:180px}
   .edit-panel{margin-top:14px;border:1px dashed #dbe5f3;background:#f7fbff;border-radius:14px;padding:12px}
 
-  /* ===== Modal ===== */
+  /* Modal */
   .modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;justify-content:center;z-index:50}
   .modal-backdrop.show{display:flex}
   .modal{width:min(560px,92vw);background:#fff;border-radius:18px;box-shadow:0 20px 80px rgba(0,0,0,.25);padding:18px}
@@ -67,7 +75,7 @@
   .btn-outline{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer}
   .btn-danger-solid{background:#ef4444;color:#fff;border:none;border-radius:12px;padding:10px 14px;cursor:pointer}
 
-  /* ===== 제출 완료 플로팅 패널 ===== */
+  /* 제출 완료 패널 */
   .floating-done{position:fixed;right:16px;bottom:16px;z-index:60;display:none}
   .floating-done.show{display:block;animation:pop .18s ease-out}
   @keyframes pop{from{transform:translateY(6px) scale(.98);opacity:.0}to{transform:translateY(0) scale(1);opacity:1}}
@@ -80,7 +88,7 @@
   .chip small{opacity:.8;font-weight:600}
   .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;margin-bottom: 10px;}
 
-  /* ===== 성능 최적화 ===== */
+  /* 성능 최적화 */
   .step{ content-visibility:auto; contain-intrinsic-size: 800px; }
   .poster-wrap{ content-visibility:auto; contain-intrinsic-size: 420px; }
   .floating-card{ contain: content; }
@@ -376,9 +384,15 @@
     return u.toString();
   }
 
-  /* ===== 로컬 캐시 (15분 TTL) ===== */
+  /* ===== 캐시/상태 ===== */
   const TOURN_CACHE_KEY = 'BDR_TOURN_CACHE_V1';
   const TOURN_CACHE_TTL = 15 * 60 * 1000; // 15분
+  const DIVCOUNT_TTL = 5 * 60 * 1000; // 5분
+  const divCountCache = new Map(); // key: tourId, val: {ts, data:{dv:count}}
+  let appliedCountsAbort; // AbortController for counts
+  let posterAbort;       // AbortController for poster
+  let lastTourChangeToken = 0; // race 방지 토큰
+
   function getCache(k){
     try{
       const raw = localStorage.getItem(k);
@@ -392,18 +406,19 @@
     try{ localStorage.setItem(k, JSON.stringify({ts:Date.now(), data})); }catch{}
   }
 
-  async function getJSONFlex(u){
+  async function getJSONFlex(u, opt={}){
     try{
-      const r = await fetch(u, { cache:'no-store', mode:'cors', credentials:'omit', redirect:'follow' });
+      const r = await fetch(u, { cache:'no-store', mode:'cors', credentials:'omit', redirect:'follow', signal: opt.signal });
       const t = await r.text();
       try { return JSON.parse(t); } catch(e) {
         return { ok:false, error:'JSON_PARSE_FAIL', raw: t.slice(0,300) };
       }
     }catch(e){
+      if(e.name==='AbortError') return { ok:false, error:'ABORTED' };
       return { ok:false, error: String(e && e.message || e) };
     }
   }
-  async function apiGet(path, params){ return getJSONFlex(apiUrl(path, params)); }
+  async function apiGet(path, params, opt){ return getJSONFlex(apiUrl(path, params), opt); }
 
   async function apiPost(paths, payload){
     const bodyText = JSON.stringify(payload||{});
@@ -472,29 +487,13 @@
   let TOUR_MAP={}, currentTour=null;
   let CUR_DIV_COUNT = {};  // 디비전별 현재 신청팀수
 
-  async function loadAppliedCounts(tourId){
-    CUR_DIV_COUNT = {};
-    if(!tourId) return;
-    try{
-      const j = await apiGet('teams', { tourId });
-      const rows = (j && Array.isArray(j.rows)) ? j.rows : [];
-      rows.forEach(r=>{
-        const dv = String(r.division || '').trim();
-        if(!dv) return;
-        CUR_DIV_COUNT[dv] = (CUR_DIV_COUNT[dv]||0) + 1;
-      });
-    }catch(e){}
-  }
-
   async function loadTournaments(){
-    // 캐시 먼저
     let cached = getCache(TOURN_CACHE_KEY);
     if(cached && Array.isArray(cached.rows)) {
       hydrateTournaments(cached);
       refreshTournamentsSilently();
       return;
     }
-    // 없으면 네트워크
     const json = await apiGet('tournaments');
     if(!(json && (json.ok || Array.isArray(json.rows)))){
       setConn('bad', (json && (json.error || (json.raw && '로그인/권한 필요'))) || '연결 실패');
@@ -560,21 +559,21 @@
     const s=String(u||'').trim();
     if(!s) return '';
     if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;
-    let m = s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];
+    let m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
+    m = s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     m = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);   if(m) return m[1];
-    m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     return '';
   }
+  const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200'; // 썸네일 우선
   const buildView  = id => 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
   const buildDown  = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
   const buildPlain = id => 'https://drive.google.com/uc?id='+encodeURIComponent(id);
-  const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000';
 
   function computePosterVariants(posterUrl, posterId, posterLegacy){
     const variants=[];
     const candidates=[posterId, posterUrl, posterLegacy].filter(v=>typeof v==='string' && v.trim());
     const id=candidates.map(extractDriveId).find(Boolean);
-    if(id){ [buildView(id), buildDown(id), buildPlain(id), buildThumb(id)].forEach(u=>{ if(!variants.includes(u)) variants.push(u); }); }
+    if(id){ [buildThumb(id), buildView(id), buildPlain(id), buildDown(id)].forEach(u=>{ if(!variants.includes(u)) variants.push(u); }); }
     candidates.forEach(u=>{
       const s=String(u).trim();
       if(/^data:image\//i.test(s)){ if(!variants.includes(s)) variants.push(s); return; }
@@ -587,6 +586,8 @@
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
     wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null; img.onload=null;
+    if(posterAbort) posterAbort.abort();
+    posterAbort = new AbortController();
     if(!tourId) return;
     const t = TOUR_MAP[tourId]; if(!t) return;
 
@@ -620,25 +621,28 @@
     if(nextbar) nextbar.style.display='flex';
   }
 
-  document.getElementById('tourSelect').addEventListener('change', async (e) => {
+  document.getElementById('tourSelect').addEventListener('change', (e) => {
     const id = e.target.value;
+    const token = ++lastTourChangeToken;  // 최신 선택 토큰
     currentTour = id ? TOUR_MAP[id] : null;
 
     renderTourInfo(currentTour);
-    await renderPosterStrict(id || '');
+    renderPosterStrict(id || ''); // await 하지 않음 → UI 즉시 반응
 
-    await loadAppliedCounts(id);
+    // 카테고리/디비전 즉시 표기
     fillCategoriesFromTour(currentTour);
     updateDivisionHint();
 
+    // 수정 마감 최신화(비차단)
     if (id) {
-      try {
-        const meta = await apiGet('tournament_meta', { tourId: id });
-        if (meta && meta.ok) {
+      apiGet('tournament_meta', { tourId: id }).then(meta=>{
+        if (meta && meta.ok && token===lastTourChangeToken) {
           const cell = document.getElementById('editDeadlineCell');
           if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
         }
-      } catch (_) {}
+      }).catch(()=>{});
+      // 디비전 카운트 로딩(스마트)
+      loadAppliedCountsSmart(id, token);
     }
   });
 
@@ -702,7 +706,7 @@
     Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
   }
 
-  // ★ 전역 1회만 등록 (중복 리스너 방지)
+  // 전역 1회만 등록
   divisionSelect.addEventListener('change', updateDivisionHint);
 
   categorySelect.addEventListener('change',e=>{
@@ -720,7 +724,8 @@
       return;
     }
     divisionSelect.disabled=false;
-    divisionSelect.appendChild(new Option('선택',''));
+    const frag=document.createDocumentFragment();
+    frag.appendChild(new Option('선택',''));
     arr.forEach(dv=>{
       const label = formatDivisionLabel(dv);
       const opt = new Option(label, dv);
@@ -730,8 +735,10 @@
         opt.disabled = true;
         opt.textContent = label + ' [마감]';
       }
-      divisionSelect.appendChild(opt);
+      frag.appendChild(opt);
     });
+    divisionSelect.innerHTML='';
+    divisionSelect.appendChild(frag);
     updateDivisionHint();
   });
 
@@ -811,10 +818,8 @@
       <div><label>선출여부</label><select data-key="elite"><option value="">선택</option><option>선출</option><option>비선출</option></select></div>
     </div>
     <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>`;
-    // 숫자만 허용
     const num = div.querySelector('[data-key="number"]');
     num.addEventListener('input', e=> e.target.value = (e.target.value||'').replace(/\D+/g,''));
-    // 삭제 버튼
     div.querySelector('.remove').addEventListener('click',()=>div.remove());
     return div;
   }
@@ -848,6 +853,7 @@
     const lines=text.replace(/\r\n/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean);
     const allCards=$$('.player-card'); const allEmpty=allCards.length && allCards.every(c=>!c.querySelector('[data-key="name"]').value.trim());
     if(allEmpty) playersDiv.innerHTML='';
+    const frag=document.createDocumentFragment();
     lines.forEach(line=>{
       const cols=line.split(/[\/,\t]| {2,}/).map(s=>s.trim());
       const [name='', number='', position='', birthYY='', elite=''] = cols;
@@ -857,8 +863,9 @@
       card.querySelector('[data-key="position"]').value=(position||'').toUpperCase();
       card.querySelector('[data-key="birth"]').value=normalizeBirth(birthYY);
       card.querySelector('[data-key="elite"]').value=elite||'';
-      playersDiv.appendChild(card);
+      frag.appendChild(card);
     });
+    playersDiv.appendChild(frag);
     show('붙여넣기 적용 완료');
   });
 
@@ -939,6 +946,63 @@
     return true;
   }
 
+  /* ===== 신청팀수(디비전 카운트) 초경량 로딩 ===== */
+  async function loadAppliedCountsSmart(tourId, token){
+    // 캐시 우선
+    const cached = divCountCache.get(tourId);
+    if(cached && (Date.now()-cached.ts) < DIVCOUNT_TTL){
+      if(token===lastTourChangeToken){
+        CUR_DIV_COUNT = {...cached.data};
+        // 열려있는 카테고리만 라벨 갱신
+        if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
+      }
+      return;
+    }
+    // 진행 중 요청 취소
+    if(appliedCountsAbort) appliedCountsAbort.abort();
+    appliedCountsAbort = new AbortController();
+
+    // 1) 경량 엔드포인트들 우선 시도(후보)
+    const candidateGets = [
+      ['teams_count', { tourId }],
+      ['teamsCount',  { tourId }],
+      ['team_counts', { tourId }],
+      ['teamCounts',  { tourId }],
+      ['teams/count', { tourId }]
+    ];
+    let counts = null;
+    for(const [path, params] of candidateGets){
+      const j = await apiGet(path, params, { signal: appliedCountsAbort.signal });
+      if(j && j.ok && j.counts && typeof j.counts==='object'){
+        counts = j.counts; break;
+      }
+      if(j && j.rows && Array.isArray(j.rows)){ // 혹시 rows로 내려줄 수도
+        // rows: [{division:'D4', count:12}, ...]
+        const m={}; j.rows.forEach(r=>{ if(r.division) m[r.division]=Number(r.count||0)||0; }); counts = m; break;
+      }
+      if(j && j.error==='ABORTED') return; // 최신 선택으로 취소됨
+    }
+
+    // 2) 폴백: 무거운 teams 읽기
+    if(!counts){
+      const j = await apiGet('teams', { tourId }, { signal: appliedCountsAbort.signal });
+      if(j && Array.isArray(j.rows)){
+        const m={}; j.rows.forEach(r=>{ const dv=String(r.division||'').trim(); if(dv) m[dv]=(m[dv]||0)+1; });
+        counts = m;
+      }
+      if(j && j.error==='ABORTED') return;
+    }
+
+    if(token!==lastTourChangeToken) return; // 구 선택에 대한 응답이면 무시
+
+    CUR_DIV_COUNT = counts || {};
+    divCountCache.set(tourId, { ts: Date.now(), data: CUR_DIV_COUNT });
+
+    // 열려있는 카테고리만 라벨 갱신(성능 친화)
+    if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
+    updateDivisionHint();
+  }
+
   /* ===== 본인 신청서 찾기/불러오기/복제/취소 ===== */
   let ownerEdit=null;
   let cloneSource=null;
@@ -963,7 +1027,7 @@
   async function fillFormFromTeam_(t, pls){
     if (t.tourId && TOUR_MAP[t.tourId]) {
       $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId];
-      renderTourInfo(currentTour); await renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour);
+      renderTourInfo(currentTour); renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour);
     }
     $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
     $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
@@ -985,6 +1049,7 @@
     renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
 
     playersDiv.innerHTML='';
+    const frag=document.createDocumentFragment();
     (pls||[]).forEach(pl=>{
       const c=createPlayerCard();
       c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||'';
@@ -992,8 +1057,9 @@
       c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase();
       c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||'';
       c.querySelector('[data-key="elite"]').value=pl.elite||'';
-      playersDiv.appendChild(c);
+      frag.appendChild(c);
     });
+    playersDiv.appendChild(frag);
   }
 
   $('#ownerEditBtn').addEventListener('click', async ()=>{
@@ -1129,7 +1195,7 @@
     $('#uniformHome').value='#ff0000'; $('#uniformAway').value='#ffffff';
     $('#uniformHomePicker').value='#ff0000'; $('#uniformAwayPicker').value='#ffffff';
     renderJersey($('#jerseyHome'), '#ff0000'); renderJersey($('#jerseyAway'), '#ffffff'); checkContrast();
-    playersDiv.innerHTML=''; 
+    playersDiv.innerHTML='';
     const frag=document.createDocumentFragment(); for(let i=0;i<5;i++) frag.appendChild(createPlayerCard()); playersDiv.appendChild(frag);
     $$('.step').forEach(s=>s.classList.remove('active')); $('#step0').classList.add('active');
     window.scrollTo({top:0,behavior:'smooth'});
@@ -1272,8 +1338,8 @@
     const initialTour = initialId ? TOUR_MAP[initialId] : null;
     renderTourInfo(initialTour);
     if (initialId){
-      await renderPosterStrict(initialId);
-      await loadAppliedCounts(initialId);
+      renderPosterStrict(initialId);    // 비대기
+      loadAppliedCountsSmart(initialId, ++lastTourChangeToken); // 비대기
     }
     if (editTeamId && editCode){
       try{
