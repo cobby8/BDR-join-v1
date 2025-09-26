@@ -92,7 +92,6 @@
   .step{ content-visibility:auto; contain-intrinsic-size: 800px; }
   .poster-wrap{ content-visibility:auto; contain-intrinsic-size: 420px; }
   .floating-card{ contain: content; }
-  .btn.loading{ opacity:.75; pointer-events:none }
 </style>
 </head>
 <body>
@@ -363,7 +362,7 @@
       <button class="chip" id="copyPayBtn" type="button">📋 두 줄 모두 복사</button>
     </div>
   </div>
-</div>
+
 <script>
   /* ===== 연결 설정/헬퍼 ===== */
   const DEFAULT_APP_URL = 'https://script.google.com/macros/s/AKfycbz1qk5MbQvVU3d8Qs3EcPO792iBNlVQR71WhCpNbkqzCcdn5gM17Hqx9AUAIGUwwSKCww/exec';
@@ -454,9 +453,6 @@
     if(state==='ok') dot.classList.add('ok'); else if(state==='bad') dot.classList.add('bad'); else dot.classList.add('warn');
     if(tip) dot.title = tip;
   }
-
-  /* ===== Submit 중복 방지 전역 플래그 ===== */
-  let __SUBMITTING__ = false;
 
   (function fixLogo(){
     const el=$('#bdrLogo');
@@ -746,57 +742,6 @@
     updateDivisionHint();
   });
 
-  // 모든 디비전의 플랫 목록(현재 대회 기준)
-  function flattenDivsOf(tour){
-    if(!tour || !tour.divs) return [];
-    const out=[];
-    Object.keys(tour.divs).forEach(cat=>{
-      (tour.divs[cat]||[]).forEach(dv=>{
-        const s = String(dv||'').trim();
-        if(s && !out.includes(s)) out.push(s);
-      });
-    });
-    return out;
-  }
-  
-  // 서버에서 온 counts 객체의 키를 현재 대회의 디비전 이름으로 매핑
-  function normalizeCountsToTourDivs(rawCounts, tour){
-    const result = {};
-    if(!rawCounts || !tour) return result;
-    const dvList = flattenDivsOf(tour);
-  
-    // 키 매칭 헬퍼: "일반부 D6", "일반부-D6", "D6 ", "d6" 등도 D6로 묶기
-    const norm = s => String(s||'').replace(/\s+/g,' ').trim();
-    const lc = s => norm(s).toLowerCase();
-  
-    Object.keys(rawCounts).forEach(key=>{
-      const val = Number(rawCounts[key]||0) || 0;
-      const keyNorm = norm(key);
-      const keyLC = lc(key);
-  
-      // 1) 정확히 같은 디비전명 우선
-      let matched = dvList.find(dv => lc(dv) === keyLC);
-      if(!matched){
-        // 2) "카테고리 + 구분자 + 디비전" 형태 감지
-        matched = dvList.find(dv=>{
-          const dvlc = lc(dv);
-          return keyLC.endsWith(' '+dvlc) || keyLC.endsWith('-'+dvlc) || keyLC.endsWith('/'+dvlc);
-        });
-      }
-      if(!matched){
-        // 3) 포함 관계(양쪽 공백/구분자 고려)
-        matched = dvList.find(dv=>{
-          const dvlc = lc(dv);
-          return keyLC===dvlc || keyLC.includes(' '+dvlc+' ') || keyLC.includes('('+dvlc+')');
-        });
-      }
-      if(matched){
-        result[matched] = (result[matched]||0) + val;
-      }
-    });
-    return result;
-  }
-
   /* ===== 유니폼 SVG/색상 ===== */
   function renderJersey(svgEl, hex){
     svgEl.innerHTML = `
@@ -1008,52 +953,45 @@
     if(cached && (Date.now()-cached.ts) < DIVCOUNT_TTL){
       if(token===lastTourChangeToken){
         CUR_DIV_COUNT = {...cached.data};
+        // 열려있는 카테고리만 라벨 갱신
         if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
       }
       return;
     }
-
     // 진행 중 요청 취소
     if(appliedCountsAbort) appliedCountsAbort.abort();
     appliedCountsAbort = new AbortController();
 
-    // 1) 경량 엔드포인트들 우선 시도
+    // 1) 경량 엔드포인트들 우선 시도(후보)
     const candidateGets = [
       ['teams_count', { tourId }],
       ['teamsCount',  { tourId }],
       ['team_counts', { tourId }],
       ['teamCounts',  { tourId }],
-      ['teams/count', { tourId }],
+      ['teams/count', { tourId }]
     ];
     let counts = null;
-
-    for (const [path, params] of candidateGets){
+    for(const [path, params] of candidateGets){
       const j = await apiGet(path, params, { signal: appliedCountsAbort.signal });
-      if (j && j.ok && j.counts && typeof j.counts === 'object'){
-        counts = normalizeCountsToTourDivs(j.counts, TOUR_MAP[tourId]);
-        break;
+      if(j && j.ok && j.counts && typeof j.counts==='object'){
+        counts = j.counts; break;
       }
-      if (j && j.rows && Array.isArray(j.rows)){
-        const m = {};
-        j.rows.forEach(r=>{
-          const key = (r.division ?? r.Division ?? r.div ?? r.DIV ?? r['디비전'] ?? '').toString();
-          const cnt = Number(r.count ?? r.cnt ?? r.total ?? r['팀수'] ?? 0) || 0;
-          if(key) m[key] = (m[key]||0) + cnt;
-        });
-        counts = normalizeCountsToTourDivs(m, TOUR_MAP[tourId]);
-        break;
+      if(j && j.rows && Array.isArray(j.rows)){ // 혹시 rows로 내려줄 수도
+        // rows: [{division:'D4', count:12}, ...]
+        const m={}; j.rows.forEach(r=>{ if(r.division) m[r.division]=Number(r.count||0)||0; }); counts = m; break;
       }
-      if (j && j.error === 'ABORTED') return; // 최신 선택으로 취소됨
+      if(j && j.error==='ABORTED') return; // 최신 선택으로 취소됨
     }
 
-    if (token !== lastTourChangeToken) return; // 구 선택에 대한 응답이면 무시
-
-    CUR_DIV_COUNT = counts || {};
-    divCountCache.set(tourId, { ts: Date.now(), data: CUR_DIV_COUNT });
-
-    if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
-    updateDivisionHint();
-  }
+    // 2) 폴백: 무거운 teams 읽기
+    if(!counts){
+      const j = await apiGet('teams', { tourId }, { signal: appliedCountsAbort.signal });
+      if(j && Array.isArray(j.rows)){
+        const m={}; j.rows.forEach(r=>{ const dv=String(r.division||'').trim(); if(dv) m[dv]=(m[dv]||0)+1; });
+        counts = m;
+      }
+      if(j && j.error==='ABORTED') return;
+    }
 
     if(token!==lastTourChangeToken) return; // 구 선택에 대한 응답이면 무시
 
@@ -1304,39 +1242,30 @@
     el._hideTimer = setTimeout(()=>{ el.classList.remove('show'); }, 30000);
   }
 
-$('#submitBtn').addEventListener('click', async (e)=>{
-  // 중복 방지: 이미 진행 중이면 무시
-  if (__SUBMITTING__) return;
-  __SUBMITTING__ = true;
+  $('#submitBtn').addEventListener('click', async ()=>{
+    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
+    if (!validatePlayersStrict()) return;
 
-  const btn = e.currentTarget;
-  const bak = btn.textContent;
-  btn.disabled = true;
-  btn.classList.add('loading');
-  btn.textContent = '제출 중…';
-
-  let ok = false; // 최종 성공 여부
-
-  try{
-    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) { ok=false; return; }
-    if (!validatePlayersStrict()) { ok=false; return; }
-
-    // ===== 수정마감 확인 =====
+    // 수정마감 확인
     {
       const tourId = ($('#tourSelect').value || '').trim();
       const meta = await fetchTourMeta(tourId);
       const isEditing = Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode);
       if (meta && meta.editDeadlineAt) {
-        if (isPast(meta.now, meta.editDeadlineAt)) { alert('수정 마감이 지났습니다. 더 이상 신청서 변경이 불가합니다.'); ok=false; return; }
-        const msg = isEditing
-          ? `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?`
-          : `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?`;
-        if (!confirm(msg)) { ok=false; return; }
+        if (isPast(meta.now, meta.editDeadlineAt)) {
+          alert('수정 마감이 지났습니다. 더 이상 신청서 변경이 불가합니다.');
+          return;
+        } else {
+          const msg = isEditing
+            ? `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?`
+            : `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?`;
+          if (!confirm(msg)) return;
+        }
       } else {
         const msg = isEditing
           ? '현재 수정 마감이 설정되어 있지 않습니다.\n수정을 진행할까요?'
           : '현재 수정 마감이 설정되어 있지 않습니다.\n제출을 진행할까요?';
-        if (!confirm(msg)) { ok=false; return; }
+        if (!confirm(msg)) return;
       }
     }
 
@@ -1370,39 +1299,36 @@ $('#submitBtn').addEventListener('click', async (e)=>{
       candidates = ['updateteam','updateTeam'];
     }
 
-    const json = await apiPost(candidates, payload);
-    if(json && json.ok){
-      ok = true;
-      btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
-      btn.classList.add('done');
-      show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
-
-      if (!(ownerEdit || (editTeamId&&editCode))){
-        const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-        $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block'; $('#qr').style.display='block';
-        const img = $('#qr img');
-        const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
-        if('requestIdleCallback' in window){ requestIdleCallback(makeQR, {timeout: 1000}); } else { setTimeout(makeQR, 0); }
+    const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
+    try{
+      const json = await apiPost(candidates, payload);
+      if(json.ok){
+        btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
+        btn.classList.add('done');
+        show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
+        if (!(ownerEdit || (editTeamId&&editCode))){
+          const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+          $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block'; $('#qr').style.display='block';
+          const img = $('#qr img');
+          const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
+          if('requestIdleCallback' in window){ requestIdleCallback(makeQR, {timeout: 1000}); } else { setTimeout(makeQR, 0); }
+        }
+        showFloatingPanelAfterSubmit();
+      }else{
+        alert('오류: '+(json.error||'unknown'));
+        btn.disabled=false; btn.textContent=bak;
       }
+    }catch(err){
+      alert('제출 실패: '+(err&&err.message||err));
+      btn.disabled=false; btn.textContent=bak;
+    }
+  });
 
-      showFloatingPanelAfterSubmit();
-      return; // 성공 시 버튼 잠금 유지
-    }else{
-      alert('오류: '+(json && (json.error||'unknown') || 'unknown'));
-      ok = false;
-    }
-  }catch(err){
-    alert('제출 실패: '+(err && err.message || err));
-    ok = false;
-  }finally{
-    if(!ok){
-      __SUBMITTING__ = false;
-      btn.disabled = false;
-      btn.classList.remove('loading');
-      btn.textContent = bak;
-    }
-  }
-});
+  $('#copyEditLinkBtn').addEventListener('click', async ()=>{
+    const val=$('#editLinkInput').value;
+    try{ await navigator.clipboard.writeText(val); show('링크가 복사되었습니다.'); }
+    catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
+  });
 
   /* ===== 부트 ===== */
   async function boot(forceReload){
