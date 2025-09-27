@@ -29,13 +29,23 @@
   .grid{display:grid;gap:10px}
   .grid-2{grid-template-columns:1fr 1fr}
   .pill{display:inline-block;border:1px solid #e6ecf5;border-radius:999px;padding:6px 10px;font-size:12px;margin:2px 0;background:#fff;cursor:pointer;user-select:none;transition:background .12s, box-shadow .12s}
-    /* 대회 목록 칩 2줄 레이아웃 */
-  .pill .line1{ display:flex; gap:6px; align-items:baseline; }
-  .pill .line2{ margin-top:2px; }           /* 2행 살짝 간격 */
-  .pill .title-ellipsis{
-    max-width:260px; display:inline-block; vertical-align:bottom;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+   /* 대회 목록 칩 2줄 레이아웃 */
+  .pill .line1{
+    display:block;                /* 제목 1행은 단독 블록 */
+    margin-bottom:2px;
   }
+  .pill .title-full{
+    font-weight:700;
+    white-space:normal;           /* ← 말줄임 NO, 줄바꿈 허용 */
+    overflow:visible; text-overflow:clip;
+  }
+  .pill .line2{
+    display:flex;                 /* 2행: 왼쪽 기간, 오른쪽 상태칩 */
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .pill .line2-left{ white-space:normal; }  /* 기간 텍스트는 줄바꿈 허용 */
   .pill:hover{ background:#f8fbff; box-shadow:0 2px 6px rgba(23,105,255,.15) }
   .hr{height:1px;background:#eef2f7;margin:8px 0}
   .badge{display:inline-flex;gap:8px;align-items:center;font-size:12px;color:#334155;background:#f1f5fb;border:1px solid #e4ecf7;border-radius:999px;padding:4px 8px}
@@ -650,10 +660,12 @@ function tourCard(t){
   return `
     <div class="pill" data-id="${id}" tabindex="0" role="button">
       <div class="line1">
-        <b class="title-ellipsis">${t.name || '(무제)'}</b>
-        <span>· ${st}</span>
+        <b class="title-full">${t.name || '(무제)'}</b>
       </div>
-      <div class="line2 muted">대회기간 · ${period}</div>
+      <div class="line2">
+        <div class="line2-left muted">대회기간 · ${period}</div>
+        <div class="line2-right">${statusBadgeHtml(st)}</div>
+      </div>
     </div>
   `;
 }
