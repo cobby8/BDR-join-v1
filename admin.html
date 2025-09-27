@@ -545,6 +545,9 @@ function openAdminCodeFloating(onOk){
   openPopoverCentered('관리코드 확인', body, actions);
 }
 
+/* ========= 팀수 집계(디비전별) ========= */
+let DIV_COUNTS = {};   // 예: { 'i3 U12': 5, 'D3': 8, ... }
+
 /* ========= 목록 / 필터 ========= */
 let TOURS={}, TOUR_ARRAY=[], CURRENT_TOUR_ID='', CURRENT_TOUR_OBJ=null;
 
@@ -619,6 +622,19 @@ function normalizeTeamRow(r){
     awayHex:(r.uniformAway||'').toLowerCase(), createdAt:r.createdAt||'', editCode:r.editCode||''
   };
 }
+
+/* ▼▼▼ 추가: 디비전별 팀수 집계를 위한 키 생성 로직 */
+function getDivKeyForCount(v){
+  // v는 normalizeTeamRow로 정규화된 값
+  const cat = (v.category||'').trim();   // 예: '일반부', '대학부', 'i3', 'i3w' ...
+  const div = (v.division||'').trim();   // 예: 'D3', 'U1', 'U12' ...
+  // 유소년: i숫자(또는 i숫자w) + 연령(U10 등)을 한 쌍으로 묶어 집계
+  if (/^i\d+w?$/i.test(cat) && div) return `${cat} ${div}`;
+  // 일반/대학/여성부: 화면 칩의 코드는 'D3','U1','UW' 등 division 코드 자체
+  if (div) return div;
+  // 혹시 division이 비어있으면 category로라도 묶음
+  return cat || '';
+}
 function telHref(s){ const d = String(s||'').replace(/\D/g,''); return d ? `tel:${d}` : ''; }
 
 function rowTeam(v){
@@ -645,8 +661,24 @@ function rowTeam(v){
 async function loadTeams(){
   const tourId=($('#tourFilter').value||'').trim();
   const j=await getJSON(apiUrl('teams', tourId?{tourId}:{}) );
-  let rows=Array.isArray(j.rows)?j.rows:[];
-  if(tourId) rows=rows.filter(r=>String(r.tourId||'').trim()===tourId);
+
+  // ▼ (1) 원본 rows 확보
+  let rowsAll=Array.isArray(j.rows)?j.rows:[];
+  if(tourId) rowsAll=rowsAll.filter(r=>String(r.tourId||'').trim()===tourId);
+
+  // ▼ (2) 디비전별 팀수 집계 생성 (검색과 무관하게 전체 집계)
+  const counts = {};
+  rowsAll.forEach(r=>{
+    const v = normalizeTeamRow(r);
+    const key = getDivKeyForCount(v);
+    if(!key) return;
+    counts[key] = (counts[key]||0) + 1;
+  });
+  DIV_COUNTS = counts;       // ★ 전역에 반영 (칩 UI에서 사용)
+  refreshDivUI();            // ★ 칩 UI를 현재 팀수로 재렌더
+
+  // ▼ (3) 여기서부터는 “표 렌더링용 rows”(검색 적용)
+  let rows = rowsAll.slice();
   const q=($('#searchText').value||'').trim().toLowerCase();
   if(q){
     rows=rows.filter(r=>{
@@ -654,11 +686,12 @@ async function loadTeams(){
       return [v.tourName,v.region,v.teamName,v.managerName,v.managerPhone,v.category,v.division].join(' ').toLowerCase().includes(q);
     });
   }
+
   document.getElementById('teamsTbody').innerHTML =
     rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') ||
     `<tr><td colspan="6" class="muted">데이터 없음</td></tr>`;
 
-  /* 선택된 대회 표시 */
+  /* 선택된 대회 표시 (생략: 기존 코드 그대로) */
   (function(){
     const box = document.getElementById('selectedTourInfo');
     if (!box) return;
@@ -678,7 +711,7 @@ async function loadTeams(){
 
   applyResponsiveLabels();
 }
-
+  
 document.getElementById('teamsTbody').addEventListener('click', (e)=>{
   const open = e.target.closest('.open-view');
   if (open){
@@ -804,11 +837,15 @@ function renderDivRow(container, set, editable){
     entries.forEach((ent, idx)=>{
       const code = ent.code;
       const cap = (ent.cap ?? '');
+      const cur = Number(DIV_COUNTS[code] || 0);   // ★ 현재 참가신청 팀수
       const chip = el(`
         <label class="cap-chip">
           <b>${code}</b>
-          ${editable ? `<input class="cap-input" type="number" min="0" step="1" value="${cap!==''?cap:''}" placeholder="모집" data-editable>` 
-                     : `<span class="cap-note">${Number.isFinite(+cap)?`모집 ${cap}팀`:'모집 미설정'}</span>`}
+          <span class="cap-note" style="margin-left:4px">현재 ${cur}팀</span>
+          ${editable 
+            ? `<input class="cap-input" type="number" min="0" step="1" value="${cap!==''?cap:''}" placeholder="모집" data-editable>`
+            : `<span class="cap-note" style="margin-left:6px">${Number.isFinite(+cap)?`모집 ${cap}팀`:'모집 미설정'}</span>`
+          }
           ${editable ? `<button class="remove" title="제거">×</button>` : ``}
         </label>
       `);
