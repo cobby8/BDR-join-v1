@@ -453,23 +453,94 @@
   /* ★ 추가: 선택된 대회의 디비전별 현재 신청팀수 */
   let CUR_DIV_COUNT = {};  // 예: { "D4": 12, "i2 U12": 8 }
 
-  /* ★ 추가: 선택 대회 신청팀수(디비전별) 불러오기 */
+  // ★★★ 참가팀수(디비전별) 로더 - 모든 응답 형태 호환 + 취소팀 제외
   async function loadAppliedCounts(tourId){
     CUR_DIV_COUNT = {};
     if(!tourId) return;
+  
     try{
       const j = await apiGet('teams', { tourId });
-      const rows = (j && Array.isArray(j.rows)) ? j.rows : [];
-      rows.forEach(r=>{
-        const dv = String(r.division || '').trim();
-        if(!dv) return;
-        CUR_DIV_COUNT[dv] = (CUR_DIV_COUNT[dv]||0) + 1;
-      });
-    }catch(e){
-      // 네트워크 실패 시 카운트는 비워둠
-    }
-  }  
   
+      // 1) 응답 배열 꺼내기(rows|items|list 등)
+      const raw = (j && (
+        (Array.isArray(j.rows) && j.rows) ||
+        (Array.isArray(j.items) && j.items) ||
+        (Array.isArray(j.list) && j.list) ||
+        []
+      )) || [];
+  
+      // 2) rows 형태가 객체배열인지, 2차원 배열인지 판별
+      //    - 2차원 배열일 경우 헤더 인덱스를 찾아서 division/status/삭제여부 컬럼을 매핑
+      let header = null;
+      if (raw.length && Array.isArray(raw[0])) {
+        // 2차원 배열
+        header = raw[0].map(h => String(h||'').trim());
+      }
+  
+      // 3) 공통 파서: 행에서 division / status / deleted 추출
+      function pickFields(row){
+        // 객체 레코드
+        if (!Array.isArray(row) && row && typeof row === 'object'){
+          // 다양한 키 대응 (division, Division, 디비전, divison(오타))
+          const division = String(
+            row.division ?? row.Division ?? row['디비전'] ?? row.divison ?? ''
+          ).trim();
+  
+          const status = String(
+            row.status ?? row.Status ?? row['상태'] ?? ''
+          ).trim();
+  
+          const deleted = Boolean(
+            row.deleted ?? row.isDeleted ?? row['삭제'] ?? false
+          );
+  
+          return { division, status, deleted };
+        }
+  
+        // 2차원 배열 레코드
+        if (Array.isArray(row) && Array.isArray(header)){
+          const idxOf = (names)=> {
+            for(const n of names){
+              const i = header.findIndex(h => h.toLowerCase() === String(n).toLowerCase());
+              if (i>=0) return i;
+            }
+            return -1;
+          };
+  
+          const iDiv = idxOf(['division','Division','디비전','divison']);
+          const iStat= idxOf(['status','Status','상태']);
+          const iDel = idxOf(['deleted','isDeleted','삭제']);
+  
+          const division = iDiv>=0 ? String(row[iDiv]||'').trim() : '';
+          const status   = iStat>=0 ? String(row[iStat]||'').trim() : '';
+          const deleted  = iDel>=0 ? Boolean(row[iDel]) : false;
+  
+          return { division, status, deleted };
+        }
+  
+        // 예상치 못한 형태
+        return { division:'', status:'', deleted:false };
+      }
+  
+      // 4) 헤더행 제거(2차원 배열인 경우)
+      const dataRows = (header ? raw.slice(1) : raw);
+  
+      // 5) 카운팅(취소/삭제 제외)
+      for (const r of dataRows){
+        const { division, status, deleted } = pickFields(r);
+        if (!division) continue;
+        if (deleted) continue;
+        const isCancelled = /취소|cancel/i.test(status);
+        if (isCancelled) continue;
+  
+        CUR_DIV_COUNT[division] = (CUR_DIV_COUNT[division] || 0) + 1;
+      }
+  
+    }catch(e){
+      // 실패 시 카운트는 비워둠 (무시)
+    }
+  }
+
   async function loadTournaments(){
     const json = await apiGet('tournaments');
     if(!(json && (json.ok || Array.isArray(json.rows)))){
