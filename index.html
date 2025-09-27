@@ -4,22 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>BDR 참가신청서 v1.1</title>
-
-<!-- 네트워크 최적화 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="dns-prefetch" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="dns-prefetch" href="https://drive.google.com">
-<link rel="preconnect" href="https://drive.google.com" crossorigin>
-<link rel="dns-prefetch" href="https://chart.googleapis.com">
-
 <style>
   :root{ --blue:#1769ff; --bg:#f8fbfd; --card:#fff; --shadow:0 8px 32px #1769ff1a; --radius:24px; --red:#ef4444; --muted:#6b7684 }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#222}
   .wrap{max-width:980px;margin:28px auto;padding:16px}
   .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;position:relative}
-  @media (max-width:520px){ .card{ box-shadow:0 4px 16px #1769ff14 } } /* 모바일 페인트 부담 ↓ */
   h1{font-size:28px;margin:0 0 10px}
   .section-title{font-weight:800;margin:18px 0 8px}
   label{display:block;font-weight:700;margin:14px 0 6px}
@@ -64,7 +56,7 @@
   .jersey{width:100%;height:180px}
   .edit-panel{margin-top:14px;border:1px dashed #dbe5f3;background:#f7fbff;border-radius:14px;padding:12px}
 
-  /* Modal */
+  /* ===== Modal (주의사항 확인: 취소) ===== */
   .modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;justify-content:center;z-index:50}
   .modal-backdrop.show{display:flex}
   .modal{width:min(560px,92vw);background:#fff;border-radius:18px;box-shadow:0 20px 80px rgba(0,0,0,.25);padding:18px}
@@ -75,7 +67,7 @@
   .btn-outline{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer}
   .btn-danger-solid{background:#ef4444;color:#fff;border:none;border-radius:12px;padding:10px 14px;cursor:pointer}
 
-  /* 제출 완료 패널 */
+  /* ===== 제출 완료 플로팅 패널 ===== */
   .floating-done{position:fixed;right:16px;bottom:16px;z-index:60;display:none}
   .floating-done.show{display:block;animation:pop .18s ease-out}
   @keyframes pop{from{transform:translateY(6px) scale(.98);opacity:.0}to{transform:translateY(0) scale(1);opacity:1}}
@@ -87,19 +79,13 @@
   .chip:disabled{opacity:.45;border-style:solid;cursor:not-allowed}
   .chip small{opacity:.8;font-weight:600}
   .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;margin-bottom: 10px;}
-
-  /* 성능 최적화 */
-  .step{ content-visibility:auto; contain-intrinsic-size: 800px; }
-  .poster-wrap{ content-visibility:auto; contain-intrinsic-size: 420px; }
-  .floating-card{ contain: content; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
     <div class="brand">
-      <img id="bdrLogo" alt="BDR" src="BDR(배경없음).png"
-           loading="lazy" decoding="async" fetchpriority="low" width="120" height="31">
+      <img id="bdrLogo" alt="BDR" src="BDR(배경없음).png">
       <div class="conn" title="Apps Script 연결 상태">
         <span id="connDot" class="dot warn">●</span>
         <button class="btn-sm" id="formSettingsBtn" type="button" title="Web App URL 설정">⚙️</button>
@@ -116,8 +102,7 @@
 
       <!-- 포스터 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
-        <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer"
-             loading="lazy" decoding="async" fetchpriority="low" width="800" height="420">
+        <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer">
         <div class="caption">대회 포스터</div>
       </div>
 
@@ -236,7 +221,7 @@
           <label>디비전</label>
           <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
           <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
-          <div class="muted" id="divCapHint" style="display:none"></div>
+          <div class="muted" id="divCapHint" style="display:none"></div> <!-- ★ 추가 -->
         </div>
       </div>
 
@@ -288,6 +273,7 @@
     <div class="step" id="step4">
       <div class="section-title">④ 선수 명단</div>
 
+      <!-- 상단 툴바(붙여넣기/샘플만 유지) -->
       <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-sm" id="togglePasteBtn" type="button">명단 붙여넣기</button>
         <button class="btn-sm" id="copySampleBtn" type="button">샘플복사</button>
@@ -304,8 +290,10 @@
         </div>
       </div>
 
+      <!-- 입력 필드 -->
       <div id="players"></div>
 
+      <!-- ▼▼▼ 요청대로 '선수 추가 +' 버튼을 입력 필드 아래로 이동 ▼▼▼ -->
       <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap; margin-top:10px;">
         <button class="btn-sm" id="addPlayerBtn" type="button">선수 추가 +</button>
       </div>
@@ -322,8 +310,7 @@
           <button class="btn-sm" id="copyEditLinkBtn" type="button">복사</button>
         </div>
         <div id="qr" style="display:none;margin-top:8px;text-align:center">
-          <img alt="수정 링크 QR" style="width:140px;height:140px;border-radius:12px;border:1px solid #e6ecf5;background:#fff"
-               loading="lazy" decoding="async">
+          <img alt="수정 링크 QR" style="width:140px;height:140px;border-radius:12px;border:1px solid #e6ecf5;background:#fff">
         </div>
       </div>
     </div>
@@ -384,41 +371,19 @@
     return u.toString();
   }
 
-  /* ===== 캐시/상태 ===== */
-  const TOURN_CACHE_KEY = 'BDR_TOURN_CACHE_V1';
-  const TOURN_CACHE_TTL = 15 * 60 * 1000; // 15분
-  const DIVCOUNT_TTL = 5 * 60 * 1000; // 5분
-  const divCountCache = new Map(); // key: tourId, val: {ts, data:{dv:count}}
-  let appliedCountsAbort; // AbortController for counts
-  let posterAbort;       // AbortController for poster
-  let lastTourChangeToken = 0; // race 방지 토큰
-
-  function getCache(k){
+  async function getJSONFlex(u){
     try{
-      const raw = localStorage.getItem(k);
-      if(!raw) return null;
-      const {ts, data} = JSON.parse(raw);
-      if(!ts || Date.now() - ts > TOURN_CACHE_TTL) return null;
-      return data;
-    }catch{ return null; }
-  }
-  function setCache(k, data){
-    try{ localStorage.setItem(k, JSON.stringify({ts:Date.now(), data})); }catch{}
-  }
-
-  async function getJSONFlex(u, opt={}){
-    try{
-      const r = await fetch(u, { cache:'no-store', mode:'cors', credentials:'omit', redirect:'follow', signal: opt.signal });
+      const r = await fetch(u, { cache:'no-store', mode:'cors', credentials:'omit', redirect:'follow' });
       const t = await r.text();
       try { return JSON.parse(t); } catch(e) {
         return { ok:false, error:'JSON_PARSE_FAIL', raw: t.slice(0,300) };
       }
     }catch(e){
-      if(e.name==='AbortError') return { ok:false, error:'ABORTED' };
       return { ok:false, error: String(e && e.message || e) };
     }
   }
-  async function apiGet(path, params, opt){ return getJSONFlex(apiUrl(path, params), opt); }
+
+  async function apiGet(path, params){ return getJSONFlex(apiUrl(path, params)); }
 
   async function apiPost(paths, payload){
     const bodyText = JSON.stringify(payload||{});
@@ -485,50 +450,45 @@
 
   /* ===== 대회 목록 ===== */
   let TOUR_MAP={}, currentTour=null;
-  let CUR_DIV_COUNT = {};  // 디비전별 현재 신청팀수
+  /* ★ 추가: 선택된 대회의 디비전별 현재 신청팀수 */
+  let CUR_DIV_COUNT = {};  // 예: { "D4": 12, "i2 U12": 8 }
 
-  async function loadTournaments(){
-    let cached = getCache(TOURN_CACHE_KEY);
-    if(cached && Array.isArray(cached.rows)) {
-      hydrateTournaments(cached);
-      refreshTournamentsSilently();
-      return;
+  /* ★ 추가: 선택 대회 신청팀수(디비전별) 불러오기 */
+  async function loadAppliedCounts(tourId){
+    CUR_DIV_COUNT = {};
+    if(!tourId) return;
+    try{
+      const j = await apiGet('teams', { tourId });
+      const rows = (j && Array.isArray(j.rows)) ? j.rows : [];
+      rows.forEach(r=>{
+        const dv = String(r.division || '').trim();
+        if(!dv) return;
+        CUR_DIV_COUNT[dv] = (CUR_DIV_COUNT[dv]||0) + 1;
+      });
+    }catch(e){
+      // 네트워크 실패 시 카운트는 비워둠
     }
+  }  
+  
+  async function loadTournaments(){
     const json = await apiGet('tournaments');
     if(!(json && (json.ok || Array.isArray(json.rows)))){
       setConn('bad', (json && (json.error || (json.raw && '로그인/권한 필요'))) || '연결 실패');
       return;
     }
-    setCache(TOURN_CACHE_KEY, json);
-    hydrateTournaments(json);
-  }
-
-  function hydrateTournaments(json){
     setConn('ok','연결 정상');
-    const rows = json.rows || [];
+
+    const sel=$('#tourSelect'); sel.innerHTML='<option value="">대회를 선택하세요</option>';
     TOUR_MAP = {};
-    const sel = $('#tourSelect');
-    const frag = document.createDocumentFragment();
-    frag.appendChild(new Option('대회를 선택하세요', ''));
-    rows.forEach(t=>{
-      const id = t.TourID || t.tourId;
-      TOUR_MAP[id] = t;
-      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:'';
-      frag.appendChild(new Option(`${t.name}${t.status?' ('+t.status+')':''}${period}`, id));
+    (json.rows||[]).forEach(t=>{
+      TOUR_MAP[t.TourID||t.tourId]=t;
+      const opt=document.createElement('option');
+      opt.value=t.TourID||t.tourId;
+      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:''; 
+      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
+      sel.appendChild(opt);
     });
-    sel.innerHTML='';
-    sel.appendChild(frag);
   }
-
-  async function refreshTournamentsSilently(){
-    try{
-      const j = await apiGet('tournaments');
-      if(j && (j.ok || Array.isArray(j.rows))){
-        setCache(TOURN_CACHE_KEY, j);
-      }
-    }catch{}
-  }
-
   const pad2=n=>String(n).padStart(2,'0');
   const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
   const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
@@ -559,21 +519,21 @@
     const s=String(u||'').trim();
     if(!s) return '';
     if(/^[A-Za-z0-9_-]{20,}$/.test(s) && !/^https?:\/\//i.test(s)) return s;
-    let m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
-    m = s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];
+    let m = s.match(/\/d\/([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     m = s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);   if(m) return m[1];
+    m = s.match(/\/uc(?:\?[^#]*?)?\bid=([A-Za-z0-9_-]{10,})/); if(m) return m[1];
     return '';
   }
-  const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200'; // 썸네일 우선
   const buildView  = id => 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(id);
   const buildDown  = id => 'https://drive.google.com/uc?export=download&id='+encodeURIComponent(id);
   const buildPlain = id => 'https://drive.google.com/uc?id='+encodeURIComponent(id);
+  const buildThumb = id => 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w2000';
 
   function computePosterVariants(posterUrl, posterId, posterLegacy){
     const variants=[];
     const candidates=[posterId, posterUrl, posterLegacy].filter(v=>typeof v==='string' && v.trim());
     const id=candidates.map(extractDriveId).find(Boolean);
-    if(id){ [buildThumb(id), buildView(id), buildPlain(id), buildDown(id)].forEach(u=>{ if(!variants.includes(u)) variants.push(u); }); }
+    if(id){ [buildView(id), buildDown(id), buildPlain(id), buildThumb(id)].forEach(u=>{ if(!variants.includes(u)) variants.push(u); }); }
     candidates.forEach(u=>{
       const s=String(u).trim();
       if(/^data:image\//i.test(s)){ if(!variants.includes(s)) variants.push(s); return; }
@@ -586,8 +546,6 @@
   async function renderPosterStrict(tourId){
     const wrap=$('#posterWrap'), img=$('#posterImg');
     wrap.style.display='none'; img.removeAttribute('src'); img.onerror=null; img.onload=null;
-    if(posterAbort) posterAbort.abort();
-    posterAbort = new AbortController();
     if(!tourId) return;
     const t = TOUR_MAP[tourId]; if(!t) return;
 
@@ -596,10 +554,6 @@
 
     let idx=0;
     const tryNext=()=>{ if(idx>=urls.length){ wrap.style.display='none'; img.removeAttribute('src'); return; } img.src = urls[idx++]; };
-    img.loading = 'lazy';
-    img.decoding = 'async';
-    img.fetchPriority = 'low';
-    img.width = 800; img.height = 420;
     img.onload = ()=>{ wrap.style.display='block'; };
     img.onerror= ()=>{ tryNext(); };
     tryNext();
@@ -621,74 +575,68 @@
     if(nextbar) nextbar.style.display='flex';
   }
 
-  document.getElementById('tourSelect').addEventListener('change', (e) => {
-    const id = e.target.value;
-    const token = ++lastTourChangeToken;  // 최신 선택 토큰
-    currentTour = id ? TOUR_MAP[id] : null;
+$('#tourSelect').addEventListener('change', async (e) => {
+  const id = e.target.value;                // 선택된 tourId
+  currentTour = id ? TOUR_MAP[id] : null;
 
-    renderTourInfo(currentTour);
-    renderPosterStrict(id || ''); // await 하지 않음 → UI 즉시 반응
+  renderTourInfo(currentTour);
+  await renderPosterStrict(id || '');
 
-    // 카테고리/디비전 즉시 표기
-    fillCategoriesFromTour(currentTour);
-    updateDivisionHint();
+  // 1) 신청팀수 집계
+  await loadAppliedCounts(id);
 
-    // 수정 마감 최신화(비차단)
-    if (id) {
-      apiGet('tournament_meta', { tourId: id }).then(meta=>{
-        if (meta && meta.ok && token===lastTourChangeToken) {
-          const cell = document.getElementById('editDeadlineCell');
-          if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
-        }
-      }).catch(()=>{});
-      // 디비전 카운트 로딩(스마트)
-      loadAppliedCountsSmart(id, token, true);
-    }
-  });
+  // 2) 종별/디비전 UI 구성 + 힌트 갱신
+  fillCategoriesFromTour(currentTour);
+  updateDivisionHint();  // 디비전 선택 전에는 힌트 숨김 처리
+
+  // 3) 서버 기준 수정마감 표기 보정
+  if (id) {
+    try {
+      const meta = await apiGet('tournament_meta', { tourId: id });
+      if (meta && meta.ok) {
+        const cell = document.getElementById('editDeadlineCell');
+        if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
+      }
+    } catch (_) {}
+  }
+});
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
 
-  // ---- Division Key Normalizer & Accessor ----
-  const normDv = (s) => String(s||'')
-    .trim()
-    .replace(/\s+/g,' ')          // 중복 공백 정리
-    .toUpperCase();               // 대소문자 정규화
-  
-  function getAppliedCount(dv){
-    const k = normDv(dv);
-    if (CUR_DIV_COUNT[k] != null) return Number(CUR_DIV_COUNT[k])||0;
-    // 접두어가 붙은 케이스(U14B D1 등) 대비: 마지막 토큰으로도 한 번 더 조회
-    const last = k.split(' ').pop();
-    if (CUR_DIV_COUNT[last] != null) return Number(CUR_DIV_COUNT[last])||0;
-    return 0;
-  }
-
+  /* ★ 추가: divCaps 읽기(문자/객체 호환) */
   function getDivCapsObj(){
     if(!currentTour) return {};
     let caps = currentTour.divCaps;
+    // 혹시 문자열로 내려온 경우 파싱
     if (typeof caps === 'string') {
       try { caps = JSON.parse(caps); } catch { caps = {}; }
     }
     return (caps && typeof caps === 'object') ? caps : {};
   }
+  
+  /* ★ 추가: 특정 디비전 모집정원 숫자 추출 (없으면 null) */
   function getCapForDivision(dv){
     const caps = getDivCapsObj();
     const raw = caps && (caps[dv]);
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
   }
+  
+  /* ★ 추가: 옵션 표시 라벨 구성 (예: "D4 (12/16)" 또는 "D4 (12/-)") */
   function formatDivisionLabel(dv){
-    const applied = getAppliedCount(dv);
+    const applied = CUR_DIV_COUNT[dv] || 0;
     const cap = getCapForDivision(dv);
     return cap!=null ? `${dv} (${applied}/${cap})` : `${dv} (${applied}/-)`;
   }
+  
+  /* ★ 추가: 선택된 디비전의 힌트 문구 업데이트 */
   function updateDivisionHint(){
     const box = $('#divCapHint');
     if(!box){ return; }
     const dv = $('#division').value || '';
     if(!dv){ box.style.display='none'; box.textContent=''; return; }
-    const applied = getAppliedCount(dv);
+    const applied = CUR_DIV_COUNT[dv] || 0;
     const cap = getCapForDivision(dv);
     if(cap==null){
       box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
@@ -721,10 +669,9 @@
     Object.keys(t.divs).forEach(cat=> categorySelect.appendChild(new Option(cat,cat)));
   }
 
-  // 전역 1회만 등록
-  divisionSelect.addEventListener('change', updateDivisionHint);
-
   categorySelect.addEventListener('change',e=>{
+    /* ★ 추가: 디비전 선택 바뀔 때 힌트 갱신 */
+    divisionSelect.addEventListener('change', updateDivisionHint);
     const cat=e.target.value;
     divisionSelect.innerHTML='';
     if(!currentTour || !cat){
@@ -739,21 +686,18 @@
       return;
     }
     divisionSelect.disabled=false;
-    const frag=document.createDocumentFragment();
-    frag.appendChild(new Option('선택',''));
+    divisionSelect.appendChild(new Option('선택',''));
     arr.forEach(dv=>{
       const label = formatDivisionLabel(dv);
       const opt = new Option(label, dv);
       const cap = getCapForDivision(dv);
-      const applied = getAppliedCount(dv);
+      const applied = CUR_DIV_COUNT[dv] || 0;
       if (cap!=null && applied >= cap) {
-        opt.disabled = true;
+        opt.disabled = true;               // 정원 도달 시 선택 불가
         opt.textContent = label + ' [마감]';
       }
-      frag.appendChild(opt);
+      divisionSelect.appendChild(opt);
     });
-    divisionSelect.innerHTML='';
-    divisionSelect.appendChild(frag);
     updateDivisionHint();
   });
 
@@ -833,18 +777,14 @@
       <div><label>선출여부</label><select data-key="elite"><option value="">선택</option><option>선출</option><option>비선출</option></select></div>
     </div>
     <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>`;
-    const num = div.querySelector('[data-key="number"]');
-    num.addEventListener('input', e=> e.target.value = (e.target.value||'').replace(/\D+/g,''));
     div.querySelector('.remove').addEventListener('click',()=>div.remove());
     return div;
   }
   const playersDiv=$('#players');
+  // ▼ 아래 위치의 버튼을 클릭해서 카드 추가
   $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
-  (function initFivePlayers(){
-    const frag = document.createDocumentFragment();
-    for(let i=0;i<5;i++) frag.appendChild(createPlayerCard());
-    $('#players').appendChild(frag);
-  })();
+  // 기본 5명 생성
+  for(let i=0;i<5;i++) $('#addPlayerBtn').click();
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
@@ -868,7 +808,6 @@
     const lines=text.replace(/\r\n/g,'\n').split('\n').map(s=>s.trim()).filter(Boolean);
     const allCards=$$('.player-card'); const allEmpty=allCards.length && allCards.every(c=>!c.querySelector('[data-key="name"]').value.trim());
     if(allEmpty) playersDiv.innerHTML='';
-    const frag=document.createDocumentFragment();
     lines.forEach(line=>{
       const cols=line.split(/[\/,\t]| {2,}/).map(s=>s.trim());
       const [name='', number='', position='', birthYY='', elite=''] = cols;
@@ -878,9 +817,8 @@
       card.querySelector('[data-key="position"]').value=(position||'').toUpperCase();
       card.querySelector('[data-key="birth"]').value=normalizeBirth(birthYY);
       card.querySelector('[data-key="elite"]').value=elite||'';
-      frag.appendChild(card);
+      playersDiv.appendChild(card);
     });
-    playersDiv.appendChild(frag);
     show('붙여넣기 적용 완료');
   });
 
@@ -908,12 +846,17 @@
     return ok;
   }
 
+  // ▼ 선수 명단 엄격 검증 (모든 필드 필수 + 등번호 중복 금지)
   function validatePlayersStrict(){
     const cards=$$('.player-card');
     if(cards.length<5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return false; }
+
+    // 초기화
     cards.forEach(c=> c.querySelectorAll('input,select').forEach(el=>el.classList.remove('error')));
 
-    const numbers=[]; let firstBad=null;
+    const numbers=[];
+    let firstBad=null;
+
     for(const card of cards){
       const nameEl=card.querySelector('[data-key="name"]');
       const numEl=card.querySelector('[data-key="number"]');
@@ -927,7 +870,9 @@
       const birth=(birthEl.value||'').trim();
       const elite=(eliteEl.value||'').trim();
 
+      // 숫자만 허용(0~99 제한은 걸지 않고 숫자 필수만)
       const numOk=/^\d+$/.test(number);
+
       const requiredMap = [
         [nameEl, !!name],
         [numEl, numOk],
@@ -940,6 +885,7 @@
       numbers.push(number);
     }
 
+    // 중복 체크(빈칸은 위에서 이미 걸러짐)
     const seen=new Set(), dups=new Set();
     numbers.forEach(n=>{ if(seen.has(n)) dups.add(n); else seen.add(n); });
     if(dups.size){
@@ -948,6 +894,7 @@
         if(dups.has((el.value||'').trim())) el.classList.add('error');
       });
       if(!firstBad){
+        // 첫 오류가 아직 없으면 중복 등번호 위치로
         const firstDupCard=[...cards].find(c=>dups.has((c.querySelector('[data-key="number"]').value||'').trim()));
         if(firstDupCard) firstBad=firstDupCard.querySelector('[data-key="number"]');
       }
@@ -961,108 +908,9 @@
     return true;
   }
 
-  // ✅ force=true 이면 캐시 무시하고 강제 새로고침
-  async function loadAppliedCountsSmart(tourId, token, force=false){
-    // 캐시 우선(단, force=false일 때만)
-    const cached = !force && divCountCache.get(tourId);
-    if(cached && (Date.now()-cached.ts) < DIVCOUNT_TTL){
-      if(token===lastTourChangeToken){
-        CUR_DIV_COUNT = {...cached.data};
-        if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
-        updateDivisionHint();
-      }
-      return;
-    }
-  
-    // 진행 중 요청 취소
-    if(appliedCountsAbort) appliedCountsAbort.abort();
-    appliedCountsAbort = new AbortController();
-  
-    const endpoints = ['teams_count','teamsCount','team_counts','teamCounts','teams/count'];
-    const paramVariants = [
-      { tourId },
-      { id: tourId },
-      { TourID: tourId }
-    ];
-  
-    let counts = null;
-  
-    // 1) 경량 엔드포인트들 시도 (여러 파라미터 키 동시 대응)
-    for(const path of endpoints){
-      for(const params of paramVariants){
-        const j = await apiGet(path, params, { signal: appliedCountsAbort.signal });
-        if(j && j.error==='ABORTED') return;
-        // (counts 객체로 받을 때)
-        if(j && j.ok && j.counts && typeof j.counts==='object'){
-          const out={};
-          Object.entries(j.counts).forEach(([k,v])=>{
-            const nk = normDv(k);
-            if(!nk) return;
-            out[nk] = (Number(v)||0);
-            // 보조키: 마지막 토큰(D1 등)도 조회용으로 한 번 더 저장(덮어쓰지 않음)
-            const last = nk.split(' ').pop();
-            if(out[last]==null) out[last] = out[nk];
-          });
-          counts = out; break;
-        }
-        
-        // (rows 배열로 받을 때)
-        if(j && Array.isArray(j.rows)){
-          const out={};
-          j.rows.forEach(r=>{
-            const raw = String(r.division||r.Division||'').trim();
-            if(!raw) return;
-            const nk = normDv(raw);
-            out[nk] = (out[nk]||0) + (Number(r.count||r.Count||1)||1);
-            const last = nk.split(' ').pop();
-            if(out[last]==null) out[last] = out[nk];
-          });
-          counts = out; break;
-        }
-        
-        // (teams 폴백 합산부에서도 동일 정규화)
-        if(j && Array.isArray(j.rows)){
-          const out={};
-          j.rows.forEach(r=>{
-            const raw = String(r.division||r.Division||'').trim();
-            if(!raw) return;
-            const nk = normDv(raw);
-            out[nk] = (out[nk]||0) + 1;
-            const last = nk.split(' ').pop();
-            if(out[last]==null) out[last] = out[nk];
-          });
-          counts = out; break;
-        }
-
-    // 2) 폴백: 전체 teams 읽어서 집계 (파라미터 키 다양화)
-    if(!counts){
-      for(const params of paramVariants){
-        const j = await apiGet('teams', params, { signal: appliedCountsAbort.signal });
-        if(j && j.error==='ABORTED') return;
-        if(j && Array.isArray(j.rows)){
-          const out={};
-          j.rows.forEach(r=>{
-            const key = String(r.division||r.Division||'').trim();
-            if(key) out[key]=(out[key]||0)+1;
-          });
-          counts = out; break;
-        }
-      }
-    }
-  
-    if(token!==lastTourChangeToken) return;
-  
-    CUR_DIV_COUNT = counts || {};
-    divCountCache.set(tourId, { ts: Date.now(), data: CUR_DIV_COUNT });
-  
-    // 라벨/힌트 갱신
-    if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
-    updateDivisionHint();
-  }
-
   /* ===== 본인 신청서 찾기/불러오기/복제/취소 ===== */
-  let ownerEdit=null;
-  let cloneSource=null;
+  let ownerEdit=null;   // {teamId,name,phone}
+  let cloneSource=null; // {team, players}
 
   $('#ownerFindBtn').addEventListener('click', async ()=>{
     const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
@@ -1084,7 +932,7 @@
   async function fillFormFromTeam_(t, pls){
     if (t.tourId && TOUR_MAP[t.tourId]) {
       $('#tourSelect').value = t.tourId; currentTour = TOUR_MAP[t.tourId];
-      renderTourInfo(currentTour); renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour);
+      renderTourInfo(currentTour); await renderPosterStrict(t.tourId); fillCategoriesFromTour(currentTour);
     }
     $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
     $('#teamNameKo').value = t.teamNameKo || ''; $('#teamNameEn').value = t.teamNameEn || '';
@@ -1106,7 +954,6 @@
     renderJersey($('#jerseyHome'), $('#uniformHome').value); renderJersey($('#jerseyAway'), $('#uniformAway').value); checkContrast();
 
     playersDiv.innerHTML='';
-    const frag=document.createDocumentFragment();
     (pls||[]).forEach(pl=>{
       const c=createPlayerCard();
       c.querySelector('[data-key="name"]').value=pl.name||pl['선수이름']||'';
@@ -1114,9 +961,8 @@
       c.querySelector('[data-key="position"]').value=(pl.position||pl['포지션']||'').toUpperCase();
       c.querySelector('[data-key="birth"]').value=pl.birth||pl['생년월일']||'';
       c.querySelector('[data-key="elite"]').value=pl.elite||'';
-      frag.appendChild(c);
+      playersDiv.appendChild(c);
     });
-    playersDiv.appendChild(frag);
   }
 
   $('#ownerEditBtn').addEventListener('click', async ()=>{
@@ -1252,38 +1098,22 @@
     $('#uniformHome').value='#ff0000'; $('#uniformAway').value='#ffffff';
     $('#uniformHomePicker').value='#ff0000'; $('#uniformAwayPicker').value='#ffffff';
     renderJersey($('#jerseyHome'), '#ff0000'); renderJersey($('#jerseyAway'), '#ffffff'); checkContrast();
-    playersDiv.innerHTML='';
-    const frag=document.createDocumentFragment(); for(let i=0;i<5;i++) frag.appendChild(createPlayerCard()); playersDiv.appendChild(frag);
+    playersDiv.innerHTML=''; for(let i=0;i<5;i++) $('#addPlayerBtn').click();
     $$('.step').forEach(s=>s.classList.remove('active')); $('#step0').classList.add('active');
     window.scrollTo({top:0,behavior:'smooth'});
-  }
-
-  // --- [SUBMIT LOCK HELPER] 중복 제출 방지 ---
-  let IS_SUBMITTING = false;
-  function setSubmitting(on){
-    const btn = document.getElementById('submitBtn');
-    if(!btn) return;
-    if(on){
-      IS_SUBMITTING = true;
-      btn.disabled = true;
-      btn.textContent = '제출 중';
-      btn.setAttribute('aria-busy','true');
-      btn.style.pointerEvents = 'none';
-    }else{
-      IS_SUBMITTING = false;
-      btn.disabled = false;
-      btn.textContent = '신청서 제출';
-      btn.removeAttribute('aria-busy');
-      btn.style.pointerEvents = '';
-    }
   }
 
   /* ===== 제출(신규/수정 공용) ===== */
   function safelyCopy(txt, label){
     if(!txt){ show(label+' 정보가 없습니다. 관리자 설정 대기'); return; }
-    navigator.clipboard.writeText(txt).then(()=>{ show(label+' 복사 완료'); })
-    .catch(()=>{ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); show(label+' 복사 완료'); });
+    navigator.clipboard.writeText(txt).then(()=>{
+      show(label+' 복사 완료');
+    }).catch(()=>{
+      const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      show(label+' 복사 완료');
+    });
   }
+
   function extractPaymentInfo(t){
     const obj=t||{};
     const tryKeys=(o, keys)=>{ for(const k of keys){ if(k in o && String(o[k]??'').trim()) return String(o[k]); } return ''; };
@@ -1291,93 +1121,92 @@
     const acct = tryKeys(obj, ['account','bankAccount','bank_account','입금계좌','계좌','입금정보']);
     return { fee, acct };
   }
-  function buildPayText(fee, acct){
-    const feeLine  = `참가비 ${String(fee||'').trim()||'-'}원`;
-    let acctLine = String(acct||'').trim();
-    if(!acctLine){
-      acctLine = '은행명 계좌번호 예금주';
-    }else{
-      acctLine = acctLine.replace(/[,\|/]+/g,' ').replace(/\s{2,}/g,' ').trim();
-      acctLine = acctLine.replace(/(예금주)\s*[:：]\s*/g,'$1 ');
-    }
-    return `${feeLine}\n${acctLine}`;
-  }
-  function showFloatingPanelAfterSubmit(){
-    const el = $('#floatingDone');
-    const { fee, acct } = extractPaymentInfo(currentTour || {});
-    const txt = buildPayText(fee, acct);
-    $('#payText').textContent = txt;
-    const ready = Boolean(String(fee||'').trim() && String(acct||'').trim());
-    $('#floatingSub').innerHTML = ready
-      ? '아래 정보를 확인하고 복사하세요.'
-      : '관리자 설정 대기: 참가비/입금계좌가 아직 없습니다. (관리자 설정 후 자동 노출)';
-    const copyBtn = $('#copyPayBtn');
-    copyBtn.disabled = !ready;
-    copyBtn.onclick = () => safelyCopy(txt, '결제정보');
-    el.classList.add('show');
-    if(el._hideTimer) clearTimeout(el._hideTimer);
-    el._hideTimer = setTimeout(()=>{ el.classList.remove('show'); }, 30000);
-  }
 
-  document.getElementById('submitBtn').addEventListener('click', async ()=>{
-    if (IS_SUBMITTING) return;          // ✅ 이미 진행 중이면 무시
-    setSubmitting(true);                 // ✅ 즉시 잠금 + '제출 중'
-  
-    // ✅ 유효성 체크 (실패 시 즉시 잠금 해제)
-    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2') || !validatePlayersStrict()){
-      setSubmitting(false);
-      return;
-    }
-  
-    // 수정마감 확인
-    try{
-      const tourId = (document.getElementById('tourSelect').value || '').trim();
+function buildPayText(fee, acct){
+  const feeLine  = `참가비 ${String(fee||'').trim()||'-'}원`;
+  let acctLine = String(acct||'').trim();
+  if(!acctLine){
+    acctLine = '은행명 계좌번호 예금주';
+  }else{
+    acctLine = acctLine.replace(/[,\|/]+/g,' ')
+                       .replace(/\s{2,}/g,' ')
+                       .trim();
+    acctLine = acctLine.replace(/(예금주)\s*[:：]\s*/g,'$1 ');
+  }
+  return `${feeLine}\n${acctLine}`;
+}
+
+function showFloatingPanelAfterSubmit(){
+  const el = $('#floatingDone');
+  const { fee, acct } = extractPaymentInfo(currentTour || {});
+  const txt = buildPayText(fee, acct);
+  $('#payText').textContent = txt;
+  const ready = Boolean(String(fee||'').trim() && String(acct||'').trim());
+  $('#floatingSub').innerHTML = ready
+    ? '아래 정보를 확인하고 복사하세요.'
+    : '관리자 설정 대기: 참가비/입금계좌가 아직 없습니다. (관리자 설정 후 자동 노출)';
+  const copyBtn = $('#copyPayBtn');
+  copyBtn.disabled = !ready;
+  copyBtn.onclick = () => safelyCopy(txt, '결제정보');
+  el.classList.add('show');
+  if(el._hideTimer) clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(()=>{ el.classList.remove('show'); }, 30000);
+}
+
+  $('#submitBtn').addEventListener('click', async ()=>{
+    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
+    if (!validatePlayersStrict()) return; // ▼ 선수명단 엄격 검증 추가
+
+    // ✨ 제출/수정 전 "수정마감" 확인
+    {
+      const tourId = ($('#tourSelect').value || '').trim();
       const meta = await fetchTourMeta(tourId);
-      const isEditing = Boolean((ownerEdit && ownerEdit.teamId) || (editTeamId && editCode));
+      const isEditing = Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode);
+    
       if (meta && meta.editDeadlineAt) {
         if (isPast(meta.now, meta.editDeadlineAt)) {
           alert('수정 마감이 지났습니다. 더 이상 신청서 변경이 불가합니다.');
-          setSubmitting(false);
-          return;
+          return; // 차단
         } else {
           const msg = isEditing
             ? `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?`
             : `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?`;
-          if (!confirm(msg)) { setSubmitting(false); return; }
+          if (!confirm(msg)) return; // 사용자 취소
         }
       } else {
+        // 마감 미설정인 경우에도 안내(선택): 필요 없으면 이 블록 제거 가능
         const msg = isEditing
           ? '현재 수정 마감이 설정되어 있지 않습니다.\n수정을 진행할까요?'
           : '현재 수정 마감이 설정되어 있지 않습니다.\n제출을 진행할까요?';
-        if (!confirm(msg)) { setSubmitting(false); return; }
+        if (!confirm(msg)) return;
       }
-    }catch{
-      // 메타 조회 실패 시에는 계속 진행 (원래 로직 유지)
     }
-  
-    // payload 구성
-    const province=document.getElementById('province').value.trim(), city=document.getElementById('city').value.trim();
+
+    const province=$('#province').value.trim(), city=$('#city').value.trim();
+
     const team={
-      tourId: document.getElementById('tourSelect').value.trim(),
+      tourId: $('#tourSelect').value.trim(),
       tourName: (currentTour&&currentTour.name)||'',
       region: province && city ? `${province} ${city}` : '',
       province, city,
-      teamNameKo: document.getElementById('teamNameKo').value.trim(),
-      teamNameEn: document.getElementById('teamNameEn').value.trim(),
-      managerName: document.getElementById('managerName').value.trim(),
-      managerPhone: (document.getElementById('managerPhone').value||'').replace(/\D+/g,''),
-      category: document.getElementById('category').value,
-      division: document.getElementById('division').value,
-      uniformHome: document.getElementById('uniformHome').value.trim(),
-      uniformAway: document.getElementById('uniformAway').value.trim()
+      teamNameKo: $('#teamNameKo').value.trim(),
+      teamNameEn: $('#teamNameEn').value.trim(),
+      managerName: $('#managerName').value.trim(),
+      managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
+      category: $('#category').value,
+      division: $('#division').value,
+      uniformHome: $('#uniformHome').value.trim(),
+      uniformAway: $('#uniformAway').value.trim()
     };
-    const players=[...document.querySelectorAll('.player-card')].map(card=>{
+
+    const players=$$('.player-card').map(card=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
     });
-  
+
     const payload={team, players, base: location.origin + location.pathname};
     let candidates = ['registerteam','registerTeam'];
+
     if (ownerEdit && ownerEdit.teamId){
       payload.teamId = ownerEdit.teamId; payload.name = ownerEdit.name; payload.phone = ownerEdit.phone;
       candidates = ['updateteambyowner','updateTeamByOwner'];
@@ -1385,63 +1214,49 @@
       payload.teamId = editTeamId; payload.editCode = editCode;
       candidates = ['updateteam','updateTeam'];
     }
-  
+
+    const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
     try{
       const json = await apiPost(candidates, payload);
       if(json.ok){
-        const btn = document.getElementById('submitBtn');
-        btn.textContent = (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
+        btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
         btn.classList.add('done');
-        // ✅ 성공 시에는 계속 잠금 유지(중복 제출 방지)
         show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
         if (!(ownerEdit || (editTeamId&&editCode))){
           const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-          document.getElementById('editLinkInput').value=editUrl; document.getElementById('editLinkWrap').style.display='block'; document.getElementById('qr').style.display='block';
-          const img = document.querySelector('#qr img');
-          const makeQR = () => { img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); };
-          if('requestIdleCallback' in window){ requestIdleCallback(makeQR, {timeout: 1000}); } else { setTimeout(makeQR, 0); }
+          $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
+          const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
         }
-        // ✅ 신규 제출이면 현재 디비전 카운트 즉시 +1 하고 UI 재렌더
-        try{
-          const isEditingNow = Boolean(ownerEdit || (editTeamId && editCode));
-          if(!isEditingNow){
-            const tourId = document.getElementById('tourSelect').value.trim();
-            const dv = (document.getElementById('division').value || '').trim();
-            if(tourId && dv){
-              const k = normDv(dv);
-              CUR_DIV_COUNT[k] = (Number(CUR_DIV_COUNT[k])||0) + 1;
-              const last = k.split(' ').pop();
-              if (CUR_DIV_COUNT[last]==null) CUR_DIV_COUNT[last] = CUR_DIV_COUNT[k];
-              // 캐시도 업데이트
-              divCountCache.set(tourId, { ts: Date.now(), data: { ...CUR_DIV_COUNT } });
-              // 라벨/힌트 갱신
-              if (categorySelect.value) categorySelect.dispatchEvent(new Event('change'));
-              updateDivisionHint();
-            }
-          }
-        }catch(_){}
         showFloatingPanelAfterSubmit();
       }else{
         alert('오류: '+(json.error||'unknown'));
-        setSubmitting(false); // 실패 시 잠금 해제
+        btn.disabled=false; btn.textContent=bak;
       }
     }catch(err){
       alert('제출 실패: '+(err&&err.message||err));
-      setSubmitting(false);   // 실패 시 잠금 해제
+      btn.disabled=false; btn.textContent=bak;
     }
   });
 
-  /* ===== 부트 ===== */
+  $('#copyEditLinkBtn').addEventListener('click', async ()=>{
+    const val=$('#editLinkInput').value;
+    try{ await navigator.clipboard.writeText(val); show('링크가 복사되었습니다.'); }
+    catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
+  });
+
+  /* ===== 부트스트랩 ===== */
   async function boot(forceReload){
     setConn('warn','연결 확인 중…');
     await loadTournaments();
     const initialId = $('#tourSelect').value || '';
     const initialTour = initialId ? TOUR_MAP[initialId] : null;
     renderTourInfo(initialTour);
+    
     if (initialId){
-      renderPosterStrict(initialId);    // 비대기
-      loadAppliedCountsSmart(initialId, ++lastTourChangeToken); // 비대기
+      await renderPosterStrict(initialId);
+      await loadAppliedCounts(initialId);   // 신청수 선계산
     }
+
     if (editTeamId && editCode){
       try{
         const j = await apiGet('getteam', { teamId: editTeamId, code: editCode });
@@ -1454,6 +1269,7 @@
       }catch(e){}
     }
   }
+
   (async function init(){ await boot(); })();
 </script>
 </body>
