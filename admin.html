@@ -831,34 +831,38 @@ function coerceEntriesFromDivisions(group, divisions, capsMap){
   return entries;
 }
 
-const row = el(`<div class="place-item"></div>`);
-row.classList.add('div-row');   // 2칼럼(제목/칩)
+function renderDivRow(container, set, editable){
+  const group = set.group;
+  const entries = set.entries || [];
 
-/* 제목 칸: 제목만 */
-const left = el(`<div class="group-title"><b>${group}</b></div>`);
-row.appendChild(left);
+  const row = el(`<div class="place-item"></div>`);
+  row.classList.add('div-row');   // 2칼럼(제목/칩)
 
-/* 삭제 버튼(아래 전체 폭) */
-const delSmall = el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
-delSmall.addEventListener('click',()=>{ 
-  if(FORM_LOCKED) return; 
-  if(confirm(`"${group}" 구분을 삭제할까요?`)){ 
-    DIV_STATE = DIV_STATE.filter(s=>s.group!==group); 
-    DIRTY=true; 
-    refreshDivUI(); 
-  } 
-});
+  /* 제목 칸: 제목만 */
+  const left = el(`<div class="group-title"><b>${group}</b></div>`);
+  row.appendChild(left);
 
-  // 중간: cap 입력 리스트
+  /* 삭제 버튼(제목 아래, 전체 폭) */
+  const delSmall = el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
+  delSmall.addEventListener('click',()=>{ 
+    if(FORM_LOCKED) return; 
+    if(confirm(`"${group}" 구분을 삭제할까요?`)){ 
+      DIV_STATE = DIV_STATE.filter(s=>s.group!==group); 
+      DIRTY = true; 
+      refreshDivUI(); 
+    } 
+  });
+
+  // 중간: cap 입력 리스트(칩 영역)
   const mid = el(`<div class="cap-row"></div>`);
   mid.style.gridColumn = '2 / -1';
-  if(entries.length){
-    // ... (칩 추가 로직 그대로)
+
+  if (entries.length){
     entries.forEach((ent, idx)=>{
       const code = ent.code;
-      const cap = (ent.cap ?? '');
-      const cur = Number(DIV_COUNTS[code] || 0);   // ★ 현재 참가신청 팀수
-      const cur = Number(DIV_COUNTS[code] || 0);   // 현재 참가신청 팀수
+      const cap  = (ent.cap ?? '');
+      const cur  = Number(DIV_COUNTS[code] || 0);   // ★ 현재 참가신청 팀수 (중복 선언 제거!)
+
       const chip = el(`
         <label class="cap-chip">
           <b>${code}</b>
@@ -866,13 +870,14 @@ delSmall.addEventListener('click',()=>{
           <span class="cap-grow"></span>
           ${
             editable
-            ? `<input class="cap-input" type="number" min="0" step="1" value="${cap!==''?cap:''}" placeholder="모집" data-editable>`
-            : `<span class="cap-note">${Number.isFinite(+cap)?`모집 ${cap}팀`:'모집 미설정'}</span>`
+              ? `<input class="cap-input" type="number" min="0" step="1" value="${cap!==''?cap:''}" placeholder="모집" data-editable>`
+              : `<span class="cap-note">${Number.isFinite(+cap)?`모집 ${cap}팀`:'모집 미설정'}</span>`
           }
           ${editable ? `<button class="remove" title="제거">×</button>` : ``}
         </label>
       `);
-      if(editable){
+
+      if (editable){
         const inp = chip.querySelector('.cap-input');
         inp.addEventListener('input', ()=>{
           const v = inp.value.trim();
@@ -883,20 +888,24 @@ delSmall.addEventListener('click',()=>{
         rm.addEventListener('click', ()=>{
           const st = getStateByGroup(group);
           st.entries = st.entries.filter((_,i)=>i!==idx);
-          DIRTY = true; refreshDivUI();
+          DIRTY = true; 
+          refreshDivUI();
         });
       }
+
       mid.appendChild(chip);
     });
   }else{
     mid.appendChild(el(`<span class="muted">항목 없음</span>`));
   }
+
   row.appendChild(mid);
-  /* ▼▼▼ 추가: 제목 아래 전체폭 버튼줄 붙이기 */
+
+  /* 제목 아래 전체폭 버튼줄 */
   const actionsBar = el(`<div class="group-actions"></div>`);
   actionsBar.appendChild(delSmall);
   row.appendChild(actionsBar);
-  
+
   /* 최종 부착 */
   container.appendChild(row);
 }
