@@ -442,6 +442,42 @@ function toInputDateOnly(s){ if(!s) return ''; if(typeof s==='string'){ const m=
 function toInputDT(s){ if(!s) return ''; if(typeof s==='string'){ const m=s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/); if(m) return `${m[1]}T${m[2]}:${m[3]}`; } const d=new Date(s); if(!isNaN(d)) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; return ''; }
 function calcStatus(rs,re){ if(!rs||!re) return '상태미정'; const s=new Date(rs), e=new Date(re), n=new Date(); if(isNaN(s)||isNaN(e)) return '상태미정'; if(n<s) return '접수전'; if(n>e) return '마감'; return '접수중'; }
 function statusBadgeHtml(st){ const m={'접수중':{bg:'#ecfdf5',bd:'#d1fae5',fg:'#16a34a'},'접수전':{bg:'#eff6ff',bd:'#dbeafe',fg:'#1769ff'},'마감':{bg:'#fef2f2',bd:'#fee2e2',fg:'#ef4444'},'상태미정':{bg:'#f1f5fb',bd:'#e4ecf7',fg:'#334155'}}; const c=m[st]||m['상태미정']; return `<span class="badge" style="background:${c.bg};border-color:${c.bd};color:${c.fg}">${st}</span>`; }
+/* ====== 대회 정렬 유틸: '오늘과의 거리'가 가까울수록 위로 ====== */
+function _asTime(v){
+  if (!v) return NaN;
+  if (v instanceof Date) return isNaN(v) ? NaN : v.getTime();
+  const d = new Date(v);
+  if (!isNaN(d)) return d.getTime();
+  if (typeof v === 'string'){
+    // 'YYYY-MM-DD'만 있어도 허용
+    const m = v.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) {
+      const d2 = new Date(m[1] + 'T00:00:00');
+      if (!isNaN(d2)) return d2.getTime();
+    }
+  }
+  return NaN;
+}
+function _primaryTime(t){
+  // start 우선, 없으면 접수시작/종료, 그래도 없으면 end
+  const keys = ['start','regStart','reg.start','reg_start','regStartDate','reg.start.date','regEnd','reg.end','reg_end','regEndDate','end'];
+  for (const k of keys){
+    if (t && t[k]!=null){
+      const ms = _asTime(t[k]);
+      if (Number.isFinite(ms)) return ms;
+    }
+  }
+  return NaN;
+}
+function compareTournamentByNearDate(a,b){
+  const now = Date.now();
+  const ta = _primaryTime(a), tb = _primaryTime(b);
+  const da = Number.isFinite(ta) ? Math.abs(ta - now) : Infinity;
+  const db = Number.isFinite(tb) ? Math.abs(tb - now) : Infinity;
+  if (da !== db) return da - db;                // 가까울수록 먼저
+  if (Number.isFinite(ta) && Number.isFinite(tb)) return ta - tb; // 같으면 더 이른 날짜 먼저
+  return 0;
+}
 
 /* ========= API 유틸 ========= */
 const truthyFlag = (v)=>{ if (v===true || v===1) return true; if (typeof v==='string') { const s=v.trim().toLowerCase(); if (['true','ok','success','done','1','yes'].includes(s)) return true; } return false; };
@@ -589,6 +625,10 @@ async function loadTournaments(){
     const id = String((t && (t.tourId || t.TourID)) || '').trim();
     if (id) TOURS[id] = t;
   }
+
+  /* ★ 오늘과 가장 가까운 대회가 위로 오게 정렬 */
+  TOUR_ARRAY.sort(compareTournamentByNearDate);
+  
   renderTournamentList();
   renderTourFilter();
 }
