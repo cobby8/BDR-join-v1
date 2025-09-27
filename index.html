@@ -534,6 +534,12 @@
         if (isCancelled) continue;
   
         CUR_DIV_COUNT[division] = (CUR_DIV_COUNT[division] || 0) + 1;
+        // 카테고리도 있으면 "cat division" 키로도 함께 카운트
+        const cat = String((r.category ?? r.Category ?? r['종별'] ?? '')).trim();
+        if (cat) {
+            const k2 = `${cat} ${division}`.replace(/\s+/g,' ').trim();
+            CUR_DIV_COUNT[k2] = (CUR_DIV_COUNT[k2] || 0) + 1;
+        }
       }
   
     }catch(e){
