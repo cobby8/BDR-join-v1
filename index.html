@@ -674,6 +674,23 @@ $('#tourSelect').addEventListener('change', async (e) => {
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
+  /* ★ 키 정규화 + 카테고리/무접두사 양쪽 매칭 */
+  function normKey(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
+  
+  function appliedFor(cat, dv){
+    const k1 = normKey(dv);                // ex) "U12" 또는 "i2 U12"
+    const k2 = normKey(`${cat} ${dv}`);    // ex) "i2 U12"
+    return (CUR_DIV_COUNT[k1] ?? CUR_DIV_COUNT[k2] ?? 0);
+  }
+  
+  function capFor(cat, dv){
+    const caps = getDivCapsObj();
+    const k1 = normKey(dv);
+    const k2 = normKey(`${cat} ${dv}`);
+    const raw = (caps && (caps[k1] ?? caps[k2]));
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
 
   /* ★ 추가: divCaps 읽기(문자/객체 호환) */
   function getDivCapsObj(){
@@ -694,21 +711,23 @@ $('#tourSelect').addEventListener('change', async (e) => {
     return Number.isFinite(n) ? n : null;
   }
   
-  /* ★ 추가: 옵션 표시 라벨 구성 (예: "D4 (12/16)" 또는 "D4 (12/-)") */
-  function formatDivisionLabel(dv){
-    const applied = CUR_DIV_COUNT[dv] || 0;
-    const cap = getCapForDivision(dv);
-    return cap!=null ? `${dv} (${applied}/${cap})` : `${dv} (${applied}/-)`;
+  /* ★ 카테고리 고려 라벨 */
+  function formatDivisionLabel(cat, dv){
+    const applied = appliedFor(cat, dv);
+    const cap = capFor(cat, dv);
+    return (cap!=null) ? `${dv} (${applied}/${cap})` : `${dv} (${applied}/-)`;
   }
   
-  /* ★ 추가: 선택된 디비전의 힌트 문구 업데이트 */
   function updateDivisionHint(){
     const box = $('#divCapHint');
-    if(!box){ return; }
-    const dv = $('#division').value || '';
+    if(!box) return;
+    const cat = $('#category').value || '';
+    const dv  = $('#division').value  || '';
     if(!dv){ box.style.display='none'; box.textContent=''; return; }
-    const applied = CUR_DIV_COUNT[dv] || 0;
-    const cap = getCapForDivision(dv);
+  
+    const applied = appliedFor(cat, dv);
+    const cap = capFor(cat, dv);
+  
     if(cap==null){
       box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
     }else{
@@ -759,10 +778,10 @@ $('#tourSelect').addEventListener('change', async (e) => {
     divisionSelect.disabled=false;
     divisionSelect.appendChild(new Option('선택',''));
     arr.forEach(dv=>{
-      const label = formatDivisionLabel(dv);
+      const label = formatDivisionLabel(cat, dv);
       const opt = new Option(label, dv);
-      const cap = getCapForDivision(dv);
-      const applied = CUR_DIV_COUNT[dv] || 0;
+      const cap = capFor(cat, dv);
+      const applied = appliedFor(cat, dv);
       if (cap!=null && applied >= cap) {
         opt.disabled = true;               // 정원 도달 시 선택 불가
         opt.textContent = label + ' [마감]';
