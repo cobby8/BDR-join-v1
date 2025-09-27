@@ -1153,37 +1153,76 @@ function showFloatingPanelAfterSubmit(){
   el._hideTimer = setTimeout(()=>{ el.classList.remove('show'); }, 30000);
 }
 
-  $('#submitBtn').addEventListener('click', async ()=>{
-    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) return;
-    if (!validatePlayersStrict()) return; // ▼ 선수명단 엄격 검증 추가
+/* ===== 제출(신규/수정 공용): 중복방지 가드 추가 ===== */
+let isSubmitting = false;  // ★ 추가: 중복 제출 가드 플래그
 
-    // ✨ 제출/수정 전 "수정마감" 확인
+$('#submitBtn').addEventListener('click', async ()=>{
+  // ★ 가드: 이미 제출 중이면 무시
+  if (isSubmitting) return;
+  isSubmitting = true;
+
+  const btn = $('#submitBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '제출 중...';  // ★ 즉시 "제출 중..." 표시
+
+  try{
+    // 1) 단계별 검증 (실패 시 즉시 복구 후 종료)
+    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      isSubmitting = false;
+      return;
+    }
+    if (!validatePlayersStrict()) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      isSubmitting = false;
+      return;
+    }
+
+    // 2) 수정마감 확인
     {
       const tourId = ($('#tourSelect').value || '').trim();
       const meta = await fetchTourMeta(tourId);
       const isEditing = Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode);
-    
+
+      const pad2=n=>String(n).padStart(2,'0');
+      const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+
       if (meta && meta.editDeadlineAt) {
         if (isPast(meta.now, meta.editDeadlineAt)) {
           alert('수정 마감이 지났습니다. 더 이상 신청서 변경이 불가합니다.');
-          return; // 차단
+          btn.disabled = false;
+          btn.textContent = originalText;
+          isSubmitting = false;
+          return;
         } else {
           const msg = isEditing
             ? `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?`
             : `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?`;
-          if (!confirm(msg)) return; // 사용자 취소
+          if (!confirm(msg)) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            isSubmitting = false;
+            return;
+          }
         }
       } else {
-        // 마감 미설정인 경우에도 안내(선택): 필요 없으면 이 블록 제거 가능
-        const msg = isEditing
+        const msg = (Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode))
           ? '현재 수정 마감이 설정되어 있지 않습니다.\n수정을 진행할까요?'
           : '현재 수정 마감이 설정되어 있지 않습니다.\n제출을 진행할까요?';
-        if (!confirm(msg)) return;
+        if (!confirm(msg)) {
+          btn.disabled = false;
+          btn.textContent = originalText;
+          isSubmitting = false;
+          return;
+        }
       }
     }
 
+    // 3) 페이로드 구성
     const province=$('#province').value.trim(), city=$('#city').value.trim();
-
     const team={
       tourId: $('#tourSelect').value.trim(),
       tourName: (currentTour&&currentTour.name)||'',
@@ -1198,7 +1237,6 @@ function showFloatingPanelAfterSubmit(){
       uniformHome: $('#uniformHome').value.trim(),
       uniformAway: $('#uniformAway').value.trim()
     };
-
     const players=$$('.player-card').map(card=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
@@ -1215,34 +1253,36 @@ function showFloatingPanelAfterSubmit(){
       candidates = ['updateteam','updateTeam'];
     }
 
-    const btn=$('#submitBtn'); const bak=btn.textContent; btn.disabled=true; btn.textContent='제출 중...';
-    try{
-      const json = await apiPost(candidates, payload);
-      if(json.ok){
-        btn.textContent= (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
-        btn.classList.add('done');
-        show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
-        if (!(ownerEdit || (editTeamId&&editCode))){
-          const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
-          $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
-          const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
-        }
-        showFloatingPanelAfterSubmit();
-      }else{
-        alert('오류: '+(json.error||'unknown'));
-        btn.disabled=false; btn.textContent=bak;
-      }
-    }catch(err){
-      alert('제출 실패: '+(err&&err.message||err));
-      btn.disabled=false; btn.textContent=bak;
-    }
-  });
+    // 4) 제출(네트워크 중에도 계속 비활성화 유지)
+    const json = await apiPost(candidates, payload);
+    if(json && json.ok){
+      // 성공 시 버튼을 다시 활성화하지 않음(중복 방지)
+      btn.textContent = (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
+      btn.classList.add('done');
+      show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
 
-  $('#copyEditLinkBtn').addEventListener('click', async ()=>{
-    const val=$('#editLinkInput').value;
-    try{ await navigator.clipboard.writeText(val); show('링크가 복사되었습니다.'); }
-    catch(e){ const i=$('#editLinkInput'); i.select(); document.execCommand('copy'); show('링크가 복사되었습니다.'); }
-  });
+      if (!(ownerEdit || (editTeamId&&editCode))){
+        const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+        $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
+        const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
+      }
+      showFloatingPanelAfterSubmit();
+      // ★ 성공 후에도 isSubmitting을 true로 둬서 추가 클릭을 완전히 차단
+      return;
+    } else {
+      alert('오류: ' + (json && (json.error||json.raw) || 'unknown'));
+      // 실패 시에만 복구
+      btn.disabled = false;
+      btn.textContent = originalText;
+      isSubmitting = false;
+    }
+  }catch(err){
+    alert('제출 실패: ' + (err && err.message || err));
+    btn.disabled = false;
+    btn.textContent = originalText;
+    isSubmitting = false;
+  }
+});
 
   /* ===== 부트스트랩 ===== */
   async function boot(forceReload){
