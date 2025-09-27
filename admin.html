@@ -108,17 +108,22 @@
 .place-item .cap-row{ grid-column: 2 / -1; }
 
 .cap-chip{
-  display:flex; align-items:center; gap:8px;
-  border:1px solid #e6ecf5; background:#fff; border-radius:999px;
-  padding:6px 10px;
-  /* 셀(그리드 칸) 가로폭을 꽉 채우되, 안에서 유연하게 줄어듦 */
+  display:flex; align-items:flex-start; gap:10px;
+  border:1px solid #e6ecf5; background:#fff; border-radius:14px;
+  padding:8px 12px;
   width:100%; min-width:0;
-  font-size:clamp(11px, 0.9vw, 12px);
-  white-space:nowrap;
+  font-size:clamp(12px, 0.95vw, 13px);
+  white-space:normal;          /* ← 줄바꿈 허용(말줄임 제거) */
   box-sizing:border-box;
 }
-.cap-chip b{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cap-chip .remove{ border:0; background:transparent; cursor:pointer; color:#ef4444; font-size:14px; line-height:1 }
+.cap-chip b{
+  font-weight:700;
+  white-space:normal;          /* ← 말줄임 제거 */
+  overflow:visible; text-overflow:clip;
+  flex:0 0 auto;
+}
+.cap-chip .cap-grow{ flex:1 1 auto; min-width:0; } /* 가운데 가변공간 */
+.cap-chip .remove{ border:0; background:transparent; cursor:pointer; color:#ef4444; font-size:16px; line-height:1; }
 .cap-note{ color:#64748b; font-size:clamp(11px, 0.9vw, 12px); }
 
   /* === Admin: 모바일 카드 레이아웃 (≤640px) === */
@@ -174,6 +179,16 @@
     #teamsTable.responsive-table td:nth-child(2) b{ font-size:15px; }
     #teamsTable.responsive-table td:nth-child(2) .muted{ display:block; margin-top:2px; }
     #teamsTable.responsive-table td{ min-width:0; }
+
+  /* 디비전 칩: 모바일 카드형 1열 */
+  .cap-row{ grid-template-columns:1fr; }
+  .cap-chip{
+    border-radius:14px;
+    box-shadow:0 6px 18px rgba(23,105,255,.06);
+    padding:12px 14px;
+  }
+  .cap-chip .remove{ margin-left:auto; }
+
   }
 
   #selectedTourInfo .chip{
@@ -186,6 +201,12 @@
     grid-template-columns: auto 1fr;
     align-items: center;
     gap:8px 10px;   /* 세로 8, 가로 10으로 여백 최적화 */
+  }
+  /* 종별 제목 아래 버튼줄(전체 폭) */
+  .div-row .group-actions{
+    grid-column:1 / -1;
+    margin-top:6px;
+    display:flex; gap:8px; justify-content:flex-start; align-items:center;
   }
   /* 편집모드 아닐 때 포스터 드롭 비활성화 표시 */
   .poster-drop.disabled{
@@ -810,24 +831,23 @@ function coerceEntriesFromDivisions(group, divisions, capsMap){
   return entries;
 }
 
-function renderDivRow(container, set, editable){
-  const group = set.group;
-  const entries = set.entries || [];
+const row = el(`<div class="place-item"></div>`);
+row.classList.add('div-row');   // 2칼럼(제목/칩)
 
-  const row = el(`<div class="place-item"></div>`);
-  row.classList.add('div-row');   // ★ 제목과 칩이 붙어 보이도록 2칼럼 레이아웃 적용
-  const left = el(`<div style="display:flex;align-items:center;gap:8px"><b>${group}</b></div>`);
-  const delSmall = el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
-  delSmall.addEventListener('click',()=>{ 
-    if(FORM_LOCKED) return; 
-    if(confirm(`"${group}" 구분을 삭제할까요?`)){ 
-      DIV_STATE = DIV_STATE.filter(s=>s.group!==group); 
-      DIRTY=true; 
-      refreshDivUI(); 
-    } 
-  });
-  left.appendChild(delSmall);
-  row.appendChild(left);
+/* 제목 칸: 제목만 */
+const left = el(`<div class="group-title"><b>${group}</b></div>`);
+row.appendChild(left);
+
+/* 삭제 버튼(아래 전체 폭) */
+const delSmall = el(`<button class="btn danger" style="padding:4px 8px;font-size:12px" ${editable?'':'disabled'}>삭제</button>`);
+delSmall.addEventListener('click',()=>{ 
+  if(FORM_LOCKED) return; 
+  if(confirm(`"${group}" 구분을 삭제할까요?`)){ 
+    DIV_STATE = DIV_STATE.filter(s=>s.group!==group); 
+    DIRTY=true; 
+    refreshDivUI(); 
+  } 
+});
 
   // 중간: cap 입력 리스트
   const mid = el(`<div class="cap-row"></div>`);
@@ -838,13 +858,16 @@ function renderDivRow(container, set, editable){
       const code = ent.code;
       const cap = (ent.cap ?? '');
       const cur = Number(DIV_COUNTS[code] || 0);   // ★ 현재 참가신청 팀수
+      const cur = Number(DIV_COUNTS[code] || 0);   // 현재 참가신청 팀수
       const chip = el(`
         <label class="cap-chip">
           <b>${code}</b>
-          <span class="cap-note" style="margin-left:4px">현재 ${cur}팀</span>
-          ${editable 
+          <span class="cap-note">현재 ${cur}팀</span>
+          <span class="cap-grow"></span>
+          ${
+            editable
             ? `<input class="cap-input" type="number" min="0" step="1" value="${cap!==''?cap:''}" placeholder="모집" data-editable>`
-            : `<span class="cap-note" style="margin-left:6px">${Number.isFinite(+cap)?`모집 ${cap}팀`:'모집 미설정'}</span>`
+            : `<span class="cap-note">${Number.isFinite(+cap)?`모집 ${cap}팀`:'모집 미설정'}</span>`
           }
           ${editable ? `<button class="remove" title="제거">×</button>` : ``}
         </label>
@@ -869,7 +892,12 @@ function renderDivRow(container, set, editable){
     mid.appendChild(el(`<span class="muted">항목 없음</span>`));
   }
   row.appendChild(mid);
-
+  /* ▼▼▼ 추가: 제목 아래 전체폭 버튼줄 붙이기 */
+  const actionsBar = el(`<div class="group-actions"></div>`);
+  actionsBar.appendChild(delSmall);
+  row.appendChild(actionsBar);
+  
+  /* 최종 부착 */
   container.appendChild(row);
 }
 
