@@ -29,6 +29,13 @@
   .grid{display:grid;gap:10px}
   .grid-2{grid-template-columns:1fr 1fr}
   .pill{display:inline-block;border:1px solid #e6ecf5;border-radius:999px;padding:6px 10px;font-size:12px;margin:2px 0;background:#fff;cursor:pointer;user-select:none;transition:background .12s, box-shadow .12s}
+    /* 대회 목록 칩 2줄 레이아웃 */
+  .pill .line1{ display:flex; gap:6px; align-items:baseline; }
+  .pill .line2{ margin-top:2px; }           /* 2행 살짝 간격 */
+  .pill .title-ellipsis{
+    max-width:260px; display:inline-block; vertical-align:bottom;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
   .pill:hover{ background:#f8fbff; box-shadow:0 2px 6px rgba(23,105,255,.15) }
   .hr{height:1px;background:#eef2f7;margin:8px 0}
   .badge{display:inline-flex;gap:8px;align-items:center;font-size:12px;color:#334155;background:#f1f5fb;border:1px solid #e4ecf7;border-radius:999px;padding:4px 8px}
@@ -634,12 +641,21 @@ async function loadTournaments(){
 }
 
 function tourCard(t){
-  const id=t.tourId||t.TourID;
-  const rs=t.regStart||t['reg.start']||t.reg_start||t.regStartDate||'';
-  const re=t.regEnd||t['reg.end']||t.reg_end||t.regEndDate||'';
-  const st=calcStatus(rs,re);
-  const range=(t.start||t.end)?`${toInputDateOnly(t.start)} ~ ${toInputDateOnly(t.end)}`:'일정미정';
-  return `<div class="pill" data-id="${id}" tabindex="0" role="button"><b class="ellipsis" style="max-width:260px;display:inline-block;vertical-align:bottom;">${t.name||'(무제)'}</b> · ${st} · ${range}</div>`;
+  const id = t.tourId || t.TourID;
+  const rs = t.regStart || t['reg.start'] || t.reg_start || t.regStartDate || '';
+  const re = t.regEnd   || t['reg.end']   || t.reg_end   || t.regEndDate   || '';
+  const st = calcStatus(rs, re);
+  const period = (t.start || t.end) ? `${toInputDateOnly(t.start)} ~ ${toInputDateOnly(t.end)}` : '일정미정';
+
+  return `
+    <div class="pill" data-id="${id}" tabindex="0" role="button">
+      <div class="line1">
+        <b class="title-ellipsis">${t.name || '(무제)'}</b>
+        <span>· ${st}</span>
+      </div>
+      <div class="line2 muted">대회기간 · ${period}</div>
+    </div>
+  `;
 }
 
 function renderTournamentList(){
