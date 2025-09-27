@@ -1042,6 +1042,10 @@ $('#tourSelect').addEventListener('change', async (e) => {
           $('#division').value = t.division;
           $('#division').dispatchEvent(new Event('change'));
         }
+      // [ADD] 수정화면 디비전 카운트 표시
+      await applyDivisionCounts(document.querySelector('#division'),
+                                document.querySelector('#tourId').value,
+                                document.querySelector('#category')?.value||'');  
       }, 0);
     }
 
