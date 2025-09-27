@@ -1407,6 +1407,68 @@ $('#submitBtn').addEventListener('click', async ()=>{
   }
 
   (async function init(){ await boot(); })();
+
+  /** 단순 GET 호출: doGet proxy */
+  async function apiGet(params){
+    const usp = new URLSearchParams(params);
+    const res = await fetch(`./exec?${usp.toString()}`);
+    if(!res.ok) throw new Error('API GET failed');
+    return res.json();
+  }
+  
+  /** 옵션 라벨에서 (n/m) 제거 → 기본 라벨만 추출 */
+  function _baseLabelFromText(s){
+    const t = String(s||'').trim();
+    const m = t.match(/^(.+?)\s*\(\d+\/.*\)\s*$/);
+    return m ? m[1] : t;
+  }
+  
+  /**
+   * 디비전 select의 각 옵션 텍스트를 "기본라벨 (현재/정원)"으로 갱신
+   * @param {HTMLSelectElement} sel    #division 엘리먼트
+   * @param {string} tourId            현재 팀의 tourId
+   * @param {string} category          선택된 종별(없으면 '')
+   */
+  async function applyDivisionCounts(sel, tourId, category){
+    if(!sel || !tourId) return;
+  
+    // 1) 현재 신청 수: Teams rows에서 division별 카운팅
+    const teamsRes = await apiGet({ path:'teams', tourId });
+    const counts = {};
+    (teamsRes.rows || []).forEach(r=>{
+      const key = String(r.division||'').trim();
+      if(!key) return;
+      counts[key] = (counts[key]||0) + 1;
+    });
+  
+    // 2) 정원: Tournaments에서 divCaps 취득
+    const toursRes = await apiGet({ path:'tournaments' });
+    const tour = (toursRes.rows||[]).find(t => String(t.tourId) === String(tourId)) || {};
+    const divCaps = tour.divCaps || {}; // 서버가 Object로 내려줌
+  
+    const getCap = (divName)=>{
+      if (category && divCaps[category] && typeof divCaps[category] === 'object'){
+        const v = divCaps[category][divName];
+        return (v===0 || v>0) ? Number(v) : null;
+      }
+      const v2 = divCaps[divName];
+      return (v2===0 || v2>0) ? Number(v2) : null;
+    };
+  
+    // 3) 옵션 텍스트 업데이트 (라벨 키는 value 우선 → 없으면 표시문자)
+    Array.from(sel.options).forEach(opt=>{
+      const valueKey = String(opt.value||'').trim();
+      const baseText = _baseLabelFromText(opt.textContent||'');
+      const base = valueKey || baseText;
+  
+      if(!base || base === '선택') return;
+      const cur = counts[base] || 0;
+      const cap = getCap(base);
+      const capText = (cap===0 || cap>0) ? String(cap) : '-';
+      // 화면 표시용 라벨(보기 좋게 value가 있더라도 text는 사람이 읽는 라벨로 유지)
+      opt.textContent = `${baseText || base} (${cur}/${capText})`;
+    });
+  }
 </script>
 </body>
 </html>
