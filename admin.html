@@ -262,7 +262,6 @@
       <h3 style="margin:0;font-size:16px">대회 관리</h3>
       <div class="toolbar">
         <button class="btn" id="newTourBtn">신규 대회</button>
-        <button class="btn" id="copyTourBtn">기존 대회 복사</button>
         <button class="btn" id="editBtn" disabled>수정</button>
       </div>
     </div>
@@ -509,7 +508,6 @@ async function getJSON(u){
     const r=await fetch(u,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'follow'});
     const t=await r.text();
     try{ return JSON.parse(t); }catch(e){
-      console.warn('[getJSON] JSON 파싱 실패. 응답 앞부분:', t.slice(0,300));
       return { ok:false, error:'JSON 파싱 실패', raw: t.slice(0,300) };
     }
   }catch(e){
@@ -589,7 +587,7 @@ async function confirmDeleteTeamAdmin(teamId, teamName){
 }
 
 /* ========= 관리자코드 입력 팝업 ========= */
-function openAdminCodeFloating(onOk){  
+function openAdminCodeFloating(onOk){
   const body = el(`
     <div>
       <label>대회관리 코드</label>
@@ -621,115 +619,6 @@ function openAdminCodeFloating(onOk){
   openPopoverCentered('관리코드 확인', body, actions);
 }
 
-/* ========= 기존 대회 복사: 팝업 & 적용 ========= */
-function openCopyTourFloating(){
-  // 변경사항 경고 처리
-  confirmDiscardIfDirty().then(ok=>{
-    if(!ok) return;
-    const list = (TOUR_ARRAY||[]).slice().sort(compareTournamentByNearDate);
-    if(!list.length){ alert('복사할 기존 대회가 없습니다.'); return; }
-
-    const body = el(`
-      <div>
-        <label>복사할 대회 선택</label>
-        <select id="copySrcSel" style="width:100%;margin:6px 0 10px;padding:10px;border:1px solid #e6ecf5;border-radius:12px"></select>
-
-        <div style="margin-top:6px">
-          <label class="chip"><input type="checkbox" id="copyDates"> 기간/접수기간 포함</label>
-          <label class="chip"><input type="checkbox" id="copyPoster"> 포스터 포함</label>
-        </div>
-
-        <div class="muted" style="margin-top:8px;line-height:1.4">
-          기본값: 종별(모집팀수 포함), 장소, 참가비/계좌는 복사됩니다.<br/>
-          <b>투어ID/관리코드/상태</b>는 복사되지 않으며 새 대회로 편집 모드가 열립니다.
-        </div>
-      </div>
-    `);
-
-    const sel = body.querySelector('#copySrcSel');
-    sel.innerHTML = list.map(t=>{
-      const id = t.tourId || t.TourID || '';
-      const nm = t.name || '(무제)';
-      const period = (t.start||t.end) ? ` · ${toInputDateOnly(t.start)}~${toInputDateOnly(t.end)}` : '';
-      return `<option value="${id}">${nm}${period}</option>`;
-    }).join('');
-
-    const actions = el(`<div></div>`);
-    const cancel  = el(`<button class="btn">취소</button>`);
-    const ok      = el(`<button class="btn primary">복사</button>`);
-    actions.appendChild(cancel); actions.appendChild(ok);
-    cancel.addEventListener('click', closePopover);
-    ok.addEventListener('click', ()=>{
-      const srcId = sel.value || '';
-      if(!srcId) return alert('대회를 선택하세요.');
-      const opts = {
-        includeDates:  body.querySelector('#copyDates').checked,
-        includePoster: body.querySelector('#copyPoster').checked
-      };
-      closePopover();
-      doCopyFromTournament(srcId, opts);
-    });
-
-    openPopoverCentered('기존 대회 복사', body, actions);
-  });
-}
-
-function doCopyFromTournament(srcId, opts){
-  const t = TOURS[srcId] || (TOUR_ARRAY||[]).find(x=>String(x.tourId||x.TourID||'')===String(srcId));
-  if(!t){ alert('원본 대회를 찾을 수 없습니다.'); return; }
-
-  // 1) 원본으로부터 기본 필드 구성
-  const pickFirst = (obj, keys)=>{ for(const k of keys){ if(obj && obj[k]) return obj[k]; } return ''; };
-  const rs = pickFirst(t, ['regStart','reg.start','reg_start','regStartDate','reg.start.date']);
-  const re = pickFirst(t, ['regEnd','reg.end','reg_end','regEndDate','reg.end.date']);
-
-  // divSets/divs + divCaps 정규화
-  let divSets = Array.isArray(t.divSets) && t.divSets.length
-    ? t.divSets.map(s=>({ group: s.group, divisions: (s.divisions||[]).slice() }))
-    : Object.keys(t.divs||{}).map(g=>({ group:g, divisions:(t.divs[g]||[]).slice() }));
-  const caps = t.divCaps || t.div_caps || {};
-
-  // places 정규화
-  const places = Array.isArray(t.places) ? t.places.slice() : [];
-
-  // 2) 새 객체(폼에 로드할 임시 대회 데이터) 구성
-  const newObj = {
-    tourId: '',                            // 새 대회이므로 비워둠
-    name: (t.name || '(무제)') + ' (복사)',
-    url:  t.url || '',
-    // 기간/접수기간/수정마감은 옵션에 따라
-    start:        opts.includeDates ? (toInputDateOnly(t.start) || '') : '',
-    end:          opts.includeDates ? (toInputDateOnly(t.end)   || '') : '',
-    regStart:     opts.includeDates ? (toInputDT(rs) || '') : '',
-    regEnd:       opts.includeDates ? (toInputDT(re) || '') : '',
-    editDeadlineAt: opts.includeDates ? (toInputDT(t.editDeadlineAt) || '') : '',
-    // 상태는 폼에서 자동 갱신되므로 설정하지 않음
-    divSets,                              // 신 포맷
-    divs: t.divs || {},                   // 구 포맷 호환
-    divCaps: caps,
-    places,
-    fee:     t.fee || '',
-    account: t.account || '',
-    posterId:  opts.includePoster ? (t.posterId  || '') : '',
-    posterUrl: opts.includePoster ? (t.posterUrl || '') : ''
-  };
-
-  // 3) 폼에 로드(편집모드로 즉시 열기)
-  loadTourToForm(newObj, false).then(async ()=>{
-    CURRENT_TOUR_ID = '';                 // 안전장치: 새 대회
-    $('#tourFormTitle').textContent = '대회 복사 (편집중)';
-    $('#adminCode').value = '';           // 관리코드는 새로 입력해야 함
-    DIRTY = true;                         // 저장 유도
-
-    // 포스터 포함 안 했으면 미리보기 제거 처리
-    if(!opts.includePoster){
-      POSTER_DATA_URL = '';
-      POSTER_CLEAR = true;
-      await renderPoster();
-    }
-  });
-}
-
 /* ========= 팀수 집계(디비전별) ========= */
 let DIV_COUNTS = {};   // 예: { 'i3 U12': 5, 'D3': 8, ... }
 
@@ -747,11 +636,7 @@ async function health(){
 
 async function loadTournaments(){
   const j = await getJSON(apiUrl('tournaments'));
-  const rows = Array.isArray(j.rows) ? j.rows
-             : Array.isArray(j.data?.rows) ? j.data.rows
-             : Array.isArray(j.data) ? j.data
-             : [];
-  TOUR_ARRAY = rows;
+  TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
   TOURS = {};
   for (const t of TOUR_ARRAY) {
     const id = String((t && (t.tourId || t.TourID)) || '').trim();
@@ -787,20 +672,12 @@ function tourCard(t){
 
 function renderTournamentList(){
   const box = $('#tourList');
-  const arr = Array.isArray(TOUR_ARRAY) ? TOUR_ARRAY : [];
-  if (!box) return;
-
-  if (!arr.length){
-    box.innerHTML = `<div class="muted">대회 데이터가 없습니다.</div>`;
-    return;
-  }
-
-  box.innerHTML = arr.map(t => tourCard(t)).join('');
+  box.innerHTML = (TOUR_ARRAY || []).map(t => tourCard(t)).join('');
   box.querySelectorAll('.pill').forEach(el => {
     el.addEventListener('click', async () => {
       if (!(await confirmDiscardIfDirty())) return;
       const id = el.getAttribute('data-id');
-      const t  = TOURS[id] || arr.find(x => String((x.tourId || x.TourID) || '') === id) || null;
+      const t  = TOURS[id] || (TOUR_ARRAY || []).find(x => String((x.tourId || x.TourID) || '') === id) || null;
       CURRENT_TOUR_OBJ = t || null;
       await loadTourToForm(t, true);
       $('#editBtn').disabled = false;
@@ -871,20 +748,13 @@ function rowTeam(v){
 }
 
 async function loadTeams(){
-  const tourId = ($('#tourFilter').value || '').trim();
-  const j = await getJSON(apiUrl('teams', tourId ? { tourId } : {}));
+  const tourId=($('#tourFilter').value||'').trim();
+  const j=await getJSON(apiUrl('teams', tourId?{tourId}:{}) );
 
-  // ▼ (1) 원본 rows 확보 (응답 포맷 여러 형태 대응)
-  let rowsAll =
-      Array.isArray(j?.rows)        ? j.rows
-    : Array.isArray(j?.data?.rows)  ? j.data.rows
-    : Array.isArray(j?.data)        ? j.data
-    : [];
+  // ▼ (1) 원본 rows 확보
+  let rowsAll=Array.isArray(j.rows)?j.rows:[];
+  if(tourId) rowsAll=rowsAll.filter(r=>String(r.tourId||'').trim()===tourId);
 
-  if (tourId) {
-    rowsAll = rowsAll.filter(r => String(r.tourId || '').trim() === tourId);
-  }
-  
   // ▼ (2) 디비전별 팀수 집계 생성 (검색과 무관하게 전체 집계)
   const counts = {};
   rowsAll.forEach(r=>{
@@ -1525,7 +1395,6 @@ document.getElementById('editBtn').addEventListener('click', ()=>{
   if(!CURRENT_TOUR_ID) return alert('수정할 대회를 먼저 선택하세요.');
   openAdminCodeFloating(()=>{ $('#tourFormTitle').textContent='대회 수정 (편집중)'; });
 });
-document.getElementById('copyTourBtn').addEventListener('click', openCopyTourFloating);
 
 document.getElementById('tourFilter').addEventListener('change', async ()=>{
   if(!(await confirmDiscardIfDirty())){ $('#tourFilter').value=''; return; }
@@ -1539,26 +1408,10 @@ document.getElementById('deleteTourBtn').addEventListener('click', doDelete);
 
 /* ========= 부팅 ========= */
 (async function boot(){
-  try{
-    await health();
-  }catch(e){
-    console.error('[boot] health 실패:', e);
-  }
-  try{
-    await loadTournaments();
-  }catch(e){
-    console.error('[boot] loadTournaments 실패:', e);
-  }
-  try{
-    await loadTeams();
-  }catch(e){
-    console.error('[boot] loadTeams 실패:', e);
-  }
-  try{
-    await renderPoster();
-  }catch(e){
-    console.error('[boot] renderPoster 실패:', e);
-  }
+  await health();
+  await loadTournaments();
+  await loadTeams();
+  await renderPoster();
 })();
 
 /* ========= 장소 팝업 (원 코드에서 사용되던 부분 보완) ========= */
