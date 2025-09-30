@@ -509,6 +509,7 @@ async function getJSON(u){
     const r=await fetch(u,{cache:'no-store',mode:'cors',credentials:'omit',redirect:'follow'});
     const t=await r.text();
     try{ return JSON.parse(t); }catch(e){
+      console.warn('[getJSON] JSON 파싱 실패. 응답 앞부분:', t.slice(0,300));
       return { ok:false, error:'JSON 파싱 실패', raw: t.slice(0,300) };
     }
   }catch(e){
@@ -870,13 +871,20 @@ function rowTeam(v){
 }
 
 async function loadTeams(){
-  const tourId=($('#tourFilter').value||'').trim();
-  const j=await getJSON(apiUrl('teams', tourId?{tourId}:{}) );
+  const tourId = ($('#tourFilter').value || '').trim();
+  const j = await getJSON(apiUrl('teams', tourId ? { tourId } : {}));
 
-  // ▼ (1) 원본 rows 확보
-  let rowsAll=Array.isArray(j.rows)?j.rows:[];
-  if(tourId) rowsAll=rowsAll.filter(r=>String(r.tourId||'').trim()===tourId);
+  // ▼ (1) 원본 rows 확보 (응답 포맷 여러 형태 대응)
+  let rowsAll =
+      Array.isArray(j?.rows)        ? j.rows
+    : Array.isArray(j?.data?.rows)  ? j.data.rows
+    : Array.isArray(j?.data)        ? j.data
+    : [];
 
+  if (tourId) {
+    rowsAll = rowsAll.filter(r => String(r.tourId || '').trim() === tourId);
+  }
+  
   // ▼ (2) 디비전별 팀수 집계 생성 (검색과 무관하게 전체 집계)
   const counts = {};
   rowsAll.forEach(r=>{
