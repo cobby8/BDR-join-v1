@@ -746,7 +746,11 @@ async function health(){
 
 async function loadTournaments(){
   const j = await getJSON(apiUrl('tournaments'));
-  TOUR_ARRAY = Array.isArray(j.rows) ? j.rows : [];
+  const rows = Array.isArray(j.rows) ? j.rows
+             : Array.isArray(j.data?.rows) ? j.data.rows
+             : Array.isArray(j.data) ? j.data
+             : [];
+  TOUR_ARRAY = rows;
   TOURS = {};
   for (const t of TOUR_ARRAY) {
     const id = String((t && (t.tourId || t.TourID)) || '').trim();
@@ -782,12 +786,20 @@ function tourCard(t){
 
 function renderTournamentList(){
   const box = $('#tourList');
-  box.innerHTML = (TOUR_ARRAY || []).map(t => tourCard(t)).join('');
+  const arr = Array.isArray(TOUR_ARRAY) ? TOUR_ARRAY : [];
+  if (!box) return;
+
+  if (!arr.length){
+    box.innerHTML = `<div class="muted">대회 데이터가 없습니다.</div>`;
+    return;
+  }
+
+  box.innerHTML = arr.map(t => tourCard(t)).join('');
   box.querySelectorAll('.pill').forEach(el => {
     el.addEventListener('click', async () => {
       if (!(await confirmDiscardIfDirty())) return;
       const id = el.getAttribute('data-id');
-      const t  = TOURS[id] || (TOUR_ARRAY || []).find(x => String((x.tourId || x.TourID) || '') === id) || null;
+      const t  = TOURS[id] || arr.find(x => String((x.tourId || x.TourID) || '') === id) || null;
       CURRENT_TOUR_OBJ = t || null;
       await loadTourToForm(t, true);
       $('#editBtn').disabled = false;
@@ -1519,10 +1531,26 @@ document.getElementById('deleteTourBtn').addEventListener('click', doDelete);
 
 /* ========= 부팅 ========= */
 (async function boot(){
-  await health();
-  await loadTournaments();
-  await loadTeams();
-  await renderPoster();
+  try{
+    await health();
+  }catch(e){
+    console.error('[boot] health 실패:', e);
+  }
+  try{
+    await loadTournaments();
+  }catch(e){
+    console.error('[boot] loadTournaments 실패:', e);
+  }
+  try{
+    await loadTeams();
+  }catch(e){
+    console.error('[boot] loadTeams 실패:', e);
+  }
+  try{
+    await renderPoster();
+  }catch(e){
+    console.error('[boot] renderPoster 실패:', e);
+  }
 })();
 
 /* ========= 장소 팝업 (원 코드에서 사용되던 부분 보완) ========= */
