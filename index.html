@@ -748,25 +748,35 @@ $('#tourSelect').addEventListener('change', async (e) => {
   function updateDivisionHint(){
     const box = $('#divCapHint');
     if(!box) return;
+  
     const cat = $('#category').value || '';
     const dv  = $('#division').value  || '';
-    if(!dv){ box.style.display='none'; box.textContent=''; return; }
+  
+    if(!dv){
+      box.style.display='none';
+      box.textContent='';
+      box.style.color='';
+      return;
+    }
   
     const applied = appliedFor(cat, dv);
-    const cap = capFor(cat, dv);
+    const cap     = capFor(cat, dv);
   
-  if (cap == null) {
-    box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
-    box.style.color = '';
-  } else {
-    const left = Math.max(0, cap - applied);
-    const isFull = applied >= cap;
-    box.textContent = isFull
-      ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
-      : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
-    box.style.color = isFull ? '#b91c1c' : '';
+    if(cap == null){
+      box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
+      box.style.color = '';
+    }else{
+      const left  = Math.max(0, cap - applied);
+      const isFull = applied >= cap;
+      box.textContent = isFull
+        ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
+        : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
+      box.style.color = isFull ? '#b91c1c' : '';
+    }
+  
+    box.style.display='';
   }
-  
+
   // ★ 디비전 선택 상태에 따라 '대기팀' UI를 노출/숨김
   function updateWaitlistUI(){
     const wrap = $('#waitlistWrap');
@@ -1488,6 +1498,10 @@ $('#submitBtn').addEventListener('click', async ()=>{
     }
   }
 
+  // 첫 로딩 시에도 힌트/대기 UI 상태 1회 동기화
+  updateDivisionHint();
+  updateWaitlistUI();
+  
   (async function init(){ await boot(); })();
 
 </script>
