@@ -773,7 +773,7 @@ async function loadTournaments(){
   
   renderTournamentList();
   renderTourFilter();
-  }
+}
 
 function tourCard(t){
   const id = t.tourId || t.TourID;
@@ -885,51 +885,47 @@ function rowTeam(v){
   </tr>`;
 }
 
+// loadTeams 보강 버전
 async function loadTeams(){
   const tourId = ($('#tourFilter').value || '').trim();
   const j = await getJSON(apiUrl('teams', tourId ? { tourId } : {}));
-  
-  // ▼ (1) 원본 rows 확보 (응답 포맷 다형성 대응)
+
   let rowsAll =
       Array.isArray(j?.rows)       ? j.rows
     : Array.isArray(j?.data?.rows) ? j.data.rows
     : Array.isArray(j?.data)       ? j.data
     : [];
-  
-  // 실패/권한 문제 힌트
-  if (!rowsAll.length && (j && j.ok === false || j.error || j.raw)) {
+
+  if (!rowsAll.length && (j?.ok === false || j?.error || j?.raw)) {
     console.warn('[teams] 응답 이상:', j);
     setHealth('#ef4444', '팀 목록 응답 오류/권한 문제 의심: ' + (j.error || '응답 비정상'));
   }
-  
+
   if (tourId) rowsAll = rowsAll.filter(r => String(r.tourId || '').trim() === tourId);
 
-  // ▼ (2) 디비전별 팀수 집계 생성 (검색과 무관하게 전체 집계)
   const counts = {};
-  rowsAll.forEach(r=>{
+  rowsAll.forEach(r => {
     const v = normalizeTeamRow(r);
     const key = getDivKeyForCount(v);
-    if(!key) return;
-    counts[key] = (counts[key]||0) + 1;
+    if (key) counts[key] = (counts[key] || 0) + 1;
   });
-  DIV_COUNTS = counts;       // ★ 전역에 반영 (칩 UI에서 사용)
-  refreshDivUI();            // ★ 칩 UI를 현재 팀수로 재렌더
+  DIV_COUNTS = counts;
+  refreshDivUI();
 
-  // ▼ (3) 여기서부터는 “표 렌더링용 rows”(검색 적용)
   let rows = rowsAll.slice();
-  const q=($('#searchText').value||'').trim().toLowerCase();
-  if(q){
-    rows=rows.filter(r=>{
-      const v=normalizeTeamRow(r);
-      return [v.tourName,v.region,v.teamName,v.managerName,v.managerPhone,v.category,v.division].join(' ').toLowerCase().includes(q);
+  const q = ($('#searchText').value || '').trim().toLowerCase();
+  if (q) {
+    rows = rows.filter(r => {
+      const v = normalizeTeamRow(r);
+      return [v.tourName,v.region,v.teamName,v.managerName,v.managerPhone,v.category,v.division]
+               .join(' ').toLowerCase().includes(q);
     });
   }
 
   document.getElementById('teamsTbody').innerHTML =
-    rows.map(r=>rowTeam(normalizeTeamRow(r))).join('') ||
+    rows.map(r => rowTeam(normalizeTeamRow(r))).join('') ||
     `<tr><td colspan="6" class="muted">데이터 없음</td></tr>`;
 
-  /* 선택된 대회 표시 (생략: 기존 코드 그대로) */
   (function(){
     const box = document.getElementById('selectedTourInfo');
     if (!box) return;
