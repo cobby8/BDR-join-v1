@@ -222,6 +222,14 @@
           <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
           <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
           <div class="muted" id="divCapHint" style="display:none"></div> <!-- ★ 추가 -->
+          <!-- ★★★ 대기팀 접수 UI (정원 마감 시 노출) ★★★ -->
+          <div id="waitlistWrap" style="display:none; margin-top:8px">
+            <label style="display:flex; gap:8px; align-items:center; font-weight:700">
+              <input type="checkbox" id="waitlistChk" />
+              정원이 찬 경우 <span style="display:inline-block;border:1px solid #e6ecf5;border-radius:999px;padding:6px 10px;background:#fbfdff;">대기팀으로 신청</span>
+            </label>
+            <div class="muted" id="waitlistMsg" style="margin-top:4px"></div>
+          </div>
         </div>
       </div>
 
@@ -698,6 +706,14 @@ $('#tourSelect').addEventListener('change', async (e) => {
     return Number.isFinite(n) ? n : null;
   }
 
+    // ★ 해당 디비전이 정원 마감인지 판단
+  function isDivisionFull(cat, dv){
+    const cap = capFor(cat, dv);
+    if (cap == null) return false;                 // 정원 설정이 없으면 마감 아님
+    const applied = appliedFor(cat, dv);
+    return applied >= cap;                         // 현재 신청팀수 >= 정원 → 마감
+  }
+
   /* ★ 추가: divCaps 읽기(문자/객체 호환) */
   function getDivCapsObj(){
     if(!currentTour) return {};
@@ -739,10 +755,41 @@ $('#tourSelect').addEventListener('change', async (e) => {
     }else{
       const left = Math.max(0, cap - applied);
       box.textContent = applied >= cap
+      if (applied >= cap) box.style.color = '#b91c1c'; else box.style.color = '';
         ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
         : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
+      
     }
     box.style.display='';
+  }
+  
+  // ★ 디비전 선택 상태에 따라 '대기팀' UI를 노출/숨김
+  function updateWaitlistUI(){
+    const wrap = $('#waitlistWrap');
+    const msg  = $('#waitlistMsg');
+    const chk  = $('#waitlistChk');
+    if (!wrap || !msg || !chk) return;
+
+    const cat = $('#category').value || '';
+    const dv  = $('#division').value  || '';
+
+    // 기본 숨김
+    if (!dv || !cat) {
+      wrap.style.display = 'none';
+      chk.checked = false;
+      msg.textContent = '';
+      return;
+    }
+
+    const full = isDivisionFull(cat, dv);
+    if (full){
+      wrap.style.display = '';
+      msg.textContent = '현재 디비전은 모집정원에 도달하여 "대기팀"으로만 접수할 수 있어요. 체크 시 대기순번이 부여됩니다.';
+    } else {
+      wrap.style.display = 'none';
+      chk.checked = false;
+      msg.textContent = '';
+    }
   }
 
   function resetCategoryDivisionUI(){
@@ -768,6 +815,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
   categorySelect.addEventListener('change',e=>{
     /* ★ 추가: 디비전 선택 바뀔 때 힌트 갱신 */
     divisionSelect.addEventListener('change', updateDivisionHint);
+    divisionSelect.addEventListener('change', updateWaitlistUI);  // ★ 추가
     const cat=e.target.value;
     divisionSelect.innerHTML='';
     if(!currentTour || !cat){
@@ -784,17 +832,18 @@ $('#tourSelect').addEventListener('change', async (e) => {
     divisionSelect.disabled=false;
     divisionSelect.appendChild(new Option('선택',''));
     arr.forEach(dv=>{
-      const label = formatDivisionLabel(cat, dv);
-      const opt = new Option(label, dv);
-      const cap = capFor(cat, dv);
+      const label   = formatDivisionLabel(cat, dv);
       const applied = appliedFor(cat, dv);
-      if (cap!=null && applied >= cap) {
-        opt.disabled = true;               // 정원 도달 시 선택 불가
-        opt.textContent = label + ' [마감]';
-      }
+      const cap     = capFor(cat, dv);
+      const full    = (cap!=null && applied >= cap);
+
+      const opt = new Option(full ? (label + ' [마감]') : label, dv);
+      // ★ 비활성화하지 않고, 상태만 data-full로 표기해 둠
+      opt.dataset.full = full ? '1' : '0';
       divisionSelect.appendChild(opt);
     });
     updateDivisionHint();
+    updateWaitlistUI();     // ★ 대기팀 UI 갱신
   });
 
   /* ===== 유니폼 SVG/색상 ===== */
@@ -934,10 +983,28 @@ $('#tourSelect').addEventListener('change', async (e) => {
       if(!ok) show('필수 항목을 확인해 주세요');
     }
     if(stepId==='step2'){
-      const cat=$('#category'), div=$('#division');
-      setErr(cat,'errCategory',!cat.value); setErr(div,'errDivision',!div.value);
-      ok=!!(cat.value&&div.value);
-      if(!ok) show('종별/디비전을 선택해 주세요');
+      const catSel=$('#category'), divSel=$('#division');
+      setErr(catSel,'errCategory',!catSel.value); 
+      setErr(divSel,'errDivision',!divSel.value);
+
+      ok = !!(catSel.value && divSel.value);
+      if(!ok){
+        show('종별/디비전을 선택해 주세요');
+        return ok;
+      }
+
+      // ★ 정원 마감 디비전이면 대기팀 체크 필수
+      const cat = catSel.value;
+      const dv  = divSel.value;
+      if (isDivisionFull(cat, dv)){
+        const wl = $('#waitlistChk');
+        if (!wl || !wl.checked){
+          show('해당 디비전은 마감되었습니다. [대기팀으로 신청]을 체크해야 진행할 수 있어요.');
+          // 시각적 힌트
+          $('#waitlistWrap')?.scrollIntoView({behavior:'smooth', block:'center'});
+          return false;
+        }
+      }
     }
     return ok;
   }
@@ -1343,6 +1410,9 @@ $('#submitBtn').addEventListener('click', async ()=>{
       division: $('#division').value,
       uniformHome: $('#uniformHome').value.trim(),
       uniformAway: $('#uniformAway').value.trim()
+      ,
+      waitlist: !!$('#waitlistChk')?.checked            // ★ 대기팀 신청 여부
+      // statusWanted: $('#waitlistChk')?.checked ? '대기' : '정상' // (원하면 함께 전송)
     };
     const players=$$('.player-card').map(card=>{
       const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
