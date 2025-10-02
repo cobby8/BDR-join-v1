@@ -829,7 +829,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
   // ★ 대기팀 칩 버튼 동작(클릭/키보드) + 상태 동기화
-  (function setupWaitlistToggle(){
+  function setupWaitlistToggle(){
     const btn = $('#waitlistBtn');
     const chk = $('#waitlistChk');
     if(!btn || !chk) return;
@@ -845,17 +845,6 @@ $('#tourSelect').addEventListener('change', async (e) => {
     });
     chk.addEventListener('change', sync);
   })();
-
-    const full = isDivisionFull(cat, dv);
-    if (full){
-      wrap.style.display = '';
-      msg.textContent = '현재 디비전은 모집정원에 도달하여 "대기팀"으로만 접수할 수 있어요. 체크 시 대기순번이 부여됩니다.';
-    } else {
-      wrap.style.display = 'none';
-      chk.checked = false;
-      msg.textContent = '';
-    }
-  }
 
   function resetCategoryDivisionUI(){
     categorySelect.value = '';
