@@ -753,19 +753,26 @@ async function loadTournaments(){
              : Array.isArray(j.data?.rows) ? j.data.rows
              : Array.isArray(j.data) ? j.data
              : [];
+  
+  // 응답 이상/권한 문제 가시화
+  if (!rows.length && (j && j.ok === false || j.error || j.raw)) {
+    console.warn('[tournaments] 응답 이상:', j);
+    // 상단 점을 빨강으로, 툴팁에 힌트
+    setHealth('#ef4444', '연결 실패/권한 문제 의심: ' + (j.error || '응답 비정상'));
+  }
+  
   TOUR_ARRAY = rows;
   TOURS = {};
   for (const t of TOUR_ARRAY) {
     const id = String((t && (t.tourId || t.TourID)) || '').trim();
     if (id) TOURS[id] = t;
   }
-
-  /* ★ 오늘과 가장 가까운 대회가 위로 오게 정렬 */
+  
+  // 오늘과 가까운 순 정렬
   TOUR_ARRAY.sort(compareTournamentByNearDate);
   
   renderTournamentList();
   renderTourFilter();
-}
 
 function tourCard(t){
   const id = t.tourId || t.TourID;
@@ -789,12 +796,25 @@ function tourCard(t){
 
 function renderTournamentList(){
   const box = $('#tourList');
-  box.innerHTML = (TOUR_ARRAY || []).map(t => tourCard(t)).join('');
+  if (!box) return;
+  
+  const arr = Array.isArray(TOUR_ARRAY) ? TOUR_ARRAY : [];
+  if (!arr.length) {
+    // 빈 상태에서도 사용자에게 원인/해결책 노출
+    box.innerHTML = `
+      <div class="muted" style="padding:8px">
+        대회 데이터가 없습니다.
+        <span style="display:block;margin-top:4px">⚙️ 버튼에서 Web App URL을 확인하세요.</span>
+      </div>`;
+    return;
+  }
+  
+  box.innerHTML = arr.map(t => tourCard(t)).join('');
   box.querySelectorAll('.pill').forEach(el => {
     el.addEventListener('click', async () => {
       if (!(await confirmDiscardIfDirty())) return;
       const id = el.getAttribute('data-id');
-      const t  = TOURS[id] || (TOUR_ARRAY || []).find(x => String((x.tourId || x.TourID) || '') === id) || null;
+      const t  = TOURS[id] || arr.find(x => String((x.tourId || x.TourID) || '') === id) || null;
       CURRENT_TOUR_OBJ = t || null;
       await loadTourToForm(t, true);
       $('#editBtn').disabled = false;
@@ -865,17 +885,23 @@ function rowTeam(v){
 }
 
 async function loadTeams(){
-  const tourId=($('#tourFilter').value||'').trim();
+  const tourId = ($('#tourFilter').value || '').trim();
   const j = await getJSON(apiUrl('teams', tourId ? { tourId } : {}));
   
-  // ▼ (1) 원본 rows 확보 (응답 포맷 여러 형태 대응)
+  // ▼ (1) 원본 rows 확보 (응답 포맷 다형성 대응)
   let rowsAll =
       Array.isArray(j?.rows)       ? j.rows
     : Array.isArray(j?.data?.rows) ? j.data.rows
     : Array.isArray(j?.data)       ? j.data
     : [];
-
-  if(tourId) rowsAll=rowsAll.filter(r=>String(r.tourId||'').trim()===tourId);
+  
+  // 실패/권한 문제 힌트
+  if (!rowsAll.length && (j && j.ok === false || j.error || j.raw)) {
+    console.warn('[teams] 응답 이상:', j);
+    setHealth('#ef4444', '팀 목록 응답 오류/권한 문제 의심: ' + (j.error || '응답 비정상'));
+  }
+  
+  if (tourId) rowsAll = rowsAll.filter(r => String(r.tourId || '').trim() === tourId);
 
   // ▼ (2) 디비전별 팀수 집계 생성 (검색과 무관하게 전체 집계)
   const counts = {};
