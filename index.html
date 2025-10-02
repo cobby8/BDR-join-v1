@@ -829,7 +829,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
   // ★ 대기팀 칩 버튼 동작(클릭/키보드) + 상태 동기화
-  function setupWaitlistToggle(){
+  (function setupWaitlistToggle(){
     const btn = $('#waitlistBtn');
     const chk = $('#waitlistChk');
     if(!btn || !chk) return;
