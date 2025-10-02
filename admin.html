@@ -262,6 +262,7 @@
       <h3 style="margin:0;font-size:16px">대회 관리</h3>
       <div class="toolbar">
         <button class="btn" id="newTourBtn">신규 대회</button>
+        <button class="btn" id="copyTourBtn">기존 대회 복사</button>
         <button class="btn" id="editBtn" disabled>수정</button>
       </div>
     </div>
@@ -617,6 +618,118 @@ function openAdminCodeFloating(onOk){
   cancel.addEventListener('click', closePopover);
   ok.addEventListener('click', ()=>{ const code=pw.value.trim(); if(!code) return alert('관리코드를 입력하세요.'); $('#adminCode').value=code; setLocked(false); if(typeof onOk==='function') onOk(code); closePopover(); });
   openPopoverCentered('관리코드 확인', body, actions);
+}
+
+/* ========= 기존 대회 복사: 팝업 & 적용 ========= */
+function openCopyTourFloating(){
+  // 저장 안 한 변경사항 경고
+  confirmDiscardIfDirty().then(ok=>{
+    if(!ok) return;
+
+    const list = (TOUR_ARRAY||[]).slice().sort(compareTournamentByNearDate);
+    if(!list.length){ alert('복사할 기존 대회가 없습니다.'); return; }
+
+    // 팝업 본문
+    const body = el(`
+      <div>
+        <label>복사할 대회 선택</label>
+        <select id="copySrcSel" style="width:100%;margin:6px 0 10px;padding:10px;border:1px solid #e6ecf5;border-radius:12px"></select>
+
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+          <label class="chip"><input type="checkbox" id="copyDates" checked> 기간/접수기간/수정마감 포함</label>
+          <label class="chip"><input type="checkbox" id="copyPoster" checked> 포스터 포함</label>
+        </div>
+
+        <div class="muted" style="margin-top:8px;line-height:1.4">
+          기본값: 종별(모집팀수), 장소, 참가비/계좌는 복사되며,<br/>
+          <b>투어ID/관리코드/상태</b>는 복사되지 않습니다. 새 대회로 편집 모드가 열립니다.
+        </div>
+      </div>
+    `);
+
+    // 셀렉트 옵션 구성
+    const sel = body.querySelector('#copySrcSel');
+    sel.innerHTML = list.map(t=>{
+      const id = t.tourId || t.TourID || '';
+      const nm = t.name || '(무제)';
+      const period = (t.start||t.end) ? ` · ${toInputDateOnly(t.start)}~${toInputDateOnly(t.end)}` : '';
+      return `<option value="${id}">${nm}${period}</option>`;
+    }).join('');
+
+    // 액션
+    const actions = el(`<div></div>`);
+    const cancel  = el(`<button class="btn">취소</button>`);
+    const ok      = el(`<button class="btn primary">복사</button>`);
+    actions.appendChild(cancel); actions.appendChild(ok);
+    cancel.addEventListener('click', closePopover);
+    ok.addEventListener('click', ()=>{
+      const srcId = sel.value || '';
+      if(!srcId) return alert('대회를 선택하세요.');
+      const opts = {
+        includeDates:  body.querySelector('#copyDates').checked,
+        includePoster: body.querySelector('#copyPoster').checked
+      };
+      closePopover();
+      doCopyFromTournament(srcId, opts);
+    });
+
+    openPopoverCentered('기존 대회 복사', body, actions);
+  });
+}
+
+function doCopyFromTournament(srcId, opts){
+  // 원본 대회 찾기
+  const t = TOURS[srcId] || (TOUR_ARRAY||[]).find(x=>String(x.tourId||x.TourID||'')===String(srcId));
+  if(!t){ alert('원본 대회를 찾을 수 없습니다.'); return; }
+
+  // 유틸
+  const pickFirst = (obj, keys)=>{ for(const k of keys){ if(obj && obj[k]) return obj[k]; } return ''; };
+  const rs = pickFirst(t, ['regStart','reg.start','reg_start','regStartDate','reg.start.date']);
+  const re = pickFirst(t, ['regEnd','reg.end','reg_end','regEndDate','reg.end.date']);
+
+  // 종별/모집팀수 정규화
+  let divSets = Array.isArray(t.divSets) && t.divSets.length
+    ? t.divSets.map(s=>({ group:s.group, divisions:(s.divisions||[]).slice() }))
+    : Object.keys(t.divs||{}).map(g=>({ group:g, divisions:(t.divs[g]||[]).slice() }));
+  const caps = t.divCaps || t.div_caps || {};
+  const places = Array.isArray(t.places) ? t.places.slice() : [];
+
+  // 새 대회 오브젝트 구성 (폼 로드용)
+  const newObj = {
+    tourId: '',  // 신규
+    name: (t.name || '(무제)') + ' (복사)',
+    url:  t.url || '',
+    // 날짜/접수/수정마감은 옵션에 따라 복사
+    start:          opts.includeDates ? (toInputDateOnly(t.start) || '') : '',
+    end:            opts.includeDates ? (toInputDateOnly(t.end)   || '') : '',
+    regStart:       opts.includeDates ? (toInputDT(rs) || '') : '',
+    regEnd:         opts.includeDates ? (toInputDT(re) || '') : '',
+    editDeadlineAt: opts.includeDates ? (toInputDT(t.editDeadlineAt) || '') : '',
+    // 종별/모집팀수/장소/금액
+    divSets,
+    divs: t.divs || {},
+    divCaps: caps,
+    places,
+    fee:     t.fee || '',
+    account: t.account || '',
+    posterId:  opts.includePoster ? (t.posterId  || '') : '',
+    posterUrl: opts.includePoster ? (t.posterUrl || '') : ''
+  };
+
+  // 폼에 로드(편집 모드로)
+  loadTourToForm(newObj, false).then(async ()=>{
+    CURRENT_TOUR_ID = '';                     // 신규 안전장치
+    $('#tourFormTitle').textContent = '대회 복사 (편집중)';
+    $('#adminCode').value = '';               // 관리코드는 새로 입력
+    DIRTY = true;                             // 저장 유도
+
+    // 포스터 미포함 선택 시 미리보기 정리
+    if(!opts.includePoster){
+      POSTER_DATA_URL = '';
+      POSTER_CLEAR = true;
+      await renderPoster();
+    }
+  });
 }
 
 /* ========= 팀수 집계(디비전별) ========= */
@@ -1395,6 +1508,7 @@ document.getElementById('editBtn').addEventListener('click', ()=>{
   if(!CURRENT_TOUR_ID) return alert('수정할 대회를 먼저 선택하세요.');
   openAdminCodeFloating(()=>{ $('#tourFormTitle').textContent='대회 수정 (편집중)'; });
 });
+document.getElementById('copyTourBtn').addEventListener('click', openCopyTourFloating);
 
 document.getElementById('tourFilter').addEventListener('change', async ()=>{
   if(!(await confirmDiscardIfDirty())){ $('#tourFilter').value=''; return; }
