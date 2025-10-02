@@ -357,6 +357,7 @@
       <button class="chip" id="copyPayBtn" type="button">📋 두 줄 모두 복사</button>
     </div>
   </div>
+</div>
 
 <script>
   /* ===== 연결 설정/헬퍼 ===== */
@@ -688,6 +689,10 @@ $('#tourSelect').addEventListener('change', async (e) => {
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
+    // ★ division 변경 시 한 번만 연결
+    divisionSelect.addEventListener('change', updateDivisionHint);
+    divisionSelect.addEventListener('change', updateWaitlistUI);
+
   /* ★ 키 정규화 + 카테고리/무접두사 양쪽 매칭 */
   function normKey(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
   
@@ -750,17 +755,16 @@ $('#tourSelect').addEventListener('change', async (e) => {
     const applied = appliedFor(cat, dv);
     const cap = capFor(cat, dv);
   
-    if(cap==null){
-      box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
-    }else{
-      const left = Math.max(0, cap - applied);
-      box.textContent = applied >= cap
-      if (applied >= cap) box.style.color = '#b91c1c'; else box.style.color = '';
-        ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
-        : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
-      
-    }
-    box.style.display='';
+  if (cap == null) {
+    box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
+    box.style.color = '';
+  } else {
+    const left = Math.max(0, cap - applied);
+    const isFull = applied >= cap;
+    box.textContent = isFull
+      ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
+      : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
+    box.style.color = isFull ? '#b91c1c' : '';
   }
   
   // ★ 디비전 선택 상태에 따라 '대기팀' UI를 노출/숨김
@@ -813,9 +817,6 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
   categorySelect.addEventListener('change',e=>{
-    /* ★ 추가: 디비전 선택 바뀔 때 힌트 갱신 */
-    divisionSelect.addEventListener('change', updateDivisionHint);
-    divisionSelect.addEventListener('change', updateWaitlistUI);  // ★ 추가
     const cat=e.target.value;
     divisionSelect.innerHTML='';
     if(!currentTour || !cat){
