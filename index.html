@@ -1,3 +1,5 @@
+
+나의 말:
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -79,20 +81,6 @@
   .chip:disabled{opacity:.45;border-style:solid;cursor:not-allowed}
   .chip small{opacity:.8;font-weight:600}
   .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;margin-bottom: 10px;}
-  /* ★ 대기팀 칩 버튼 */
-  .chip-toggle{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:8px 14px; border:1px solid #e6ecf5; background:#fbfdff;
-    border-radius:999px; cursor:pointer; font-weight:700;
-    user-select:none;
-  }
-  .chip-toggle.on{
-    border-color:#1769ff40; background:#eef5ff; box-shadow: inset 0 0 0 2px #1769ff22;
-  }
-  .chip-toggle .vchk{
-    width:16px; height:16px; accent-color: var(--blue);
-    margin:0;
-  }
 </style>
 </head>
 <body>
@@ -236,14 +224,6 @@
           <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
           <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
           <div class="muted" id="divCapHint" style="display:none"></div> <!-- ★ 추가 -->
-          <!-- ★★★ 대기팀 접수 UI (정원 마감 시 노출) ★★★ -->
-          <div id="waitlistWrap" style="display:none; margin-top:8px">
-            <button id="waitlistBtn" type="button" class="chip-toggle" aria-pressed="false" title="대기팀으로 신청">
-              <input type="checkbox" id="waitlistChk" class="vchk" />
-              <span>대기팀으로 신청</span>
-            </button>
-            <div class="muted" id="waitlistMsg" style="margin-top:6px"></div>
-          </div>
         </div>
       </div>
 
@@ -371,7 +351,6 @@
       <button class="chip" id="copyPayBtn" type="button">📋 두 줄 모두 복사</button>
     </div>
   </div>
-</div>
 
 <script>
   /* ===== 연결 설정/헬퍼 ===== */
@@ -560,7 +539,7 @@
         // 카테고리도 있으면 "cat division" 키로도 함께 카운트
         const cat = String((r.category ?? r.Category ?? r['종별'] ?? '')).trim();
         if (cat) {
-            const k2 = `${cat} ${division}`.replace(/\s+/g,' ').trim();
+            const k2 = ${cat} ${division}.replace(/\s+/g,' ').trim();
             CUR_DIV_COUNT[k2] = (CUR_DIV_COUNT[k2] || 0) + 1;
         }
       }
@@ -584,14 +563,14 @@
       TOUR_MAP[t.TourID||t.tourId]=t;
       const opt=document.createElement('option');
       opt.value=t.TourID||t.tourId;
-      const period=(t.start||t.end)?` · ${fmtDate(t.start)}~${fmtDate(t.end)}`:''; 
-      opt.textContent=`${t.name}${t.status?' ('+t.status+')':''}${period}`;
+      const period=(t.start||t.end)? · ${fmtDate(t.start)}~${fmtDate(t.end)}:''; 
+      opt.textContent=${t.name}${t.status?' ('+t.status+')':''}${period};
       sel.appendChild(opt);
     });
   }
   const pad2=n=>String(n).padStart(2,'0');
-  const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
-  const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+  const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}; };
+  const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return ${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}; };
 
   async function fetchTourMeta(tourId){
     if(!tourId) return null;
@@ -607,7 +586,7 @@
   }
 
   function summarizeDivs(divs){
-    try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?`${cat}: ${arr.join('·')}`:`${cat}`; }); return parts.length?parts.join(' / '):'-'; }
+    try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?${cat}: ${arr.join('·')}:${cat}; }); return parts.length?parts.join(' / '):'-'; }
     catch{ return '-'; }
   }
   function parsePlaces(p){
@@ -662,15 +641,15 @@
   function renderTourInfo(t){
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
     if(!t){ box.style.display='none'; box.innerHTML=''; if(nextbar) nextbar.style.display='none'; return; }
-    box.innerHTML = `<div class="kv">
+    box.innerHTML = <div class="kv">
       <b>대회명</b><div>${t.name||'-'}</div>
       <b>종별</b><div>${summarizeDivs(t.divs)}</div>
-      <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
+      <b>일시</b><div>${(t.start||t.end)?${fmtDate(t.start)} ~ ${fmtDate(t.end)}:'일정미정'}</div>
       <b>장소</b><div>${parsePlaces(t.places)}</div>
-      <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
+      <b>접수기간</b><div>${(t.regStart||t.regEnd)?${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}:'미정'}</div>
       <b>수정 마감</b><div id="editDeadlineCell">${t.editDeadlineAt ? fmtDT(t.editDeadlineAt) : '— (미설정)'}</div>
-      ${(!t.url || /^data:image\//i.test(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`}
-    </div>`;
+      ${(!t.url || /^data:image\//i.test(t.url)) ? '' : <b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>}
+    </div>;
     box.style.display='block';
     if(nextbar) nextbar.style.display='flex';
   }
@@ -703,34 +682,22 @@ $('#tourSelect').addEventListener('change', async (e) => {
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
-    // ★ division 변경 시 한 번만 연결
-    divisionSelect.addEventListener('change', updateDivisionHint);
-    divisionSelect.addEventListener('change', updateWaitlistUI);
-
   /* ★ 키 정규화 + 카테고리/무접두사 양쪽 매칭 */
   function normKey(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
   
   function appliedFor(cat, dv){
     const k1 = normKey(dv);                // ex) "U12" 또는 "i2 U12"
-    const k2 = normKey(`${cat} ${dv}`);    // ex) "i2 U12"
+    const k2 = normKey(${cat} ${dv});    // ex) "i2 U12"
     return (CUR_DIV_COUNT[k1] ?? CUR_DIV_COUNT[k2] ?? 0);
   }
   
   function capFor(cat, dv){
     const caps = getDivCapsObj();
     const k1 = normKey(dv);
-    const k2 = normKey(`${cat} ${dv}`);
+    const k2 = normKey(${cat} ${dv});
     const raw = (caps && (caps[k1] ?? caps[k2]));
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
-  }
-
-    // ★ 해당 디비전이 정원 마감인지 판단
-  function isDivisionFull(cat, dv){
-    const cap = capFor(cat, dv);
-    if (cap == null) return false;                 // 정원 설정이 없으면 마감 아님
-    const applied = appliedFor(cat, dv);
-    return applied >= cap;                         // 현재 신청팀수 >= 정원 → 마감
   }
 
   /* ★ 추가: divCaps 읽기(문자/객체 호환) */
@@ -756,95 +723,29 @@ $('#tourSelect').addEventListener('change', async (e) => {
   function formatDivisionLabel(cat, dv){
     const applied = appliedFor(cat, dv);
     const cap = capFor(cat, dv);
-    return (cap!=null) ? `${dv} (${applied}/${cap})` : `${dv} (${applied}/-)`;
+    return (cap!=null) ? ${dv} (${applied}/${cap}) : ${dv} (${applied}/-);
   }
   
   function updateDivisionHint(){
     const box = $('#divCapHint');
     if(!box) return;
-  
     const cat = $('#category').value || '';
     const dv  = $('#division').value  || '';
-  
-    if(!dv){
-      box.style.display='none';
-      box.textContent='';
-      box.style.color='';
-      return;
-    }
+    if(!dv){ box.style.display='none'; box.textContent=''; return; }
   
     const applied = appliedFor(cat, dv);
-    const cap     = capFor(cat, dv);
+    const cap = capFor(cat, dv);
   
-    if(cap == null){
-      box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
-      box.style.color = '';
+    if(cap==null){
+      box.textContent = 현재 신청팀수: ${applied}팀 (모집정원 미설정);
     }else{
-      const left  = Math.max(0, cap - applied);
-      const isFull = applied >= cap;
-      box.textContent = isFull
-        ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
-        : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
-      box.style.color = isFull ? '#b91c1c' : '';
+      const left = Math.max(0, cap - applied);
+      box.textContent = applied >= cap
+        ? 현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨
+        : 현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀);
     }
-  
     box.style.display='';
   }
-
-  // ★ 디비전 선택 상태에 따라 '대기팀' UI를 노출/숨김
-  function updateWaitlistUI(){
-    const wrap = $('#waitlistWrap');
-    const msg  = $('#waitlistMsg');
-    const chk  = $('#waitlistChk');
-    const btn  = $('#waitlistBtn');
-    if (!wrap || !msg || !chk || !btn) return;
-  
-    const cat = $('#category').value || '';
-    const dv  = $('#division').value  || '';
-  
-    // 기본 숨김
-    if (!dv || !cat) {
-      wrap.style.display = 'none';
-      chk.checked = false;
-      btn.classList.remove('on');
-      btn.setAttribute('aria-pressed','false');
-      msg.textContent = '';
-      return;
-    }
-  
-    const full = isDivisionFull(cat, dv);
-    if (full){
-      wrap.style.display = '';
-      msg.textContent = '현재 디비전은 모집정원에 도달하여 "대기팀"으로만 접수할 수 있어요. 체크 시 대기순번이 부여됩니다.';
-      // 현재 체크 상태 반영
-      btn.classList.toggle('on', chk.checked);
-      btn.setAttribute('aria-pressed', chk.checked ? 'true' : 'false');
-    } else {
-      wrap.style.display = 'none';
-      chk.checked = false;
-      btn.classList.remove('on');
-      btn.setAttribute('aria-pressed','false');
-      msg.textContent = '';
-    }
-  }
-
-  // ★ 대기팀 칩 버튼 동작(클릭/키보드) + 상태 동기화
-  (function setupWaitlistToggle(){
-    const btn = $('#waitlistBtn');
-    const chk = $('#waitlistChk');
-    if(!btn || !chk) return;
-  
-    const sync = () => {
-      btn.classList.toggle('on', chk.checked);
-      btn.setAttribute('aria-pressed', chk.checked ? 'true' : 'false');
-    };
-  
-    btn.addEventListener('click', () => { chk.checked = !chk.checked; sync(); });
-    btn.addEventListener('keydown', (e) => {
-      if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); chk.checked = !chk.checked; sync(); }
-    });
-    chk.addEventListener('change', sync);
-  })();
 
   function resetCategoryDivisionUI(){
     categorySelect.value = '';
@@ -867,6 +768,8 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
   categorySelect.addEventListener('change',e=>{
+    /* ★ 추가: 디비전 선택 바뀔 때 힌트 갱신 */
+    divisionSelect.addEventListener('change', updateDivisionHint);
     const cat=e.target.value;
     divisionSelect.innerHTML='';
     if(!currentTour || !cat){
@@ -883,23 +786,22 @@ $('#tourSelect').addEventListener('change', async (e) => {
     divisionSelect.disabled=false;
     divisionSelect.appendChild(new Option('선택',''));
     arr.forEach(dv=>{
-      const label   = formatDivisionLabel(cat, dv);
+      const label = formatDivisionLabel(cat, dv);
+      const opt = new Option(label, dv);
+      const cap = capFor(cat, dv);
       const applied = appliedFor(cat, dv);
-      const cap     = capFor(cat, dv);
-      const full    = (cap!=null && applied >= cap);
-
-      const opt = new Option(full ? (label + ' [마감]') : label, dv);
-      // ★ 비활성화하지 않고, 상태만 data-full로 표기해 둠
-      opt.dataset.full = full ? '1' : '0';
+      if (cap!=null && applied >= cap) {
+        opt.disabled = true;               // 정원 도달 시 선택 불가
+        opt.textContent = label + ' [마감]';
+      }
       divisionSelect.appendChild(opt);
     });
     updateDivisionHint();
-    updateWaitlistUI();     // ★ 대기팀 UI 갱신
   });
 
   /* ===== 유니폼 SVG/색상 ===== */
   function renderJersey(svgEl, hex){
-    svgEl.innerHTML = `
+    svgEl.innerHTML = 
       <defs><filter id="shadow" x="-20%" y="-20%" width="140%"><feDropShadow dx="0" dy="2" stdDeviation="2"></feDropShadow></filter></defs>
       <g filter="url(#shadow)">
         <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z" fill="${hex}" stroke="#111" stroke-width="1.5"/>
@@ -907,7 +809,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
         <rect x="38" y="60" width="44" height="8" rx="4" fill="rgba(255,255,255,0.25)"/>
         <path d="M35 34 L35 24" stroke="#111" stroke-width="1"/>
         <path d="M85 34 L85 24" stroke="#111" stroke-width="1"/>
-      </g>`;
+      </g>;
   }
   function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
   function relLum({r,g,b}){ const c=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
@@ -963,7 +865,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
     const div=document.createElement('div');
     div.className='player-card';
     div.style.cssText='border:1px dashed #e6ecf5;border-radius:14px;padding:10px;margin-top:10px;background:#fafcff';
-    div.innerHTML = `<div class="row row-3">
+    div.innerHTML = <div class="row row-3">
       <div><label>선수 이름</label><input data-key="name" placeholder="이름"></div>
       <div><label>등번호</label><input data-key="number" inputmode="numeric" placeholder="예: 7"></div>
       <div><label>포지션</label><select data-key="position"><option value="">선택</option><option>G</option><option>F</option><option>C</option></select></div>
@@ -972,7 +874,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
       <div><label>생년월일</label><input data-key="birth" type="date"></div>
       <div><label>선출여부</label><select data-key="elite"><option value="">선택</option><option>선출</option><option>비선출</option></select></div>
     </div>
-    <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>`;
+    <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>;
     div.querySelector('.remove').addEventListener('click',()=>div.remove());
     return div;
   }
@@ -984,8 +886,8 @@ $('#tourSelect').addEventListener('change', async (e) => {
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
-  const SAMPLE=`홍길동/7/G/010302/비선출
-김철수/11/F/000615/선출`;
+  const SAMPLE=홍길동/7/G/010302/비선출
+김철수/11/F/000615/선출;
   $('#copySampleBtn').addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText(SAMPLE); show('샘플이 복사되었습니다. 붙여넣기 후 적용을 누르세요.'); }
     catch(e){ const ta=document.createElement('textarea'); ta.value=SAMPLE; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); show('샘플이 복사되었습니다.'); }
@@ -994,8 +896,8 @@ $('#tourSelect').addEventListener('change', async (e) => {
   function yyToYYYY(yy){ const n=parseInt(yy,10); if(isNaN(n)) return '2000'; return (n>=50?'19':'20') + (n<10?('0'+n):String(n)); }
   function normalizeBirth(s){
     const v=(s||'').replace(/\D/g,'');
-    if (v.length===6)  return `${yyToYYYY(v.slice(0,2))}-${v.slice(2,4)}-${v.slice(4,6)}`;
-    if (v.length===8)  return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
+    if (v.length===6)  return ${yyToYYYY(v.slice(0,2))}-${v.slice(2,4)}-${v.slice(4,6)};
+    if (v.length===8)  return ${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)};
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     return '';
   }
@@ -1034,28 +936,10 @@ $('#tourSelect').addEventListener('change', async (e) => {
       if(!ok) show('필수 항목을 확인해 주세요');
     }
     if(stepId==='step2'){
-      const catSel=$('#category'), divSel=$('#division');
-      setErr(catSel,'errCategory',!catSel.value); 
-      setErr(divSel,'errDivision',!divSel.value);
-
-      ok = !!(catSel.value && divSel.value);
-      if(!ok){
-        show('종별/디비전을 선택해 주세요');
-        return ok;
-      }
-
-      // ★ 정원 마감 디비전이면 대기팀 체크 필수
-      const cat = catSel.value;
-      const dv  = divSel.value;
-      if (isDivisionFull(cat, dv)){
-        const wl = $('#waitlistChk');
-        if (!wl || !wl.checked){
-          show('해당 디비전은 마감되었습니다. [대기팀으로 신청]을 체크해야 진행할 수 있어요.');
-          // 시각적 힌트
-          $('#waitlistWrap')?.scrollIntoView({behavior:'smooth', block:'center'});
-          return false;
-        }
-      }
+      const cat=$('#category'), div=$('#division');
+      setErr(cat,'errCategory',!cat.value); setErr(div,'errDivision',!div.value);
+      ok=!!(cat.value&&div.value);
+      if(!ok) show('종별/디비전을 선택해 주세요');
     }
     return ok;
   }
@@ -1135,7 +1019,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
       const list=json.items||[]; if(list.length===0){ show('일치하는 신청서가 없습니다.'); $('#ownerResult').style.display='none'; return; }
       const sel=$('#ownerTeamSel'); sel.innerHTML='';
       list.forEach(it=>{
-        const txt=`${it.teamNameKo||'(팀명없음)'} / ${it.tourName||'-'} ${it.category?(' / '+it.category):''}${it.division?(' '+it.division):''}`;
+        const txt=${it.teamNameKo||'(팀명없음)'} / ${it.tourName||'-'} ${it.category?(' / '+it.category):''}${it.division?(' '+it.division):''};
         sel.appendChild(new Option(txt, it.teamId));
       });
       $('#ownerResult').style.display='block';
@@ -1212,7 +1096,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
     sel.innerHTML='<option value="">대회를 선택하세요</option>';
     Object.keys(TOUR_MAP).forEach(id=>{
       const t=TOUR_MAP[id];
-      sel.appendChild(new Option(`${t.name}${t.status?' ('+t.status+')':''}`, id));
+      sel.appendChild(new Option(${t.name}${t.status?' ('+t.status+')':''}, id));
     });
   }
   $('#ownerCloneBtn').addEventListener('click', async ()=>{
@@ -1348,7 +1232,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
 function buildPayText(fee, acct){
-  const feeLine  = `참가비 ${String(fee||'').trim()||'-'}원`;
+  const feeLine  = 참가비 ${String(fee||'').trim()||'-'}원;
   let acctLine = String(acct||'').trim();
   if(!acctLine){
     acctLine = '은행명 계좌번호 예금주';
@@ -1358,7 +1242,7 @@ function buildPayText(fee, acct){
                        .trim();
     acctLine = acctLine.replace(/(예금주)\s*[:：]\s*/g,'$1 ');
   }
-  return `${feeLine}\n${acctLine}`;
+  return ${feeLine}\n${acctLine};
 }
 
 function showFloatingPanelAfterSubmit(){
@@ -1413,7 +1297,7 @@ $('#submitBtn').addEventListener('click', async ()=>{
       const isEditing = Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode);
 
       const pad2=n=>String(n).padStart(2,'0');
-      const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+      const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return ${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}; };
 
       if (meta && meta.editDeadlineAt) {
         if (isPast(meta.now, meta.editDeadlineAt)) {
@@ -1424,8 +1308,8 @@ $('#submitBtn').addEventListener('click', async ()=>{
           return;
         } else {
           const msg = isEditing
-            ? `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?`
-            : `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?`;
+            ? 수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?
+            : 수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?;
           if (!confirm(msg)) {
             btn.disabled = false;
             btn.textContent = originalText;
@@ -1451,7 +1335,7 @@ $('#submitBtn').addEventListener('click', async ()=>{
     const team={
       tourId: $('#tourSelect').value.trim(),
       tourName: (currentTour&&currentTour.name)||'',
-      region: province && city ? `${province} ${city}` : '',
+      region: province && city ? ${province} ${city} : '',
       province, city,
       teamNameKo: $('#teamNameKo').value.trim(),
       teamNameEn: $('#teamNameEn').value.trim(),
@@ -1461,12 +1345,9 @@ $('#submitBtn').addEventListener('click', async ()=>{
       division: $('#division').value,
       uniformHome: $('#uniformHome').value.trim(),
       uniformAway: $('#uniformAway').value.trim()
-      ,
-      waitlist: !!$('#waitlistChk')?.checked            // ★ 대기팀 신청 여부
-      // statusWanted: $('#waitlistChk')?.checked ? '대기' : '정상' // (원하면 함께 전송)
     };
     const players=$$('.player-card').map(card=>{
-      const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
+      const get=k=> (card.querySelector([data-key="${k}"])?.value || '').trim();
       return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
     });
 
@@ -1490,7 +1371,7 @@ $('#submitBtn').addEventListener('click', async ()=>{
       show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
 
       if (!(ownerEdit || (editTeamId&&editCode))){
-        const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+        const editUrl = json.editUrl || ${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)};
         $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
         const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
       }
@@ -1538,10 +1419,6 @@ $('#submitBtn').addEventListener('click', async ()=>{
     }
   }
 
-  // 첫 로딩 시에도 힌트/대기 UI 상태 1회 동기화
-  updateDivisionHint();
-  updateWaitlistUI();
-  
   (async function init(){ await boot(); })();
 
 </script>
