@@ -56,7 +56,6 @@
   .jersey{width:100%;height:180px}
   .edit-panel{margin-top:14px;border:1px dashed #dbe5f3;background:#f7fbff;border-radius:14px;padding:12px}
 
-  /* ===== Modal (주의사항 확인: 취소) ===== */
   .modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;justify-content:center;z-index:50}
   .modal-backdrop.show{display:flex}
   .modal{width:min(560px,92vw);background:#fff;border-radius:18px;box-shadow:0 20px 80px rgba(0,0,0,.25);padding:18px}
@@ -67,7 +66,6 @@
   .btn-outline{border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer}
   .btn-danger-solid{background:#ef4444;color:#fff;border:none;border-radius:12px;padding:10px 14px;cursor:pointer}
 
-  /* ===== 제출 완료 플로팅 패널 ===== */
   .floating-done{position:fixed;right:16px;bottom:16px;z-index:60;display:none}
   .floating-done.show{display:block;animation:pop .18s ease-out}
   @keyframes pop{from{transform:translateY(6px) scale(.98);opacity:.0}to{transform:translateY(0) scale(1);opacity:1}}
@@ -78,7 +76,7 @@
   .chip{border:1px dashed rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;font-weight:700}
   .chip:disabled{opacity:.45;border-style:solid;cursor:not-allowed}
   .chip small{opacity:.8;font-weight:600}
-  .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;margin-bottom: 10px;}
+  .paytext{background: rgba(255,255,255,.08);border-radius: 12px;padding: 10px 12px;white-space: pre-line;font-family: ui-monospace, Menlo, Consolas, "SFMono-Regular", monospace;font-size: 13px;line-height: 1.5;}
 </style>
 </head>
 <body>
@@ -100,7 +98,6 @@
       <label>대회 선택</label>
       <select id="tourSelect"><option value="">대회를 선택하세요</option></select>
 
-      <!-- 포스터 -->
       <div id="posterWrap" class="poster-wrap" aria-live="polite">
         <img id="posterImg" alt="대회 포스터" referrerpolicy="no-referrer">
         <div class="caption">대회 포스터</div>
@@ -109,7 +106,7 @@
       <div id="tourInfo" class="muted cardish" style="display:none;margin-top:8px"></div>
       <div class="muted">※ 대회를 선택하면 해당 대회에 설정된 <b>종별/디비전</b>만 선택할 수 있어요.</div>
 
-      <!-- 신청서 수정/복제/취소(본인인증) -->
+      <!-- 본인인증 패널 -->
       <div class="edit-panel">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
           <div style="flex:1;min-width:220px">
@@ -145,7 +142,7 @@
           </div>
         </div>
 
-        <div class="muted">※ 이름+전화번호로 본인 인증 후 기존 신청서를 <b>수정/추가신청/참가취소</b>할 수 있어요.</div>
+        <div class="muted">※ 이름+전화번호로 기존 신청서를 <b>수정/추가신청/참가취소</b>할 수 있어요.</div>
       </div>
 
       <div class="nextbar" id="nextbar0" style="display:none">
@@ -221,7 +218,7 @@
           <label>디비전</label>
           <select id="division" disabled><option value="">종별을 먼저 선택하세요</option></select>
           <div class="error-note" id="errDivision" style="display:none">디비전을 선택해주세요</div>
-          <div class="muted" id="divCapHint" style="display:none"></div> <!-- ★ 추가 -->
+          <div class="muted" id="divCapHint" style="display:none"></div>
         </div>
       </div>
 
@@ -273,7 +270,6 @@
     <div class="step" id="step4">
       <div class="section-title">④ 선수 명단</div>
 
-      <!-- 상단 툴바(붙여넣기/샘플만 유지) -->
       <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-sm" id="togglePasteBtn" type="button">명단 붙여넣기</button>
         <button class="btn-sm" id="copySampleBtn" type="button">샘플복사</button>
@@ -290,10 +286,8 @@
         </div>
       </div>
 
-      <!-- 입력 필드 -->
       <div id="players"></div>
 
-      <!-- ▼▼▼ 요청대로 '선수 추가 +' 버튼을 입력 필드 아래로 이동 ▼▼▼ -->
       <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap; margin-top:10px;">
         <button class="btn-sm" id="addPlayerBtn" type="button">선수 추가 +</button>
       </div>
@@ -319,7 +313,7 @@
   </div>
 </div>
 
-<!-- ===== 참가취소 모달 ===== -->
+<!-- 참가취소 모달 -->
 <div class="modal-backdrop" id="cancelModal" role="dialog" aria-modal="true" aria-labelledby="cancelTitle" aria-describedby="cancelDesc">
   <div class="modal">
     <header>
@@ -338,17 +332,18 @@
   </div>
 </div>
 
-<!-- ===== 제출 완료 플로팅 패널 ===== -->
+<!-- 제출 완료 패널 -->
 <div class="floating-done" id="floatingDone" aria-live="polite">
   <div class="floating-card">
     <div class="floating-head">✅ 제출 완료</div>
     <div class="floating-sub" id="floatingSub">아래 정보를 확인하고 복사하세요.</div>
     <div id="payText" class="paytext">참가비 -원
-  은행명 계좌번호 예금주</div>
+은행명 계좌번호 예금주</div>
     <div class="chiprow">
       <button class="chip" id="copyPayBtn" type="button">📋 두 줄 모두 복사</button>
     </div>
   </div>
+</div>
 
 <script>
   /* ===== 연결 설정/헬퍼 ===== */
@@ -356,7 +351,7 @@
   const CONF_KEY = 'BDR_FORM_CONF_V1';
 
   const store = {
-    load(){ try{ return JSON.parse(localStorage.getItem(CONF_KEY)||'{}'); }catch{return{};} },
+    load(){ try{ return JSON.parse(localStorage.getItem(CONF_KEY)||'{}'); }catch{ return{}; } },
     save(o){ localStorage.setItem(CONF_KEY, JSON.stringify(o||{})); }
   };
   const conf = store.load();
@@ -450,54 +445,41 @@
 
   /* ===== 대회 목록 ===== */
   let TOUR_MAP={}, currentTour=null;
-  /* ★ 추가: 선택된 대회의 디비전별 현재 신청팀수 */
-  let CUR_DIV_COUNT = {};  // 예: { "D4": 12, "i2 U12": 8 }
+  let CUR_DIV_COUNT = {};
 
-  // ★★★ 참가팀수(디비전별) 로더 - 모든 응답 형태 호환 + 취소팀 제외
   async function loadAppliedCounts(tourId){
     CUR_DIV_COUNT = {};
     if(!tourId) return;
-  
+
     try{
       const j = await apiGet('teams', { tourId });
-  
-      // 1) 응답 배열 꺼내기(rows|items|list 등)
+
       const raw = (j && (
         (Array.isArray(j.rows) && j.rows) ||
         (Array.isArray(j.items) && j.items) ||
         (Array.isArray(j.list) && j.list) ||
         []
       )) || [];
-  
-      // 2) rows 형태가 객체배열인지, 2차원 배열인지 판별
-      //    - 2차원 배열일 경우 헤더 인덱스를 찾아서 division/status/삭제여부 컬럼을 매핑
+
       let header = null;
       if (raw.length && Array.isArray(raw[0])) {
-        // 2차원 배열
         header = raw[0].map(h => String(h||'').trim());
       }
-  
-      // 3) 공통 파서: 행에서 division / status / deleted 추출
+
       function pickFields(row){
-        // 객체 레코드
         if (!Array.isArray(row) && row && typeof row === 'object'){
-          // 다양한 키 대응 (division, Division, 디비전, divison(오타))
           const division = String(
             row.division ?? row.Division ?? row['디비전'] ?? row.divison ?? ''
           ).trim();
-  
           const status = String(
             row.status ?? row.Status ?? row['상태'] ?? ''
           ).trim();
-  
           const deleted = Boolean(
             row.deleted ?? row.isDeleted ?? row['삭제'] ?? false
           );
-  
-          return { division, status, deleted };
+          const category = String(row.category ?? row.Category ?? row['종별'] ?? '').trim();
+          return { division, status, deleted, category };
         }
-  
-        // 2차원 배열 레코드
         if (Array.isArray(row) && Array.isArray(header)){
           const idxOf = (names)=> {
             for(const n of names){
@@ -506,44 +488,37 @@
             }
             return -1;
           };
-  
           const iDiv = idxOf(['division','Division','디비전','divison']);
           const iStat= idxOf(['status','Status','상태']);
           const iDel = idxOf(['deleted','isDeleted','삭제']);
-  
+          const iCat = idxOf(['category','Category','종별']);
           const division = iDiv>=0 ? String(row[iDiv]||'').trim() : '';
           const status   = iStat>=0 ? String(row[iStat]||'').trim() : '';
           const deleted  = iDel>=0 ? Boolean(row[iDel]) : false;
-  
-          return { division, status, deleted };
+          const category = iCat>=0 ? String(row[iCat]||'').trim() : '';
+          return { division, status, deleted, category };
         }
-  
-        // 예상치 못한 형태
-        return { division:'', status:'', deleted:false };
+        return { division:'', status:'', deleted:false, category:'' };
       }
-  
-      // 4) 헤더행 제거(2차원 배열인 경우)
+
       const dataRows = (header ? raw.slice(1) : raw);
-  
-      // 5) 카운팅(취소/삭제 제외)
+
       for (const r of dataRows){
-        const { division, status, deleted } = pickFields(r);
+        const { division, status, deleted, category } = pickFields(r);
         if (!division) continue;
         if (deleted) continue;
         const isCancelled = /취소|cancel/i.test(status);
         if (isCancelled) continue;
-  
+
         CUR_DIV_COUNT[division] = (CUR_DIV_COUNT[division] || 0) + 1;
-        // 카테고리도 있으면 "cat division" 키로도 함께 카운트
-        const cat = String((r.category ?? r.Category ?? r['종별'] ?? '')).trim();
-        if (cat) {
-            const k2 = ${cat} ${division}.replace(/\s+/g,' ').trim();
-            CUR_DIV_COUNT[k2] = (CUR_DIV_COUNT[k2] || 0) + 1;
+        if (category) {
+          const k2 = `${category} ${division}`.replace(/\s+/g,' ').trim();
+          CUR_DIV_COUNT[k2] = (CUR_DIV_COUNT[k2] || 0) + 1;
         }
       }
-  
+
     }catch(e){
-      // 실패 시 카운트는 비워둠 (무시)
+      // ignore
     }
   }
 
@@ -561,14 +536,14 @@
       TOUR_MAP[t.TourID||t.tourId]=t;
       const opt=document.createElement('option');
       opt.value=t.TourID||t.tourId;
-      const period=(t.start||t.end)? · ${fmtDate(t.start)}~${fmtDate(t.end)}:''; 
-      opt.textContent=${t.name}${t.status?' ('+t.status+')':''}${period};
+      const period = (t.start||t.end) ? ` · ${fmtDate(t.start)}~${fmtDate(t.end)}` : '';
+      opt.textContent = `${t.name}${t.status?` (${t.status})`:''}${period}`;
       sel.appendChild(opt);
     });
   }
   const pad2=n=>String(n).padStart(2,'0');
-  const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}; };
-  const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return ${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}; };
+  const fmtDate=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
+  const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return `${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 
   async function fetchTourMeta(tourId){
     if(!tourId) return null;
@@ -584,12 +559,21 @@
   }
 
   function summarizeDivs(divs){
-    try{ const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{}); const parts=Object.keys(obj).map(cat=>{ const arr=Array.isArray(obj[cat])?obj[cat]:[]; return arr.length?${cat}: ${arr.join('·')}:${cat}; }); return parts.length?parts.join(' / '):'-'; }
-    catch{ return '-'; }
+    try{
+      const obj=(typeof divs==='string')?JSON.parse(divs||'{}'):(divs||{});
+      const parts=Object.keys(obj).map(cat=>{
+        const arr=Array.isArray(obj[cat])?obj[cat]:[];
+        return arr.length?`${cat}: ${arr.join('·')}`:`${cat}:`;
+      });
+      return parts.length?parts.join(' / '):'-';
+    }catch{ return '-'; }
   }
   function parsePlaces(p){
-    try{ const arr=Array.isArray(p)?p:JSON.parse(p||'[]'); const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean); return names.length?names.join(' · '):'-'; }
-    catch{ return '-'; }
+    try{
+      const arr=Array.isArray(p)?p:JSON.parse(p||'[]');
+      const names=(arr||[]).map(v=>typeof v==='string'?v:(v&&v.name)||'').filter(Boolean);
+      return names.length?names.join(' · '):'-';
+    }catch{ return '-'; }
   }
 
   function extractDriveId(u){
@@ -639,108 +623,93 @@
   function renderTourInfo(t){
     const box=$('#tourInfo'), nextbar=$('#nextbar0');
     if(!t){ box.style.display='none'; box.innerHTML=''; if(nextbar) nextbar.style.display='none'; return; }
-    box.innerHTML = <div class="kv">
-      <b>대회명</b><div>${t.name||'-'}</div>
-      <b>종별</b><div>${summarizeDivs(t.divs)}</div>
-      <b>일시</b><div>${(t.start||t.end)?${fmtDate(t.start)} ~ ${fmtDate(t.end)}:'일정미정'}</div>
-      <b>장소</b><div>${parsePlaces(t.places)}</div>
-      <b>접수기간</b><div>${(t.regStart||t.regEnd)?${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}:'미정'}</div>
-      <b>수정 마감</b><div id="editDeadlineCell">${t.editDeadlineAt ? fmtDT(t.editDeadlineAt) : '— (미설정)'}</div>
-      ${(!t.url || /^data:image\//i.test(t.url)) ? '' : <b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>}
-    </div>;
+    box.innerHTML = `
+      <div class="kv">
+        <b>대회명</b><div>${t.name||'-'}</div>
+        <b>종별</b><div>${summarizeDivs(t.divs)}</div>
+        <b>일시</b><div>${(t.start||t.end)?`${fmtDate(t.start)} ~ ${fmtDate(t.end)}`:'일정미정'}</div>
+        <b>장소</b><div>${parsePlaces(t.places)}</div>
+        <b>접수기간</b><div>${(t.regStart||t.regEnd)?`${fmtDT(t.regStart)} ~ ${fmtDT(t.regEnd)}`:'미정'}</div>
+        <b>수정 마감</b><div id="editDeadlineCell">${t.editDeadlineAt ? fmtDT(t.editDeadlineAt) : '— (미설정)'}</div>
+        ${(!t.url || /^data:image\//i.test(t.url)) ? '' : `<b>안내페이지</b><div><a href="${t.url}" target="_blank" rel="noopener">${t.url}</a></div>`}
+      </div>`;
     box.style.display='block';
     if(nextbar) nextbar.style.display='flex';
   }
 
-$('#tourSelect').addEventListener('change', async (e) => {
-  const id = e.target.value;                // 선택된 tourId
-  currentTour = id ? TOUR_MAP[id] : null;
+  $('#tourSelect').addEventListener('change', async (e) => {
+    const id = e.target.value;
+    currentTour = id ? TOUR_MAP[id] : null;
 
-  renderTourInfo(currentTour);
-  await renderPosterStrict(id || '');
+    renderTourInfo(currentTour);
+    await renderPosterStrict(id || '');
 
-  // 1) 신청팀수 집계
-  await loadAppliedCounts(id);
+    await loadAppliedCounts(id);
+    fillCategoriesFromTour(currentTour);
+    updateDivisionHint();
 
-  // 2) 종별/디비전 UI 구성 + 힌트 갱신
-  fillCategoriesFromTour(currentTour);
-  updateDivisionHint();  // 디비전 선택 전에는 힌트 숨김 처리
-
-  // 3) 서버 기준 수정마감 표기 보정
-  if (id) {
-    try {
-      const meta = await apiGet('tournament_meta', { tourId: id });
-      if (meta && meta.ok) {
-        const cell = document.getElementById('editDeadlineCell');
-        if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
-      }
-    } catch (_) {}
-  }
-});
+    if (id) {
+      try {
+        const meta = await apiGet('tournament_meta', { tourId: id });
+        if (meta && meta.ok) {
+          const cell = document.getElementById('editDeadlineCell');
+          if (cell) cell.textContent = meta.editDeadlineAt ? fmtDT(meta.editDeadlineAt) : '— (미설정)';
+        }
+      } catch (_) {}
+    }
+  });
 
   /* ===== 종별/디비전 ===== */
   const categorySelect=$('#category'), divisionSelect=$('#division');
-  /* ★ 키 정규화 + 카테고리/무접두사 양쪽 매칭 */
   function normKey(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
-  
+
   function appliedFor(cat, dv){
-    const k1 = normKey(dv);                // ex) "U12" 또는 "i2 U12"
-    const k2 = normKey(${cat} ${dv});    // ex) "i2 U12"
+    const k1 = normKey(dv);
+    const k2 = normKey(`${cat} ${dv}`);
     return (CUR_DIV_COUNT[k1] ?? CUR_DIV_COUNT[k2] ?? 0);
   }
-  
+
   function capFor(cat, dv){
     const caps = getDivCapsObj();
     const k1 = normKey(dv);
-    const k2 = normKey(${cat} ${dv});
+    const k2 = normKey(`${cat} ${dv}`);
     const raw = (caps && (caps[k1] ?? caps[k2]));
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
   }
 
-  /* ★ 추가: divCaps 읽기(문자/객체 호환) */
   function getDivCapsObj(){
     if(!currentTour) return {};
     let caps = currentTour.divCaps;
-    // 혹시 문자열로 내려온 경우 파싱
     if (typeof caps === 'string') {
       try { caps = JSON.parse(caps); } catch { caps = {}; }
     }
     return (caps && typeof caps === 'object') ? caps : {};
   }
-  
-  /* ★ 추가: 특정 디비전 모집정원 숫자 추출 (없으면 null) */
-  function getCapForDivision(dv){
-    const caps = getDivCapsObj();
-    const raw = caps && (caps[dv]);
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  }
-  
-  /* ★ 카테고리 고려 라벨 */
+
   function formatDivisionLabel(cat, dv){
     const applied = appliedFor(cat, dv);
     const cap = capFor(cat, dv);
-    return (cap!=null) ? ${dv} (${applied}/${cap}) : ${dv} (${applied}/-);
+    return (cap!=null) ? `${dv} (${applied}/${cap})` : `${dv} (${applied}/-)`;
   }
-  
+
   function updateDivisionHint(){
     const box = $('#divCapHint');
     if(!box) return;
     const cat = $('#category').value || '';
     const dv  = $('#division').value  || '';
     if(!dv){ box.style.display='none'; box.textContent=''; return; }
-  
+
     const applied = appliedFor(cat, dv);
     const cap = capFor(cat, dv);
-  
+
     if(cap==null){
-      box.textContent = 현재 신청팀수: ${applied}팀 (모집정원 미설정);
+      box.textContent = `현재 신청팀수: ${applied}팀 (모집정원 미설정)`;
     }else{
       const left = Math.max(0, cap - applied);
       box.textContent = applied >= cap
-        ? 현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨
-        : 현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀);
+        ? `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  → 마감됨`
+        : `현재 신청팀수: ${applied}팀 / 모집정원: ${cap}팀  (잔여 ${left}팀)`;
     }
     box.style.display='';
   }
@@ -766,7 +735,6 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
   categorySelect.addEventListener('change',e=>{
-    /* ★ 추가: 디비전 선택 바뀔 때 힌트 갱신 */
     divisionSelect.addEventListener('change', updateDivisionHint);
     const cat=e.target.value;
     divisionSelect.innerHTML='';
@@ -789,7 +757,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
       const cap = capFor(cat, dv);
       const applied = appliedFor(cat, dv);
       if (cap!=null && applied >= cap) {
-        opt.disabled = true;               // 정원 도달 시 선택 불가
+        opt.disabled = true;
         opt.textContent = label + ' [마감]';
       }
       divisionSelect.appendChild(opt);
@@ -799,7 +767,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
 
   /* ===== 유니폼 SVG/색상 ===== */
   function renderJersey(svgEl, hex){
-    svgEl.innerHTML = 
+    svgEl.innerHTML = `
       <defs><filter id="shadow" x="-20%" y="-20%" width="140%"><feDropShadow dx="0" dy="2" stdDeviation="2"></feDropShadow></filter></defs>
       <g filter="url(#shadow)">
         <path d="M35 10 L50 10 L54 22 L66 22 L70 10 L85 10 L85 34 L95 42 L95 130 L25 130 L25 42 L35 34 Z" fill="${hex}" stroke="#111" stroke-width="1.5"/>
@@ -807,7 +775,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
         <rect x="38" y="60" width="44" height="8" rx="4" fill="rgba(255,255,255,0.25)"/>
         <path d="M35 34 L35 24" stroke="#111" stroke-width="1"/>
         <path d="M85 34 L85 24" stroke="#111" stroke-width="1"/>
-      </g>;
+      </g>`;
   }
   function hexToRgb(h){ const s=h.replace('#',''); return { r:parseInt(s.slice(0,2),16), g:parseInt(s.slice(2,4),16), b:parseInt(s.slice(4,6),16) }; }
   function relLum({r,g,b}){ const c=[r,g,b].map(v=>{v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4)}); return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]; }
@@ -863,29 +831,28 @@ $('#tourSelect').addEventListener('change', async (e) => {
     const div=document.createElement('div');
     div.className='player-card';
     div.style.cssText='border:1px dashed #e6ecf5;border-radius:14px;padding:10px;margin-top:10px;background:#fafcff';
-    div.innerHTML = <div class="row row-3">
-      <div><label>선수 이름</label><input data-key="name" placeholder="이름"></div>
-      <div><label>등번호</label><input data-key="number" inputmode="numeric" placeholder="예: 7"></div>
-      <div><label>포지션</label><select data-key="position"><option value="">선택</option><option>G</option><option>F</option><option>C</option></select></div>
-    </div>
-    <div class="row row-2" style="margin-top:8px">
-      <div><label>생년월일</label><input data-key="birth" type="date"></div>
-      <div><label>선출여부</label><select data-key="elite"><option value="">선택</option><option>선출</option><option>비선출</option></select></div>
-    </div>
-    <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>;
+    div.innerHTML = `
+      <div class="row row-3">
+        <div><label>선수 이름</label><input data-key="name" placeholder="이름"></div>
+        <div><label>등번호</label><input data-key="number" inputmode="numeric" placeholder="예: 7"></div>
+        <div><label>포지션</label><select data-key="position"><option value="">선택</option><option>G</option><option>F</option><option>C</option></select></div>
+      </div>
+      <div class="row row-2" style="margin-top:8px">
+        <div><label>생년월일</label><input data-key="birth" type="date"></div>
+        <div><label>선출여부</label><select data-key="elite"><option value="">선택</option><option>선출</option><option>비선출</option></select></div>
+      </div>
+      <div style="text-align:right;margin-top:6px"><button class="btn-sm remove" type="button">삭제</button></div>`;
     div.querySelector('.remove').addEventListener('click',()=>div.remove());
     return div;
   }
   const playersDiv=$('#players');
-  // ▼ 아래 위치의 버튼을 클릭해서 카드 추가
   $('#addPlayerBtn').addEventListener('click',()=>playersDiv.appendChild(createPlayerCard()));
-  // 기본 5명 생성
   for(let i=0;i<5;i++) $('#addPlayerBtn').click();
 
   $('#togglePasteBtn').addEventListener('click', ()=>{ const p=$('#pastePanel'); p.style.display=p.style.display==='none'?'block':'none'; });
   $('#pasteClearBtn')?.addEventListener('click', ()=> $('#pasteText').value='' );
-  const SAMPLE=홍길동/7/G/010302/비선출
-김철수/11/F/000615/선출;
+  const SAMPLE=`홍길동/7/G/010302/비선출
+김철수/11/F/000615/선출`;
   $('#copySampleBtn').addEventListener('click', async ()=>{
     try{ await navigator.clipboard.writeText(SAMPLE); show('샘플이 복사되었습니다. 붙여넣기 후 적용을 누르세요.'); }
     catch(e){ const ta=document.createElement('textarea'); ta.value=SAMPLE; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); show('샘플이 복사되었습니다.'); }
@@ -894,8 +861,8 @@ $('#tourSelect').addEventListener('change', async (e) => {
   function yyToYYYY(yy){ const n=parseInt(yy,10); if(isNaN(n)) return '2000'; return (n>=50?'19':'20') + (n<10?('0'+n):String(n)); }
   function normalizeBirth(s){
     const v=(s||'').replace(/\D/g,'');
-    if (v.length===6)  return ${yyToYYYY(v.slice(0,2))}-${v.slice(2,4)}-${v.slice(4,6)};
-    if (v.length===8)  return ${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)};
+    if (v.length===6)  return `${yyToYYYY(v.slice(0,2))}-${v.slice(2,4)}-${v.slice(4,6)}`;
+    if (v.length===8)  return `${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}`;
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
     return '';
   }
@@ -942,12 +909,10 @@ $('#tourSelect').addEventListener('change', async (e) => {
     return ok;
   }
 
-  // ▼ 선수 명단 엄격 검증 (모든 필드 필수 + 등번호 중복 금지)
   function validatePlayersStrict(){
     const cards=$$('.player-card');
     if(cards.length<5){ alert('선수는 최소 5명 이상 입력해 주세요.'); return false; }
 
-    // 초기화
     cards.forEach(c=> c.querySelectorAll('input,select').forEach(el=>el.classList.remove('error')));
 
     const numbers=[];
@@ -966,7 +931,6 @@ $('#tourSelect').addEventListener('change', async (e) => {
       const birth=(birthEl.value||'').trim();
       const elite=(eliteEl.value||'').trim();
 
-      // 숫자만 허용(0~99 제한은 걸지 않고 숫자 필수만)
       const numOk=/^\d+$/.test(number);
 
       const requiredMap = [
@@ -981,7 +945,6 @@ $('#tourSelect').addEventListener('change', async (e) => {
       numbers.push(number);
     }
 
-    // 중복 체크(빈칸은 위에서 이미 걸러짐)
     const seen=new Set(), dups=new Set();
     numbers.forEach(n=>{ if(seen.has(n)) dups.add(n); else seen.add(n); });
     if(dups.size){
@@ -990,7 +953,6 @@ $('#tourSelect').addEventListener('change', async (e) => {
         if(dups.has((el.value||'').trim())) el.classList.add('error');
       });
       if(!firstBad){
-        // 첫 오류가 아직 없으면 중복 등번호 위치로
         const firstDupCard=[...cards].find(c=>dups.has((c.querySelector('[data-key="number"]').value||'').trim()));
         if(firstDupCard) firstBad=firstDupCard.querySelector('[data-key="number"]');
       }
@@ -1005,8 +967,8 @@ $('#tourSelect').addEventListener('change', async (e) => {
   }
 
   /* ===== 본인 신청서 찾기/불러오기/복제/취소 ===== */
-  let ownerEdit=null;   // {teamId,name,phone}
-  let cloneSource=null; // {team, players}
+  let ownerEdit=null;
+  let cloneSource=null;
 
   $('#ownerFindBtn').addEventListener('click', async ()=>{
     const name=$('#ownerName').value.trim(); const phone=($('#ownerPhone').value||'').replace(/\D/g,'');
@@ -1017,7 +979,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
       const list=json.items||[]; if(list.length===0){ show('일치하는 신청서가 없습니다.'); $('#ownerResult').style.display='none'; return; }
       const sel=$('#ownerTeamSel'); sel.innerHTML='';
       list.forEach(it=>{
-        const txt=${it.teamNameKo||'(팀명없음)'} / ${it.tourName||'-'} ${it.category?(' / '+it.category):''}${it.division?(' '+it.division):''};
+        const txt=`${it.teamNameKo||'(팀명없음)'} / ${it.tourName||'-'}${it.category?(' / '+it.category):''}${it.division?(' '+it.division):''}`;
         sel.appendChild(new Option(txt, it.teamId));
       });
       $('#ownerResult').style.display='block';
@@ -1029,14 +991,11 @@ $('#tourSelect').addEventListener('change', async (e) => {
     if (t.tourId && TOUR_MAP[t.tourId]) {
       $('#tourSelect').value = t.tourId;
       currentTour = TOUR_MAP[t.tourId];
-    
+
       renderTourInfo(currentTour);
       await renderPosterStrict(t.tourId);
-    
-      // ★ 신청팀수 선계산(수정화면에서도 숫자 표시되도록)
+
       await loadAppliedCounts(t.tourId);
-    
-      // 신청팀수 로드 후 종별/디비전 옵션 구성
       fillCategoriesFromTour(currentTour);
     }
     $('#province').value = t.province || ''; $('#province').dispatchEvent(new Event('change')); setTimeout(()=>{ $('#city').value = t.city || ''; }, 0);
@@ -1046,12 +1005,11 @@ $('#tourSelect').addEventListener('change', async (e) => {
     if (t.category){
       $('#category').value = t.category;
       $('#category').dispatchEvent(new Event('change'));
-      setTimeout(async ()=>{ 
+      setTimeout(async ()=>{
         if(t.division){
           $('#division').value = t.division;
           $('#division').dispatchEvent(new Event('change'));
         }
-        // ★ 이미 loadAppliedCounts로 집계됨 → 힌트만 갱신
         updateDivisionHint();
       }, 0);
     }
@@ -1094,7 +1052,7 @@ $('#tourSelect').addEventListener('change', async (e) => {
     sel.innerHTML='<option value="">대회를 선택하세요</option>';
     Object.keys(TOUR_MAP).forEach(id=>{
       const t=TOUR_MAP[id];
-      sel.appendChild(new Option(${t.name}${t.status?' ('+t.status+')':''}, id));
+      sel.appendChild(new Option(`${t.name}${t.status?' ('+t.status+')':''}`, id));
     });
   }
   $('#ownerCloneBtn').addEventListener('click', async ()=>{
@@ -1229,85 +1187,89 @@ $('#tourSelect').addEventListener('change', async (e) => {
     return { fee, acct };
   }
 
-function buildPayText(fee, acct){
-  const feeLine  = 참가비 ${String(fee||'').trim()||'-'}원;
-  let acctLine = String(acct||'').trim();
-  if(!acctLine){
-    acctLine = '은행명 계좌번호 예금주';
-  }else{
-    acctLine = acctLine.replace(/[,\|/]+/g,' ')
-                       .replace(/\s{2,}/g,' ')
-                       .trim();
-    acctLine = acctLine.replace(/(예금주)\s*[:：]\s*/g,'$1 ');
+  function buildPayText(fee, acct){
+    const feeLine  = `참가비 ${String(fee||'').trim()||'-'}원`;
+    let acctLine = String(acct||'').trim();
+    if(!acctLine){
+      acctLine = '은행명 계좌번호 예금주';
+    }else{
+      acctLine = acctLine.replace(/[,\|/]+/g,' ')
+                         .replace(/\s{2,}/g,' ')
+                         .trim();
+      acctLine = acctLine.replace(/(예금주)\s*[:：]\s*/g,'$1 ');
+    }
+    return `${feeLine}\n${acctLine}`;
   }
-  return ${feeLine}\n${acctLine};
-}
 
-function showFloatingPanelAfterSubmit(){
-  const el = $('#floatingDone');
-  const { fee, acct } = extractPaymentInfo(currentTour || {});
-  const txt = buildPayText(fee, acct);
-  $('#payText').textContent = txt;
-  const ready = Boolean(String(fee||'').trim() && String(acct||'').trim());
-  $('#floatingSub').innerHTML = ready
-    ? '아래 정보를 확인하고 복사하세요.'
-    : '관리자 설정 대기: 참가비/입금계좌가 아직 없습니다. (관리자 설정 후 자동 노출)';
-  const copyBtn = $('#copyPayBtn');
-  copyBtn.disabled = !ready;
-  copyBtn.onclick = () => safelyCopy(txt, '결제정보');
-  el.classList.add('show');
-  if(el._hideTimer) clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(()=>{ el.classList.remove('show'); }, 30000);
-}
+  function showFloatingPanelAfterSubmit(){
+    const el = $('#floatingDone');
+    const { fee, acct } = extractPaymentInfo(currentTour || {});
+    const txt = buildPayText(fee, acct);
+    $('#payText').textContent = txt;
+    const ready = Boolean(String(fee||'').trim() && String(acct||'').trim());
+    $('#floatingSub').innerHTML = ready
+      ? '아래 정보를 확인하고 복사하세요.'
+      : '관리자 설정 대기: 참가비/입금계좌가 아직 없습니다. (관리자 설정 후 자동 노출)';
+    const copyBtn = $('#copyPayBtn');
+    copyBtn.disabled = !ready;
+    copyBtn.onclick = () => safelyCopy(txt, '결제정보');
+    el.classList.add('show');
+    if(el._hideTimer) clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(()=>{ el.classList.remove('show'); }, 30000);
+  }
 
-/* ===== 제출(신규/수정 공용): 중복방지 가드 추가 ===== */
-let isSubmitting = false;  // ★ 추가: 중복 제출 가드 플래그
+  let isSubmitting = false;
 
-$('#submitBtn').addEventListener('click', async ()=>{
-  // ★ 가드: 이미 제출 중이면 무시
-  if (isSubmitting) return;
-  isSubmitting = true;
+  $('#submitBtn').addEventListener('click', async ()=>{
+    if (isSubmitting) return;
+    isSubmitting = true;
 
-  const btn = $('#submitBtn');
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '제출 중...';  // ★ 즉시 "제출 중..." 표시
+    const btn = $('#submitBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '제출 중...';
 
-  try{
-    // 1) 단계별 검증 (실패 시 즉시 복구 후 종료)
-    if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) {
-      btn.disabled = false;
-      btn.textContent = originalText;
-      isSubmitting = false;
-      return;
-    }
-    if (!validatePlayersStrict()) {
-      btn.disabled = false;
-      btn.textContent = originalText;
-      isSubmitting = false;
-      return;
-    }
+    try{
+      if (!validateStep('step0') || !validateStep('step1') || !validateStep('step2')) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        isSubmitting = false;
+        return;
+      }
+      if (!validatePlayersStrict()) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        isSubmitting = false;
+        return;
+      }
 
-    // 2) 수정마감 확인
-    {
-      const tourId = ($('#tourSelect').value || '').trim();
-      const meta = await fetchTourMeta(tourId);
-      const isEditing = Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode);
+      {
+        const tourId = ($('#tourSelect').value || '').trim();
+        const meta = await fetchTourMeta(tourId);
+        const isEditing = Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode);
 
-      const pad2=n=>String(n).padStart(2,'0');
-      const fmtDT=v=>{ if(!v) return ''; const d=new Date(v); if(isNaN(d)) return v; return ${d.getFullYear()}.${pad2(d.getMonth()+1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}; };
-
-      if (meta && meta.editDeadlineAt) {
-        if (isPast(meta.now, meta.editDeadlineAt)) {
-          alert('수정 마감이 지났습니다. 더 이상 신청서 변경이 불가합니다.');
-          btn.disabled = false;
-          btn.textContent = originalText;
-          isSubmitting = false;
-          return;
+        if (meta && meta.editDeadlineAt) {
+          if (isPast(meta.now, meta.editDeadlineAt)) {
+            alert('수정 마감이 지났습니다. 더 이상 신청서 변경이 불가합니다.');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            isSubmitting = false;
+            return;
+          } else {
+            const msg = isEditing
+              ? `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?`
+              : `수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?`;
+            if (!confirm(msg)) {
+              btn.disabled = false;
+              btn.textContent = originalText;
+              isSubmitting = false;
+              return;
+            }
+          }
         } else {
           const msg = isEditing
-            ? 수정 마감: ${fmtDT(meta.editDeadlineAt)}\n이후에는 변경이 불가합니다.\n수정을 진행할까요?
-            : 수정 마감: ${fmtDT(meta.editDeadlineAt)}\n제출 후 마감 시각 이후에는 변경이 제한됩니다.\n제출을 진행할까요?;
+            ? '현재 수정 마감이 설정되어 있지 않습니다.\n수정을 진행할까요?'
+            : '현재 수정 마감이 설정되어 있지 않습니다.\n제출을 진행할까요?';
           if (!confirm(msg)) {
             btn.disabled = false;
             btn.textContent = originalText;
@@ -1315,93 +1277,82 @@ $('#submitBtn').addEventListener('click', async ()=>{
             return;
           }
         }
-      } else {
-        const msg = (Boolean(ownerEdit && ownerEdit.teamId) || Boolean(editTeamId && editCode))
-          ? '현재 수정 마감이 설정되어 있지 않습니다.\n수정을 진행할까요?'
-          : '현재 수정 마감이 설정되어 있지 않습니다.\n제출을 진행할까요?';
-        if (!confirm(msg)) {
-          btn.disabled = false;
-          btn.textContent = originalText;
-          isSubmitting = false;
-          return;
+      }
+
+      const province=$('#province').value.trim(), city=$('#city').value.trim();
+      const team={
+        tourId: $('#tourSelect').value.trim(),
+        tourName: (currentTour&&currentTour.name)||'',
+        region: province && city ? `${province} ${city}` : '',
+        province, city,
+        teamNameKo: $('#teamNameKo').value.trim(),
+        teamNameEn: $('#teamNameEn').value.trim(),
+        managerName: $('#managerName').value.trim(),
+        managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
+        category: $('#category').value,
+        division: $('#division').value,
+        uniformHome: $('#uniformHome').value.trim(),
+        uniformAway: $('#uniformAway').value.trim()
+      };
+      const players=$$('.player-card').map(card=>{
+        const get=k=> (card.querySelector(`[data-key="${k}"]`)?.value || '').trim();
+        return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
+      });
+
+      const payload={team, players, base: location.origin + location.pathname};
+      let candidates = ['registerteam','registerTeam'];
+
+      if (ownerEdit && ownerEdit.teamId){
+        payload.teamId = ownerEdit.teamId; payload.name = ownerEdit.name; payload.phone = ownerEdit.phone;
+        candidates = ['updateteambyowner','updateTeamByOwner'];
+      } else if (editTeamId && editCode){
+        payload.teamId = editTeamId; payload.editCode = editCode;
+        candidates = ['updateteam','updateTeam'];
+      }
+
+      const json = await apiPost(candidates, payload);
+      if(json && json.ok){
+        btn.textContent = (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
+        btn.classList.add('done');
+        show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
+
+        if (!(ownerEdit || (editTeamId&&editCode))){
+          const editUrl = json.editUrl || `${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)}`;
+          $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
+          const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
         }
+        showFloatingPanelAfterSubmit();
+        return;
+      } else {
+        alert('오류: ' + (json && (json.error||json.raw) || 'unknown'));
+        btn.disabled = false;
+        btn.textContent = originalText;
+        isSubmitting = false;
       }
-    }
-
-    // 3) 페이로드 구성
-    const province=$('#province').value.trim(), city=$('#city').value.trim();
-    const team={
-      tourId: $('#tourSelect').value.trim(),
-      tourName: (currentTour&&currentTour.name)||'',
-      region: province && city ? ${province} ${city} : '',
-      province, city,
-      teamNameKo: $('#teamNameKo').value.trim(),
-      teamNameEn: $('#teamNameEn').value.trim(),
-      managerName: $('#managerName').value.trim(),
-      managerPhone: ($('#managerPhone').value||'').replace(/\D+/g,''),
-      category: $('#category').value,
-      division: $('#division').value,
-      uniformHome: $('#uniformHome').value.trim(),
-      uniformAway: $('#uniformAway').value.trim()
-    };
-    const players=$$('.player-card').map(card=>{
-      const get=k=> (card.querySelector([data-key="${k}"])?.value || '').trim();
-      return { name:get('name'), number:get('number'), position:get('position'), birth:get('birth'), elite:get('elite') };
-    });
-
-    const payload={team, players, base: location.origin + location.pathname};
-    let candidates = ['registerteam','registerTeam'];
-
-    if (ownerEdit && ownerEdit.teamId){
-      payload.teamId = ownerEdit.teamId; payload.name = ownerEdit.name; payload.phone = ownerEdit.phone;
-      candidates = ['updateteambyowner','updateTeamByOwner'];
-    } else if (editTeamId && editCode){
-      payload.teamId = editTeamId; payload.editCode = editCode;
-      candidates = ['updateteam','updateTeam'];
-    }
-
-    // 4) 제출(네트워크 중에도 계속 비활성화 유지)
-    const json = await apiPost(candidates, payload);
-    if(json && json.ok){
-      // 성공 시 버튼을 다시 활성화하지 않음(중복 방지)
-      btn.textContent = (ownerEdit || (editTeamId&&editCode)) ? '수정 완료' : '제출 완료';
-      btn.classList.add('done');
-      show((ownerEdit || (editTeamId&&editCode)) ? '수정이 저장되었습니다.' : '신청이 완료되었습니다.');
-
-      if (!(ownerEdit || (editTeamId&&editCode))){
-        const editUrl = json.editUrl || ${location.origin}${location.pathname}?edit=${encodeURIComponent(json.teamId)}&code=${encodeURIComponent(json.editCode)};
-        $('#editLinkInput').value=editUrl; $('#editLinkWrap').style.display='block';
-        const img=$('#qr img'); img.src='https://chart.googleapis.com/chart?chs=160x160&cht=qr&chl='+encodeURIComponent(editUrl); $('#qr').style.display='block';
-      }
-      showFloatingPanelAfterSubmit();
-      // ★ 성공 후에도 isSubmitting을 true로 둬서 추가 클릭을 완전히 차단
-      return;
-    } else {
-      alert('오류: ' + (json && (json.error||json.raw) || 'unknown'));
-      // 실패 시에만 복구
+    }catch(err){
+      alert('제출 실패: ' + (err && err.message || err));
       btn.disabled = false;
       btn.textContent = originalText;
       isSubmitting = false;
     }
-  }catch(err){
-    alert('제출 실패: ' + (err && err.message || err));
-    btn.disabled = false;
-    btn.textContent = originalText;
-    isSubmitting = false;
-  }
-});
+  });
 
-  /* ===== 부트스트랩 ===== */
+  $('#copyEditLinkBtn').addEventListener('click', ()=>{
+    const v = ($('#editLinkInput').value||'').trim();
+    if(!v) { show('복사할 링크가 없습니다.'); return; }
+    safelyCopy(v,'수정 링크');
+  });
+
+  /* ===== 부트 ===== */
   async function boot(forceReload){
     setConn('warn','연결 확인 중…');
     await loadTournaments();
     const initialId = $('#tourSelect').value || '';
     const initialTour = initialId ? TOUR_MAP[initialId] : null;
     renderTourInfo(initialTour);
-    
     if (initialId){
       await renderPosterStrict(initialId);
-      await loadAppliedCounts(initialId);   // 신청수 선계산
+      await loadAppliedCounts(initialId);
     }
 
     if (editTeamId && editCode){
