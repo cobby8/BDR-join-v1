@@ -702,13 +702,27 @@ function renderTourFilter(){
 /* ========= 팀 표 ========= */
 function jerseySVG(hex,label){ const color=(/^[#][0-9a-f]{6}$/i).test(hex||'')?hex:'#e5e7eb', text=(label||'').toUpperCase(); return `<svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg"><g filter="url(#s)"><path d="M14 3 l4 6 h6 l4-6 h6 v15 l3 3 v27 a3 3 0 0 1 -3 3 h-26 a3 3 0 0 1 -3 -3 v-27 l3-3 v-15 z" fill="${color}" stroke="#cbd5e1"/><text x="21" y="31" font-family="system-ui,sans-serif" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="700">${text}</text></g><defs><filter id="s" x="0" y="0" width="42" height="52"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".08"/></filter></defs></svg>`; }
 function normalizeTeamRow(r){
-  const region=[r.province||'', r.city||''].join(' ').trim();
+  // 백엔드가 시트의 "원본 헤더명"으로 돌려줘도 안전하게 흡수
+  const get = (keys)=> pickFirst(r, keys);
+
+  const province = get(['province','시도']);
+  const city     = get(['city','시군구']);
+  const region   = [province||'', city||''].join(' ').trim();
+
   return {
-    teamId:r.teamId||'', tourId:r.tourId||'', tourName:r.tourName||'',
-    region, teamName:r.teamNameKo||r.teamName||'', managerName:r.managerName||'',
-    managerPhone:phonePretty(r.managerPhone||''), category:r.category||'',
-    division:r.division||'', homeHex:(r.uniformHome||'').toLowerCase(),
-    awayHex:(r.uniformAway||'').toLowerCase(), createdAt:r.createdAt||'', editCode:r.editCode||''
+    teamId:       get(['teamId','TeamID','팀id','id']),
+    tourId:       get(['tourId','TourID','대회id','대회ID','tour_id']),
+    tourName:     get(['tourName','대회명']),
+    region,
+    teamName:     get(['teamNameKo','teamName','팀명','팀명(한글)']),
+    managerName:  get(['managerName','담당자','대표자','manager']),
+    managerPhone: phonePretty(get(['managerPhone','연락처','phone','tel'])),
+    category:     get(['category','종별']),
+    division:     get(['division','디비전','div']),
+    homeHex:      String(get(['uniformHome','homeColor','홈유니폼'])||'').toLowerCase(),
+    awayHex:      String(get(['uniformAway','awayColor','원정유니폼'])||'').toLowerCase(),
+    createdAt:    get(['createdAt','created_at']),
+    editCode:     get(['editCode','code','수정코드'])
   };
 }
 
@@ -753,8 +767,12 @@ async function loadTeams(){
 
   // ▼ (1) 원본 rows 확보
   let rowsAll=Array.isArray(j.rows)?j.rows:[];
-  if(tourId) rowsAll=rowsAll.filter(r=>String(r.tourId||'').trim()===tourId);
-
+  if (tourId){
+    rowsAll = rowsAll.filter(r=>{
+      const rid = pickFirst(r, ['tourId','TourID','대회id','대회ID','tour_id']);
+      return String(rid||'').trim() === tourId;
+    });
+  }
   // ▼ (2) 디비전별 팀수 집계 생성 (검색과 무관하게 전체 집계)
   const counts = {};
   rowsAll.forEach(r=>{
