@@ -128,13 +128,23 @@
   *{
     -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+    /* 혹시 남아있을 그리드 속성/레이블 완전 제거 */
+  tbody tr{
+    display: table-row !important;
+    grid-template: none !important;
+  }
+  td{
+    display: table-cell !important;
+  }
+  td::before{
+    content: none !important;
   }
 }
 
   /* =========================
      모바일 카드(두 줄 그리드) ≤640px
      ========================= */
-  @media (max-width: 640px){
+  @media screen and (max-width: 640px){
     body { font-size: clamp(14px, 3.8vw, 16px); }
     h1 { font-size: clamp(16px, 4.4vw, 18px); }
 
@@ -369,6 +379,14 @@ async function saveViewAsJPG(){
 
   // 인쇄와 동일하게 "출석 체크된 행만" 남기기
   applyPrintKeepRows();
+
+  window.addEventListener('beforeprint', () => {
+    document.body.classList.add('printing');
+    applyPrintKeepRows();      // 혹시 모를 타이밍 보정
+  });
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('printing');
+  });
 
   const wrap = document.querySelector('.wrap');
   const baseWidth = wrap?.offsetWidth || 980;
