@@ -69,25 +69,67 @@
     font-size:16px; color:#0f172a;
   }
 
-  /* ===== Print: A4 폭에 맞춰 확대/축소 ===== */
-  @page { size: A4 portrait; margin: 6mm; }
-  @media print{
-    html, body { width: 210mm; }
-    header,.toolbar,.th-actions,.mobile-actions{display:none !important}
-    body{background:#fff}
-    .wrap{max-width:none;width:100%;margin:0;padding:0}
-    .card{box-shadow:none;border:1px solid #e5e7eb;border-radius:8px;margin:6mm 0 0 0;padding:10px}
-    .table-wrap{overflow:visible}
-    table{width:100%;border-spacing:0;table-layout:fixed}
-    td,th{padding:8px}
-    tr{break-inside:avoid}
-    tbody tr{ display:table-row !important } /* 인쇄는 원래 테이블로 */
-    thead{ display:table-header-group !important }
-    table, tbody, td{ display:table !important }
-    /* 출석 체크된 행만 인쇄 */
-    tbody tr{ display:none !important }
-    tbody tr.print-keep{ display:table-row !important }
+/* ===== Print: A4 폭에 맞춰 확대/축소 (REVISED) ===== */
+@page { size: A4 portrait; margin: 6mm; }
+@media print{
+  /* 기본 */
+  html, body { width: 210mm; background:#fff !important; }
+  header, .toolbar, .th-actions, .mobile-actions { display:none !important; }
+
+  /* 카드/그리드/모바일 레이아웃 완전 해제하고 테이블로 강제 */
+  thead, tbody, tfoot { display: table-header-group !important; }
+  table, tbody, thead, tr, td, th { display: table !important; }
+
+  /* 테이블 안정화 */
+  .wrap{ max-width:none; width:100%; margin:0; padding:0 }
+  .card{
+    box-shadow:none !important;
+    border:1px solid #e5e7eb !important;
+    border-radius:8px !important;
+    margin:6mm 0 0 0 !important;
+    padding:10px !important;
+    background:#fff !important;
   }
+  .table-wrap{ overflow:visible !important; }
+  table{
+    width:100% !important;
+    border-collapse:collapse !important;
+    border-spacing:0 !important;
+    table-layout:fixed !important;
+  }
+  td, th{
+    padding:8px !important;
+    border:1px solid #e5e7eb !important;
+    background:#fff !important;
+    color:#111827 !important;
+  }
+  tr, td, th{
+    break-inside:avoid !important;
+    page-break-inside:avoid !important;
+  }
+  /* 화면용 라운드/간격 제거 (인쇄에서 셀 깨짐 방지) */
+  tr td:first-child, tr td:last-child{ border-radius:0 !important; }
+
+  /* **출석 체크된 행만 인쇄** */
+  tbody tr{ display:none !important; }
+  tbody tr.print-keep{ display:table-row !important; }
+
+  /* 모바일 카드 모드 완전 무력화 */
+  td.c-no, td.c-name, td.c-pos, td.c-birth, td.c-age, td.c-elite, td.c-att, td.c-starter{
+    grid-area:auto !important;
+  }
+  td::before{ content:none !important; }
+
+  /* 말줄임 해제 → 줄바꿈 허용(넘침 방지) */
+  .ellipsis{ white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+  .kv-chip{ white-space:normal !important; overflow:visible !important; }
+
+  /* 색/선명도 유지 */
+  *{
+    -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+  }
+}
 
   /* =========================
      모바일 카드(두 줄 그리드) ≤640px
@@ -637,6 +679,15 @@ function applyPrintKeepRows(){
   });
 }
 window.addEventListener('beforeprint', applyPrintKeepRows);
+
+/* 프린트 미디어 전환 감지(일부 브라우저에서 beforeprint 타이밍 보완) */
+try{
+  const mq = window.matchMedia && window.matchMedia('print');
+  if(mq){
+    const handler = e => { if(e.matches) applyPrintKeepRows(); };
+    (mq.addEventListener ? mq.addEventListener('change', handler) : mq.addListener(handler));
+  }
+}catch(_){}
 
 /* ============ 체크 상태 저장 ============ */
 document.addEventListener('change', (e)=>{
