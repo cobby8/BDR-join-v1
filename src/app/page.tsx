@@ -47,15 +47,16 @@ export default function RegistrationPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedTournament) {
-      async function fetchDivisions() {
+    const tourId = selectedTournament?.id;
+    if (tourId) {
+      async function fetchDivisions(id: string) {
         const { data } = await supabase
           .from('divisions')
           .select('*')
-          .eq('tournament_id', selectedTournament.id);
+          .eq('tournament_id', id);
         if (data) setDivisions(data);
       }
-      fetchDivisions();
+      fetchDivisions(tourId);
     }
   }, [selectedTournament]);
 
@@ -67,11 +68,14 @@ export default function RegistrationPage() {
     setIsSubmitting(true);
 
     try {
+      const tour = selectedTournament;
+      if (!tour) return;
+
       // 1. Create Team
       const { data: team, error: teamError } = await supabase
         .from('teams')
         .insert({
-          tournament_id: selectedTournament.id,
+          tournament_id: tour.id,
           division_id: formData.division_id,
           province: formData.province,
           city: formData.city,
