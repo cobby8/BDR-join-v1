@@ -9,9 +9,14 @@ import { Player, Team } from '@/types/database';
 import { Loader2, Users, Trophy, MapPin, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
+interface TeamWithRelations extends Team {
+    tournaments?: { name: string };
+    divisions?: { category: string; name: string };
+}
+
 export default function TeamView() {
     const { id } = useParams();
-    const [team, setTeam] = useState<Team | null>(null);
+    const [team, setTeam] = useState<TeamWithRelations | null>(null);
     const [players, setPlayers] = useState<Player[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
