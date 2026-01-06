@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { Tournament, Team, Division } from '@/types/database';
 import {
