@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, ClipboardList } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ClipboardList, Plus, Trash2 } from 'lucide-react';
 
 interface Player {
     name: string;
@@ -29,7 +28,7 @@ export function PlayerListInput({ players, onChange }: PlayerListInputProps) {
         onChange(players.filter((_, i) => i !== idx));
     };
 
-    const updatePlayer = (idx: number, field: keyof Player, value: any) => {
+    const updatePlayer = (idx: number, field: keyof Player, value: string | boolean) => {
         const next = [...players];
         next[idx] = { ...next[idx], [field]: value };
         onChange(next);

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Team, Player, Tournament, Division } from '@/types/database';
+import { Player } from '@/types/database';
 import { Loader2, Users, Trophy, MapPin, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -87,7 +87,7 @@ export default function TeamView() {
                     <div className="space-y-6">
                         <h2 className="text-2xl font-black text-slate-800 dark:text-white">선수 명단 ({players.length}명)</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {players.map((p, idx) => (
+                            {players.map((p) => (
                                 <div key={p.id} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center gap-6">
                                     <div className="w-12 h-12 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-xl font-black text-primary">
                                         {p.back_number}

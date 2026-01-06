@@ -3,21 +3,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { Tournament, Team, Division } from '@/types/database';
+import { Tournament } from '@/types/database';
 import {
     BarChart3,
-    Settings,
     Plus,
     Search,
-    Filter,
-    MoreHorizontal,
     Calendar,
     Users as UsersIcon,
     Trash2,
     Edit,
     ExternalLink,
     Loader2,
-    CheckCircle2,
     X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -72,7 +68,7 @@ export default function AdminDashboard() {
     const handleCreateTournament = async () => {
         if (!newTour.name) return alert('대회명을 입력하세요.');
 
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('tournaments')
             .insert([newTour])
             .select();
@@ -114,7 +110,7 @@ export default function AdminDashboard() {
                     ].map(item => (
                         <button
                             key={item.id}
-                            onClick={() => setActiveTab(item.id as any)}
+                            onClick={() => setActiveTab(item.id as 'tournaments' | 'participants' | 'stats')}
                             className={cn(
                                 "w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all",
                                 activeTab === item.id
@@ -164,6 +160,7 @@ export default function AdminDashboard() {
                                             <img
                                                 src={t.poster_url || 'https://via.placeholder.com/800x450?text=BDR+POSTER'}
                                                 className="object-cover w-full h-full"
+                                                alt={t.name}
                                             />
                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                                                 <button className="p-3 bg-white text-slate-800 rounded-2xl hover:bg-primary hover:text-white transition-all">

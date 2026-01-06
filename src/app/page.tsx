@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { Tournament, Division, Team, Player } from '@/types/database';
+import { Tournament, Division, Player } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { Trophy, Users, Palette, UserPlus, Send, ArrowRight, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { UniformSelector } from '@/components/UniformSelector';
 import { PlayerListInput } from '@/components/PlayerListInput';
+import Image from 'next/image';
 
 export default function RegistrationPage() {
   const [step, setStep] = useState(0);
@@ -34,7 +35,7 @@ export default function RegistrationPage() {
 
   useEffect(() => {
     async function fetchTournaments() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('tournaments')
         .select('*')
         .eq('is_deleted', false)
@@ -216,7 +217,12 @@ export default function RegistrationPage() {
                         className="group relative glass rounded-[2.5rem] overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-transparent hover:border-primary/50"
                       >
                         <div className="aspect-[16/10] bg-slate-200 dark:bg-slate-800 relative">
-                          <img src={t.poster_url || 'https://via.placeholder.com/800x500?text=BDR+TOURNAMENT'} alt={t.name} className="object-cover w-full h-full" />
+                          <Image
+                            src={t.poster_url || 'https://via.placeholder.com/800x500?text=BDR+TOURNAMENT'}
+                            alt={t.name}
+                            fill
+                            className="object-cover"
+                          />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                           <div className="absolute bottom-6 left-6 right-6">
                             <h3 className="text-white font-black text-2xl leading-tight">{t.name}</h3>
