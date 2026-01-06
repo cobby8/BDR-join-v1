@@ -1,68 +1,68 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  --background: #f8fbfe;
-  --foreground: #1a1a1a;
-  --primary: #1769ff;
-  --primary-foreground: #ffffff;
-  --secondary: #f0f7ff;
-  --secondary-foreground: #1769ff;
-  --muted: #6b7684;
-  --muted-foreground: #8b95a1;
-  --accent: #ff6b00;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #e6ecf5;
-  --input: #ffffff;
-  --ring: #1769ff;
-  --radius: 1rem;
+@theme {
+  --font-sans: 'Pretendard', system-ui, -apple-system, sans-serif;
+
+  --color-background: #f8fbfe;
+  --color-foreground: #1a1a1a;
+  --color-primary: #1769ff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f0f7ff;
+  --color-secondary-foreground: #1769ff;
+  --color-muted: #6b7684;
+  --color-muted-foreground: #8b95a1;
+  --color-accent: #ff6b00;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e6ecf5;
+  --color-input: #ffffff;
+  --color-ring: #1769ff;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
   :root {
+    --background: #f8fbfe;
+    --foreground: #1a1a1a;
+  }
+
+  .dark {
     --background: #0f172a;
     --foreground: #f8fafc;
-    --primary: #3b82f6;
-    --primary-foreground: #ffffff;
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-    --muted: #94a3b8;
-    --muted-foreground: #64748b;
-    --accent: #f97316;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: #334155;
-    --input: #1e293b;
-    --ring: #3b82f6;
+  }
+
+  body {
+    color: var(--foreground);
+    background: var(--background);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Pretendard', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@utility glass {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  .dark & {
+    background-color: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
-@layer components {
-  .glass {
-    @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-700/30;
-  }
-  
-  .card-shadow {
-    box-shadow: 0 8px 32px rgba(23, 105, 255, 0.08);
-  }
-  
-  .btn-primary {
-    @apply bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  
-  .input-field {
-    @apply w-full px-4 py-3 rounded-2xl border border-border bg-input focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all;
-  }
+@utility card-shadow {
+  box-shadow: 0 8px 32px rgba(23, 105, 255, 0.08);
+}
+
+@utility btn-primary {
+  @apply bg-primary text-primary-foreground px-6 py-3 rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+@utility input-field {
+  @apply w-full px-4 py-3 rounded-2xl border border-border bg-input focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all;
 }

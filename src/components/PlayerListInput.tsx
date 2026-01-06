@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, ClipboardText } from 'lucide-react';
+import { Plus, Trash2, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Player {
@@ -60,7 +60,7 @@ export function PlayerListInput({ players, onChange }: PlayerListInputProps) {
                     onClick={() => setShowPaste(!showPaste)}
                     className="flex items-center gap-2 text-xs font-bold text-primary hover:underline"
                 >
-                    <ClipboardText size={14} /> {showPaste ? '닫기' : '명단 합치기/붙여넣기'}
+                    <ClipboardList size={14} /> {showPaste ? '닫기' : '명단 합치기/붙여넣기'}
                 </button>
             </div>
 
