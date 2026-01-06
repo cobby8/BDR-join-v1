@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { Tournament } from '@/types/database';
+import { Tournament, Team } from '@/types/database';
 import {
     BarChart3,
     Plus,
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<'tournaments' | 'participants' | 'stats'>('tournaments');
     const [tournaments, setTournaments] = useState<Tournament[]>([]);
-    const [participants, setParticipants] = useState<any[]>([]);
+    const [participants, setParticipants] = useState<Team[]>([]);
     const [isAddingTournament, setIsAddingTournament] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 

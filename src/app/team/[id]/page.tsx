@@ -5,13 +5,13 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Player } from '@/types/database';
+import { Player, Team } from '@/types/database';
 import { Loader2, Users, Trophy, MapPin, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function TeamView() {
     const { id } = useParams();
-    const [team, setTeam] = useState<any>(null);
+    const [team, setTeam] = useState<Team | null>(null);
     const [players, setPlayers] = useState<Player[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
