@@ -69,7 +69,7 @@ export default function TeamDetailClient({ teamId, initialTeam, initialPlayers }
         if (error) {
             alert('선수 추가 실패: ' + error.message)
         } else if (data) {
-            setPlayers([...players, data])
+            setPlayers([...players, data as Player])
             setNewPlayer({ name: '', back_number: '', position: '', birth_date: '', is_elite: false })
         }
     }
