@@ -12,6 +12,11 @@ const TOURNAMENT_SHEET_CANDIDATES = ['tournaments', 'Tournaments', '대회']
 const TEAM_SHEET_CANDIDATES = ['teams', 'Teams', '신청', '신청팀', '접수']
 const PLAYER_SHEET_CANDIDATES = ['players', 'Players', '선수', '선수명단']
 
+function log(logs: string[], msg: string) {
+    logs.push(msg)
+    console.log(msg)
+}
+
 const CONF_ALIASES: Record<string, string[]> = {
     // Tournaments
     tourId: ['tourId', 'TourID', '대회id', 'ID', 'Id', 'id'],
