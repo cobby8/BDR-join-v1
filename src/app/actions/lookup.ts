@@ -45,7 +45,7 @@ export async function findMyTeams(name: string, phone: string) {
 
         if (error) throw error
 
-        return { success: true, data: data as MyTeam[] }
+        return { success: true, data: data as unknown as MyTeam[] }
     } catch (e: any) {
         return { success: false, error: e.message }
     }
