@@ -341,7 +341,7 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
         }
 
         try {
-            setLoading(true)
+            setIsDeleteLoading(true)
             const res = await deleteTournament(initialData.id)
             if (res.success) {
                 alert('삭제되었습니다.')
@@ -353,7 +353,7 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
             console.error(e)
             alert('오류가 발생했습니다: ' + e.message)
         } finally {
-            setLoading(false)
+            setIsDeleteLoading(false)
             setShowDeleteModal(false)
         }
     }
