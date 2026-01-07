@@ -96,7 +96,7 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
         const fetchSettings = async () => {
             const { data } = await supabase.from('admin_categories').select('*')
             if (data) {
-                setAdminCats(data)
+                setAdminCats(data as unknown as AdminCategory[])
             }
             setIsSettingsLoaded(true)
         }
