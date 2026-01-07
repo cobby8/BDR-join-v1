@@ -13,6 +13,8 @@ interface Team {
     category: string | null
     division: string | null
     status: string | null
+    payment_status: string
+    created_at: string
     tournament_id: string
     tournaments: { name: string } | null | any
 }
