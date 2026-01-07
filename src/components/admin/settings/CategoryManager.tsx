@@ -29,7 +29,7 @@ export default function CategoryManager() {
                 .order('created_at', { ascending: true })
 
             if (error) throw error
-            setCategories(data || [])
+            setCategories((data as unknown as AdminCategory[]) || [])
         } catch (e) {
             console.error(e)
             // alert('데이터 로딩 실패')
@@ -49,7 +49,7 @@ export default function CategoryManager() {
                 .single()
 
             if (error) throw error
-            setCategories([...categories, data])
+            setCategories([...categories, data as unknown as AdminCategory])
             setNewCatName('')
         } catch (e: any) {
             alert('추가 실패: ' + e.message)
