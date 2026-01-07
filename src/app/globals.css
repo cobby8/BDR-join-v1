@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  /* Toss-like Colors */
+  --foreground: 222 47% 11%;
+  /* #0f172a */
+  --background: 210 20% 98%;
+  /* #F9FAFB or similar Toss Grey */
+
+  --primary: 217 91% 60%;
+  /* #3182F6 (Toss Blue) */
+  --primary-foreground: 0 0% 100%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222 47% 11.2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222 47% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 217 91% 60%;
+
+  --radius: 1.5rem;
+  /* 24px - Rounded 3xl look */
+}
+
+@layer base {
+  * {
+    border-color: #e5e7eb;
+    /* Replaces @apply border-gray-200 */
+    border-style: solid;
+    border-width: 0;
+  }
+
+  body {
+    @apply bg-[#F2F4F6] text-[#191F28];
+    /* Toss Background & Text Color */
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer components {
+  .toss-card {
+    @apply bg-white rounded-[24px] p-6 shadow-sm border transition-all duration-200 active:scale-[0.98];
+    border-color: rgba(0, 0, 0, 0.04);
+  }
+
+  .toss-button {
+    @apply bg-[#3182F6] text-white font-bold rounded-[18px] py-4 px-6 hover:bg-[#1B64DA] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .toss-input {
+    @apply w-full px-4 py-4 rounded-[16px] text-[17px] border-none focus:ring-2 focus:ring-[#3182F6] focus:bg-white transition-all placeholder:text-gray-400 outline-none;
+    background-color: rgba(172, 172, 172, 0.1);
+  }
+}
