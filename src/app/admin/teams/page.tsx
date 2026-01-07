@@ -23,5 +23,5 @@ export default async function AdminTeamsPage() {
     const teams = await getTeams()
     const tournaments = await getTournaments()
 
-    return <TeamsManagementClient initialTeams={teams} tournaments={tournaments} />
+    return <TeamsManagementClient initialTeams={teams as any} tournaments={tournaments} />
 }
