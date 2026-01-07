@@ -12,7 +12,7 @@ interface Team {
     manager_phone: string
     category: string | null
     division: string | null
-    status: string | null
+    status: string
     payment_status: string
     created_at: string
     tournament_id: string
