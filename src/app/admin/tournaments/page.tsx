@@ -7,5 +7,5 @@ export default async function AdminTournaments() {
         .select('*, teams(count)')
         .order('created_at', { ascending: false })
 
-    return <TournamentListClient tournaments={tournaments || []} />
+    return <TournamentListClient tournaments={(tournaments as any) || []} />
 }
