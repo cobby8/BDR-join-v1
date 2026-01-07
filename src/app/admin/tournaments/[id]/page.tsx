@@ -36,7 +36,7 @@ export default async function AdminTournamentDetailPage({ params }: { params: Pr
             </Link>
 
             <TeamsManagementClient
-                initialTeams={teams || []}
+                initialTeams={(teams as any) || []}
                 hideTournamentFilter={true}
                 title={`${tournament.name} - 참가팀 관리`}
             />
