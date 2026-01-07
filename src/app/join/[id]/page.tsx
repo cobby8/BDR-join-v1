@@ -43,7 +43,7 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
                 </div>
             </div>
 
-            <RegistrationForm tournament={tour} />
+            <RegistrationForm tournament={tour as any} />
         </div>
     )
 }
