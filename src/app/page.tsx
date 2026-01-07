@@ -63,7 +63,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {(tournaments || []).map((tour: any) => {
+        {((tournaments as unknown as any[]) || []).map((tour: any) => {
           const currentTeams = tour.teams?.[0]?.count || 0
           const maxTeams = Object.values(tour.div_caps || {}).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0)
 

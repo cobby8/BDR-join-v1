@@ -171,7 +171,7 @@ export default function RegistrationForm({ tournament }: { tournament: any }) {
                             division: t.division,
                             uniformHome: t.uniform_home || '#ff0000',
                             uniformAway: t.uniform_away || '#ffffff',
-                            players: ((t.players as any[]) || []).map((p: any) => ({
+                            players: ((t.players as unknown as any[]) || []).map((p: any) => ({
                                 id: p.id,
                                 name: p.name,
                                 backNumber: p.back_number,
