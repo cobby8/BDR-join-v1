@@ -18,8 +18,8 @@ export default async function SettingsPage() {
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-gray-900">설정 및 관리</h1>
             <SettingsClient
-                initialTeams={teams || []}
-                initialTournaments={tournaments || []}
+                initialTeams={(teams as any) || []}
+                initialTournaments={(tournaments as any) || []}
             />
         </div>
     )
