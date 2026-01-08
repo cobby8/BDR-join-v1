@@ -181,9 +181,6 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
         const results = await Promise.all(promises)
         const errors = results.filter(r => r.error)
         if (errors.length > 0) alert(`${errors.length}명의 선수 정보 수정 실패.`)
-        else {
-            fetchPlayers()
-        }
     }
 
     const handleSaveAll = async () => {
