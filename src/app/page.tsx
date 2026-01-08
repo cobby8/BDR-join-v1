@@ -3,7 +3,7 @@ import { Calendar, ChevronRight, Trophy, Copy, MapPin, Clock, Users } from 'luci
 import { supabase } from '@/lib/supabase/client'
 
 // Landing Page: Shows active tournaments
-export const revalidate = 0
+export const dynamic = 'force-dynamic'
 
 interface Tournament {
   id: string
