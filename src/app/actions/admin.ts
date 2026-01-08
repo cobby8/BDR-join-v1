@@ -64,28 +64,32 @@ export async function updatePlayer(playerId: string, data: any) {
 
 export async function fetchTeamDetails(teamId: string, managerPhone: string) {
     const supabase = await createClient()
+    const cleanPhone = managerPhone?.replace(/-/g, '')
 
-    // 1. Fetch Players
-    const { data: players, error: pError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('team_id', teamId)
-        .order('back_number', { ascending: true })
+    const [playersRes, historyRes] = await Promise.all([
+        // 1. Fetch Players
+        supabase
+            .from('players')
+            .select('*')
+            .eq('team_id', teamId)
+            .order('back_number', { ascending: true }),
 
-    // 2. Fetch History (with phone normalization)
-    // Ensure managerPhone is not null/undefined
-    if (!managerPhone) return { players: players || [], history: [] }
+        // 2. Fetch History (only if phone exists)
+        managerPhone
+            ? supabase
+                .from('teams')
+                .select('id, created_at, category, division, payment_status, status, tournaments(name, status, start_date, end_date, places)')
+                .or(`manager_phone.eq.${cleanPhone},manager_phone.eq.${managerPhone}`)
+                .order('created_at', { ascending: false })
+            : Promise.resolve({ data: [], error: null })
+    ])
 
-    const cleanPhone = managerPhone.replace(/-/g, '')
-    const { data: history, error: hError } = await supabase
-        .from('teams')
-        .select('id, created_at, category, division, payment_status, status, tournaments(name, status, start_date, end_date, places)')
-        .or(`manager_phone.eq.${cleanPhone},manager_phone.eq.${managerPhone}`)
-        .order('created_at', { ascending: false })
-
-    if (pError || hError) {
-        return { error: pError?.message || hError?.message }
+    if (playersRes.error || historyRes.error) {
+        return { error: playersRes.error?.message || historyRes.error?.message }
     }
 
-    return { players, history }
+    return {
+        players: playersRes.data,
+        history: historyRes.data || []
+    }
 }

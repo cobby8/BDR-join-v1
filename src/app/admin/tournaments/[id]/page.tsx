@@ -22,7 +22,9 @@ export default async function AdminTournamentDetailPage({ params }: { params: Pr
     const { data: teams } = await supabase
         .from('teams')
         .select(`
-            *,
+            id, tournament_id, name_ko, name_en, manager_name, manager_phone, 
+            province, city, category, division, uniform_home, uniform_away, 
+            payment_status, status, created_at,
             tournaments (name),
             players (count)
         `)
