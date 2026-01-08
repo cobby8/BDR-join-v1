@@ -29,11 +29,15 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   const cloneFrom = sp.clone_from
 
   // Helper to format date
-  const formatDate = (d: string) => d ? new Date(d).toLocaleDateString() : '미정'
+  const formatDate = (d: string) => {
+    if (!d) return '미정'
+    const date = new Date(d)
+    return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`
+  }
   const formatRegDate = (s?: string, e?: string) => {
     if (!s && !e) return '일정 미정'
-    const start = s ? new Date(s).toLocaleDateString().slice(5) : '?'
-    const end = e ? new Date(e).toLocaleDateString().slice(5) : '?'
+    const start = s ? formatDate(s) : '?'
+    const end = e ? formatDate(e) : '?'
     return `${start} ~ ${end}`
   }
 
