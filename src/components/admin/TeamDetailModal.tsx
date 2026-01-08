@@ -48,7 +48,7 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
             .order('back_number', { ascending: true }) // Sort by back number? or creation
 
         if (!error && data) {
-            setPlayers(data)
+            setPlayers(data as unknown as Player[])
         }
         setLoading(false)
     }
