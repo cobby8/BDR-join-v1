@@ -23,7 +23,8 @@ export default async function AdminTournamentDetailPage({ params }: { params: Pr
         .from('teams')
         .select(`
             *,
-            tournaments (name)
+            tournaments (name),
+            players (count)
         `)
         .eq('tournament_id', id)
         .order('created_at', { ascending: false })
@@ -39,6 +40,7 @@ export default async function AdminTournamentDetailPage({ params }: { params: Pr
                 initialTeams={(teams as any) || []}
                 hideTournamentFilter={true}
                 title={`${tournament.name} - 참가팀 관리`}
+                enableInlineStatusEditing={true}
             />
         </div>
     )

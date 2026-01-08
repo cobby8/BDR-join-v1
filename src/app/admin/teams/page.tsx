@@ -6,9 +6,10 @@ async function getTeams() {
     const { data } = await supabase
         .from('teams')
         .select(`
-      *,
-      tournaments (name)
-    `)
+            *,
+            tournaments (name),
+            players (count)
+        `)
         .order('created_at', { ascending: false })
 
     return data || []

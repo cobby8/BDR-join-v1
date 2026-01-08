@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Download, Search } from 'lucide-react'
 import TeamsTable from './TeamsTable'
+import TeamDetailModal from '@/components/admin/TeamDetailModal'
 
 interface Team {
     id: string
@@ -17,6 +18,9 @@ interface Team {
     created_at: string
     tournament_id: string
     tournaments: { name: string } | null | any
+    province?: string
+    city?: string
+    players?: { count: number }[]
 }
 
 interface Tournament {
@@ -29,14 +33,30 @@ interface Props {
     tournaments?: Tournament[]
     hideTournamentFilter?: boolean
     title?: string
+    enableInlineStatusEditing?: boolean
 }
 
-export default function TeamsManagementClient({ initialTeams, tournaments = [], hideTournamentFilter = false, title = '참가팀 관리' }: Props) {
+export default function TeamsManagementClient({
+    initialTeams,
+    tournaments = [],
+    hideTournamentFilter = false,
+    title = '참가팀 관리',
+    enableInlineStatusEditing = false
+}: Props) {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedTour, setSelectedTour] = useState('')
+    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
+    const [selectedRegion, setSelectedRegion] = useState('')
+    const [isModalOpen, setIsModalOpen] = useState(false)
+
+    // Extract unique regions
+    const regions = useMemo(() => {
+        const unique = Array.from(new Set(initialTeams.map(t => t.province).filter(Boolean)))
+        return unique.sort() as string[]
+    }, [initialTeams])
 
     const filteredTeams = useMemo(() => {
-        return initialTeams.filter(team => {
+        const result = initialTeams.filter(team => {
             const matchesSearch =
                 (team.name_ko?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
                 (team.manager_name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
@@ -44,14 +64,27 @@ export default function TeamsManagementClient({ initialTeams, tournaments = [], 
                 (team.manager_phone?.includes(searchQuery) || false);
 
             const matchesTour = selectedTour ? team.tournament_id === selectedTour : true
+            const matchesRegion = selectedRegion ? team.province === selectedRegion : true
 
-            return matchesSearch && matchesTour
+            return matchesSearch && matchesTour && matchesRegion
         })
-    }, [initialTeams, searchQuery, selectedTour])
+
+        // Default Sort: Team Name Ascending
+        return result.sort((a, b) => (a.name_ko || '').localeCompare(b.name_ko || ''))
+    }, [initialTeams, searchQuery, selectedTour, selectedRegion])
 
     const handleDownload = () => {
         alert('엑셀 다운로드 기능은 준비 중입니다.')
     }
+
+    const handleTeamClick = (teamId: string) => {
+        setSelectedTeamId(teamId)
+        setIsModalOpen(true)
+    }
+
+    const selectedTeamData = useMemo(() => {
+        return initialTeams.find(t => t.id === selectedTeamId)
+    }, [initialTeams, selectedTeamId])
 
     return (
         <div className="space-y-6">
@@ -82,6 +115,21 @@ export default function TeamsManagementClient({ initialTeams, tournaments = [], 
                         />
                     </div>
                 </div>
+
+                {/* Region Filter */}
+                <div className="w-full md:w-32">
+                    <select
+                        value={selectedRegion}
+                        onChange={(e) => setSelectedRegion(e.target.value)}
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-[hsl(var(--primary))]"
+                    >
+                        <option value="">전체 지역</option>
+                        {regions.map(r => (
+                            <option key={r} value={r}>{r}</option>
+                        ))}
+                    </select>
+                </div>
+
                 {!hideTournamentFilter && (
                     <div className="w-full md:w-64">
                         <select
@@ -98,11 +146,30 @@ export default function TeamsManagementClient({ initialTeams, tournaments = [], 
                 )}
             </div>
 
-            {/* Table */}
             <div className="flex justify-end text-sm text-gray-500 mb-2">
                 총 {filteredTeams.length}개 팀
             </div>
-            <TeamsTable teams={filteredTeams} />
+
+            <TeamsTable
+                teams={filteredTeams}
+                onTeamClick={handleTeamClick}
+                enableInlineStatusEditing={enableInlineStatusEditing}
+                teamCounts={initialTeams.reduce((acc, team) => {
+                    const key = team.name_ko + (team.manager_phone || '') // Unique key by name+phone to differentiate different teams with same name? Or just name? User said "Participating Tournaments Count". Same name usually means same team. 
+                    // Let's use name_ko for now as primary grouper, or better: name_ko + manager_name? 
+                    // Actually, simpler: Just count by name_ko.
+                    acc[team.name_ko] = (acc[team.name_ko] || 0) + 1
+                    return acc
+                }, {} as Record<string, number>)}
+            />
+
+            <TeamDetailModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                teamId={selectedTeamId}
+                teamName={selectedTeamData?.name_ko || ''}
+                teamData={selectedTeamData}
+            />
         </div>
     )
 }

@@ -23,7 +23,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
     .from('tournaments')
     .select('*, teams(count)')
     .in('status', ['접수중', '대기접수', '마감임박'])
-    .order('created_at', { ascending: false })
+    .order('start_date', { ascending: true }) // Upcoming first
 
   const sp = await searchParams
   const cloneFrom = sp.clone_from

@@ -7,32 +7,10 @@ import { LayoutDashboard, Users, Trophy, Settings, RefreshCw } from 'lucide-reac
 // If Sidebar is in components/admin/Sidebar, and LogoutButton is in app/admin, we can't import it easily if it's not a shared component.
 // BETTER: pass it as children. Sidebar already accepts children.
 // So we just remove the import in Sidebar and rely on children.
-import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { syncGoogleSheet } from '@/app/actions/admin'
 
 export default function Sidebar({ children }: { children?: React.ReactNode }) {
     const pathname = usePathname()
-    const [isSyncing, setIsSyncing] = useState(false)
-
-    const handleSync = async () => {
-        if (!confirm('구글 시트의 데이터로 DB를 동기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return
-
-        setIsSyncing(true)
-        try {
-            const result = await syncGoogleSheet()
-            if (result.success) {
-                alert('동기화가 완료되었습니다.')
-                window.location.reload()
-            } else {
-                alert('동기화 실패: ' + result.error)
-            }
-        } catch (e) {
-            alert('오류가 발생했습니다.')
-        } finally {
-            setIsSyncing(false)
-        }
-    }
 
     const isActive = (path: string) => pathname === path
 
@@ -79,14 +57,6 @@ export default function Sidebar({ children }: { children?: React.ReactNode }) {
             </nav>
 
             <div className="pt-4 border-t border-gray-100 space-y-2">
-                <button
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-green-700 bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50"
-                >
-                    <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? '동기화 중...' : '구글 시트 동기화'}
-                </button>
                 {children}
             </div>
         </aside>
