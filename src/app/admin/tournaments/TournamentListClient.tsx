@@ -6,6 +6,7 @@ import { Plus, Trash2, Edit2, Calendar } from 'lucide-react'
 import { deleteTournament } from '@/app/actions/admin'
 import { useRouter } from 'next/navigation'
 import PasswordPromptModal from '@/components/common/PasswordPromptModal'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 interface Tournament {
     id: string
@@ -30,6 +31,11 @@ export default function TournamentListClient({ tournaments: initialTournaments }
     const [activeTab, setActiveTab] = useState('접수중')
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
     const [isDeleteLoading, setIsDeleteLoading] = useState(false)
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
     const router = useRouter()
 
     const filteredTournaments = tournaments.filter(t => {
@@ -60,10 +66,10 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                 setTournaments(prev => prev.filter(t => t.id !== deleteTargetId))
                 setDeleteTargetId(null)
             } else {
-                alert('삭제 실패: ' + res.error)
+                setAlertState({ isOpen: true, title: '삭제 실패', message: res.error || '삭제 실패' })
             }
         } catch (e) {
-            alert('삭제 중 오류가 발생했습니다.')
+            setAlertState({ isOpen: true, title: '오류', message: '삭제 중 오류가 발생했습니다.' })
         } finally {
             setIsDeleteLoading(false)
         }
@@ -173,6 +179,14 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                 title="대회 삭제"
                 description="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
                 isLoading={isDeleteLoading}
+            />
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
             />
         </div>
     )

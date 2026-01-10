@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Download, Search } from 'lucide-react'
 import TeamsTable from './TeamsTable'
 import TeamDetailModal from '@/components/admin/TeamDetailModal'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 interface Team {
     id: string
@@ -49,6 +50,11 @@ export default function TeamsManagementClient({
     const [selectedRegion, setSelectedRegion] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [activeTab, setActiveTab] = useState<'ALL' | 'WAITING'>('ALL')
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
 
     // Extract unique regions
     const regions = useMemo(() => {
@@ -73,10 +79,10 @@ export default function TeamsManagementClient({
 
         // Default Sort: Team Name Ascending
         return result.sort((a, b) => (a.name_ko || '').localeCompare(b.name_ko || ''))
-    }, [initialTeams, searchQuery, selectedTour, selectedRegion])
+    }, [initialTeams, searchQuery, selectedTour, selectedRegion, activeTab])
 
     const handleDownload = () => {
-        alert('엑셀 다운로드 기능은 준비 중입니다.')
+        setAlertState({ isOpen: true, title: '알림', message: '엑셀 다운로드 기능은 준비 중입니다.' })
     }
 
     const handleTeamClick = (teamId: string) => {
@@ -194,6 +200,14 @@ export default function TeamsManagementClient({
                 teamId={selectedTeamId}
                 teamName={selectedTeamData?.name_ko || ''}
                 teamData={selectedTeamData}
+            />
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
             />
         </div>
     )

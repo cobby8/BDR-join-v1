@@ -59,9 +59,13 @@ export default function TournamentCard({ tour, cloneFrom }: TournamentCardProps)
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                 ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50 flex-col gap-2">
-                        <Trophy className="w-8 h-8 opacity-20" />
-                        <span className="text-xs font-medium opacity-60">이미지 준비중</span>
+                    <div className="relative w-full h-full bg-white flex items-center justify-center p-12">
+                        <Image
+                            src="/images/bdr-logo.png"
+                            alt="BDR Logo"
+                            fill
+                            className="object-contain opacity-20 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
+                        />
                     </div>
                 )}
             </div>

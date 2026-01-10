@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, Phone, User, Trophy, Pencil, Save } from 'lucide-react'
+import { X, Phone, User, Trophy, Pencil, Save, RefreshCw } from 'lucide-react'
+import ConfirmModal from '@/components/common/ConfirmModal'
 import { supabase } from '@/lib/supabase/client'
 import { updateTeamStatus, updateTeamInfo, updatePlayer, fetchTeamDetails } from '@/app/actions/admin'
 
@@ -53,6 +54,11 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
     const [history, setHistory] = useState<any[]>([])
     const [updatingParams, setUpdatingParams] = useState<string | null>(null)
     const [isEditing, setIsEditing] = useState(false)
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; onOk?: () => void }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
 
     // Edit Forms
     const [editTeamForm, setEditTeamForm] = useState<any>({})
@@ -64,12 +70,12 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
         try {
             const res = await updateTeamStatus(teamId, field, value)
             if (res.error) {
-                alert('업데이트 실패: ' + res.error)
+                setAlertState({ isOpen: true, title: '오류', message: '업데이트 실패: ' + res.error })
             } else {
-                alert('상태가 변경되었습니다. (새로고침 시 반영됩니다)')
+                setAlertState({ isOpen: true, title: '성공', message: '상태가 변경되었습니다. (새로고침 시 반영됩니다)' })
             }
         } catch (e: any) {
-            alert('오류: ' + e.message)
+            setAlertState({ isOpen: true, title: '오류', message: '오류: ' + e.message })
         } finally {
             setUpdatingParams(null)
         }
@@ -175,9 +181,9 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
     const handleSaveTeam = async () => {
         if (!teamId) return
         const res = await updateTeamInfo(teamId, editTeamForm)
-        if (res.error) alert('팀 정보 수정 실패: ' + res.error)
+        if (res.error) setAlertState({ isOpen: true, title: '오류', message: '팀 정보 수정 실패: ' + res.error })
         else {
-            // alert('팀 정보가 수정되었습니다.')
+            // Success handled in handleSaveAll
         }
     }
 
@@ -185,15 +191,19 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
         const promises = Object.values(editPlayersForm).map(p => updatePlayer(p.id, p))
         const results = await Promise.all(promises)
         const errors = results.filter(r => r.error)
-        if (errors.length > 0) alert(`${errors.length}명의 선수 정보 수정 실패.`)
+        if (errors.length > 0) setAlertState({ isOpen: true, title: '오류', message: `${errors.length}명의 선수 정보 수정 실패.` })
     }
 
     const handleSaveAll = async () => {
         await handleSaveTeam()
         await handleSavePlayers()
         setIsEditing(false)
-        alert('저장되었습니다.')
-        window.location.reload()
+        setAlertState({
+            isOpen: true,
+            title: '성공',
+            message: '저장되었습니다.',
+            onOk: () => window.location.reload()
+        })
     }
 
     const handlePlayerChange = (id: string, field: string, value: any) => {
@@ -210,7 +220,19 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
             <div
                 className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
-            />
+            >
+                <ConfirmModal
+                    isOpen={alertState.isOpen}
+                    onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                    onConfirm={() => {
+                        if (alertState.onOk) alertState.onOk()
+                        setAlertState(prev => ({ ...prev, isOpen: false }))
+                    }}
+                    title={alertState.title}
+                    description={alertState.message}
+                    variant="alert"
+                />
+            </div>
 
             <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
 

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { LayoutDashboard, Users, Trophy, Settings, RefreshCw } from 'lucide-react'
 // LogoutButton is in src/app/admin/layout/LogoutButton (if it was separate) BUT
 // looking at layout.tsx, it imported from './LogoutButton'.
@@ -16,9 +17,15 @@ export default function Sidebar({ children }: { children?: React.ReactNode }) {
 
     return (
         <aside className="w-full md:w-64 bg-white border-r border-gray-200 p-4 flex flex-col">
-            <div className="mb-8 px-2 flex items-center gap-2 text-[hsl(var(--primary))]">
-                <Trophy className="w-6 h-6" />
-                <span className="font-bold text-xl">BDR Admin</span>
+            <div className="mb-8 px-2 flex flex-col items-center gap-2 text-[hsl(var(--primary))]">
+                <Image
+                    src="/images/bdr-logo.png"
+                    alt="BDR Admin"
+                    width={120}
+                    height={120}
+                    className="object-contain"
+                />
+                <span className="font-bold text-xl">Admin</span>
             </div>
 
             <nav className="flex-1 space-y-1">

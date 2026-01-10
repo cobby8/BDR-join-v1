@@ -43,7 +43,8 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
 
             <div className="mb-8 bg-white rounded-3xl border border-blue-100 shadow-sm relative overflow-hidden">
                 {/* Poster Image */}
-                {tour.poster_url && (
+                {/* Poster Image */}
+                {tour.poster_url ? (
                     <div className="relative w-full border-b border-gray-100">
                         <Image
                             src={tour.poster_url}
@@ -53,6 +54,16 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
                             sizes="100vw"
                             className="w-full h-auto"
                             priority
+                        />
+                    </div>
+                ) : (
+                    <div className="relative w-full border-b border-gray-100 bg-white flex items-center justify-center p-12">
+                        <Image
+                            src="/images/bdr-logo.png"
+                            alt="BDR Logo"
+                            width={200}
+                            height={100}
+                            className="object-contain opacity-20 grayscale"
                         />
                     </div>
                 )}

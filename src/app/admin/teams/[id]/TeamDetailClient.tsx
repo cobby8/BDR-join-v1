@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Plus, Trash2, User } from 'lucide-react'
 import Link from 'next/link'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 interface Team {
     id: string
@@ -34,6 +35,17 @@ export default function TeamDetailClient({ teamId, initialTeam, initialPlayers }
     const [players, setPlayers] = useState<Player[]>(initialPlayers)
     const [loading, setLoading] = useState(false)
     const [newPlayer, setNewPlayer] = useState({ name: '', back_number: '', position: '', birth_date: '', is_elite: false })
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
+    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { }
+    })
 
     // Update Team Info
     const handleUpdateTeam = async () => {
@@ -46,14 +58,14 @@ export default function TeamDetailClient({ teamId, initialTeam, initialPlayers }
             status: team.status
         }).eq('id', teamId)
 
-        if (error) alert('팀 수정 실패: ' + error.message)
-        else alert('팀 정보가 수정되었습니다.')
+        if (error) setAlertState({ isOpen: true, title: '오류', message: '팀 수정 실패: ' + error.message })
+        else setAlertState({ isOpen: true, title: '성공', message: '팀 정보가 수정되었습니다.' })
         setLoading(false)
     }
 
     // Add Player
     const handleAddPlayer = async () => {
-        if (!newPlayer.name) return alert('이름을 입력해주세요.')
+        if (!newPlayer.name) return setAlertState({ isOpen: true, title: '알림', message: '이름을 입력해주세요.' })
 
         const payload = {
             team_id: teamId,
@@ -67,7 +79,7 @@ export default function TeamDetailClient({ teamId, initialTeam, initialPlayers }
         const { data, error } = await supabase.from('players').insert(payload).select().single()
 
         if (error) {
-            alert('선수 추가 실패: ' + error.message)
+            setAlertState({ isOpen: true, title: '오류', message: '선수 추가 실패: ' + error.message })
         } else if (data) {
             setPlayers([...players, data as Player])
             setNewPlayer({ name: '', back_number: '', position: '', birth_date: '', is_elite: false })
@@ -76,11 +88,16 @@ export default function TeamDetailClient({ teamId, initialTeam, initialPlayers }
 
     // Delete Player
     const handleDeletePlayer = async (id: string) => {
-        if (!confirm('정말 이 선수를 삭제하시겠습니까?')) return
-
-        const { error } = await supabase.from('players').delete().eq('id', id)
-        if (error) alert('삭제 실패: ' + error.message)
-        else setPlayers(players.filter(p => p.id !== id))
+        setConfirmState({
+            isOpen: true,
+            title: '선수 삭제',
+            message: '정말 이 선수를 삭제하시겠습니까?',
+            onConfirm: async () => {
+                const { error } = await supabase.from('players').delete().eq('id', id)
+                if (error) setAlertState({ isOpen: true, title: '오류', message: '삭제 실패: ' + error.message })
+                else setPlayers(players.filter(p => p.id !== id))
+            }
+        })
     }
 
     return (
@@ -230,6 +247,26 @@ export default function TeamDetailClient({ teamId, initialTeam, initialPlayers }
                     </div>
                 </div>
             </div>
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
+            />
+            <ConfirmModal
+                isOpen={confirmState.isOpen}
+                onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => {
+                    confirmState.onConfirm()
+                    setConfirmState(prev => ({ ...prev, isOpen: false }))
+                }}
+                title={confirmState.title}
+                description={confirmState.message}
+                confirmText="삭제"
+                isDangerous
+            />
         </div>
     )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { ArrowLeft, ArrowRight, Check, X, Copy, RefreshCcw, AlertCircle, Shirt, ChevronDown, Eye, EyeOff } from 'lucide-react'
+import ConfirmModal from '@/components/common/ConfirmModal'
 import { submitApplication, updateApplication } from '@/app/actions/join' // Ensure updateApplication is imported
 import { useRouter, useSearchParams } from 'next/navigation'
 import { KOREA_DIVISIONS } from '@/constants/korea-admin-divisions'
@@ -128,6 +129,16 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
     const [regionModal, setRegionModal] = useState<'none' | 'province' | 'city'>('none')
     const [showPassword, setShowPassword] = useState(false)
 
+    // Alert & Confirm States
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
+    const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false)
+    const [rosterConfirmOpen, setRosterConfirmOpen] = useState(false)
+    const [pendingRosterText, setPendingRosterText] = useState('')
+
     // Form State
     const [formData, setFormData] = useState({
         // Step 0: Base Info
@@ -178,12 +189,14 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                                 name: p.name,
                                 backNumber: p.back_number,
                                 position: p.position,
-                                birth: p.birth_date,
+                                birth: p.birth || '',
                                 isElite: p.is_elite,
                                 isValid: true
                             }))
                         }))
-                        if (cloneTeamId) alert('기존 신청 정보를 불러왔습니다. 내용을 확인해주세요.')
+                        if (cloneTeamId) {
+                            setAlertState({ isOpen: true, title: '알림', message: '기존 신청 정보를 불러왔습니다. 내용을 확인해주세요.' })
+                        }
                     }
                 })
                 .catch(err => console.error(err))
@@ -222,7 +235,7 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
     const handleNext = () => {
         const error = validateStep(step)
         if (error) {
-            alert(error)
+            setAlertState({ isOpen: true, title: '알림', message: error })
             return
         }
         setStep(prev => prev + 1)
@@ -235,9 +248,11 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
     }
 
     // --- Submission ---
-    const handleSubmit = async () => {
-        if (!confirm(isEditMode ? '수정된 내용을 저장하시겠습니까?' : '신청서를 제출하시겠습니까?')) return
+    const handleSubmit = () => {
+        setSubmitConfirmOpen(true)
+    }
 
+    const executeSubmit = async () => {
         setIsLoading(true)
         try {
             const payload = {
@@ -262,13 +277,13 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                 res = await submitApplication(payload)
             }
 
-            if (res.success) {
+            if (res?.success) {
                 setStep(4) // Success Screen
             } else {
-                alert((isEditMode ? '수정 실패: ' : '제출 실패: ') + res.error)
+                setAlertState({ isOpen: true, title: '제출 실패', message: (isEditMode ? '수정 실패: ' : '제출 실패: ') + (res?.error || '알 수 없는 오류') })
             }
         } catch (e: any) {
-            alert('오류 발생: ' + e.message)
+            setAlertState({ isOpen: true, title: '오류', message: '오류 발생: ' + e.message })
         } finally {
             setIsLoading(false)
         }
@@ -300,7 +315,10 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                     <button
                         type="button"
                         onClick={() => {
-                            if (!formData.province) return alert('시/도를 먼저 선택해주세요.')
+                            if (!formData.province) {
+                                setAlertState({ isOpen: true, title: '알림', message: '시/도를 먼저 선택해주세요.' })
+                                return
+                            }
                             setRegionModal('city')
                         }}
                         className={`w-full p-4 text-left border rounded-xl flex justify-between items-center transition-all ${formData.city ? 'bg-blue-50 border-blue-200 text-blue-700 font-bold' : 'bg-white border-gray-200 text-gray-400'
@@ -592,11 +610,9 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                     placeholder={`홍길동/7/G/010101/비선출\n강백호/10/PF/000202/선출`}
                     onBlur={(e) => {
                         if (e.target.value.trim()) {
-                            if (confirm('입력한 내용으로 명단을 덮어쓰시겠습니까?')) {
-                                const parsed = parseRosterText(e.target.value)
-                                updateField('players', parsed)
-                                e.target.value = '' // clear after paste
-                            }
+                            setPendingRosterText(e.target.value)
+                            setRosterConfirmOpen(true)
+                            e.target.value = '' // Clear UI immediately, restore if cancelled? No, just clear.
                         }
                     }}
                 />

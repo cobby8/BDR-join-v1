@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Copy, Trophy } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import TournamentCard from '@/components/TournamentCard'
@@ -32,9 +33,16 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   return (
     <div className="max-w-screen-lg mx-auto py-10 px-6">
       <header className="mb-10 flex justify-between items-end border-b border-gray-100 pb-6">
-        <div>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/images/bdr-logo.png"
+            alt="BDR Logo"
+            width={135}
+            height={68}
+            className="object-contain"
+          />
           <h1 className="text-3xl font-extrabold text-slate-900 leading-tight">
-            BDR 참가신청서
+            참가신청서
           </h1>
         </div>
         <Link href="/lookup" className="text-sm font-bold text-gray-500 hover:text-blue-600 transition-colors bg-gray-50 px-4 py-2 rounded-full">

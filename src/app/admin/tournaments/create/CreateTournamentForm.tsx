@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react'
+import ConfirmModal from '@/components/common/ConfirmModal'
 import Link from 'next/link'
 
 // Define the shape of our dynamic JSON fields
@@ -20,6 +21,11 @@ interface Category {
 export default function CreateTournamentForm() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
 
     // Dynamic State for JSON fields
     const [categories, setCategories] = useState<Category[]>([])
@@ -113,7 +119,7 @@ export default function CreateTournamentForm() {
         const { error } = await supabase.from('tournaments').insert(payload)
 
         if (error) {
-            alert('대회 생성 실패: ' + error.message)
+            setAlertState({ isOpen: true, title: '오류', message: '대회 생성 실패: ' + error.message })
             setLoading(false)
         } else {
             router.push('/admin/tournaments')
@@ -268,6 +274,14 @@ export default function CreateTournamentForm() {
                     @apply px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[hsl(var(--primary))];
                 }
             `}</style>
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
+            />
         </form>
     )
 }

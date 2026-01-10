@@ -4,12 +4,18 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Lock, Loader2, Eye, EyeOff } from 'lucide-react'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
     const router = useRouter()
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -29,12 +35,12 @@ export default function LoginPage() {
             })
 
             if (error) {
-                alert('로그인 실패: ' + error.message)
+                setAlertState({ isOpen: true, title: '로그인 실패', message: error.message })
             } else {
                 router.push('/admin')
             }
         } catch (err) {
-            alert('오류가 발생했습니다.')
+            setAlertState({ isOpen: true, title: '오류', message: '오류가 발생했습니다.' })
         } finally {
             setLoading(false)
         }
@@ -96,6 +102,16 @@ export default function LoginPage() {
                     </button>
                 </form>
             </div>
-        </div>
+        </form>
+            </div >
+        <ConfirmModal
+            isOpen={alertState.isOpen}
+            onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+            onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+            title={alertState.title}
+            description={alertState.message}
+            variant="alert"
+        />
+        </div >
     )
 }

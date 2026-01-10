@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Plus, Trash2, X } from 'lucide-react'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 interface AdminCategory {
     id: string
@@ -15,6 +16,17 @@ export default function CategoryManager() {
     const [categories, setCategories] = useState<AdminCategory[]>([])
     const [loading, setLoading] = useState(true)
     const [newCatName, setNewCatName] = useState('')
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
+        isOpen: false,
+        title: '',
+        message: ''
+    })
+    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { }
+    })
 
     // Fetch
     useEffect(() => {
@@ -52,19 +64,25 @@ export default function CategoryManager() {
             setCategories([...categories, data as unknown as AdminCategory])
             setNewCatName('')
         } catch (e: any) {
-            alert('추가 실패: ' + e.message)
+            setAlertState({ isOpen: true, title: '오류', message: '추가 실패: ' + e.message })
         }
     }
 
     const deleteCategory = async (id: string) => {
-        if (!confirm('정말 삭제하시겠습니까?')) return
-        try {
-            const { error } = await supabase.from('admin_categories').delete().eq('id', id)
-            if (error) throw error
-            setCategories(categories.filter(c => c.id !== id))
-        } catch (e: any) {
-            alert('삭제 실패: ' + e.message)
-        }
+        setConfirmState({
+            isOpen: true,
+            title: '종별 삭제',
+            message: '정말 삭제하시겠습니까?',
+            onConfirm: async () => {
+                try {
+                    const { error } = await supabase.from('admin_categories').delete().eq('id', id)
+                    if (error) throw error
+                    setCategories(categories.filter(c => c.id !== id))
+                } catch (e: any) {
+                    setAlertState({ isOpen: true, title: '오류', message: '삭제 실패: ' + e.message })
+                }
+            }
+        })
     }
 
     const updateCategory = async (id: string, field: 'divisions' | 'ages', value: string[]) => {
@@ -80,7 +98,7 @@ export default function CategoryManager() {
             if (error) throw error
         } catch (e: any) {
             console.error(e)
-            alert('저장 실패')
+            setAlertState({ isOpen: true, title: '오류', message: '저장 실패' })
             fetchCategories() // Revert
         }
     }
@@ -208,6 +226,26 @@ export default function CategoryManager() {
                     </div>
                 ))}
             </div>
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
+            />
+            <ConfirmModal
+                isOpen={confirmState.isOpen}
+                onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => {
+                    confirmState.onConfirm()
+                    setConfirmState(prev => ({ ...prev, isOpen: false }))
+                }}
+                title={confirmState.title}
+                description={confirmState.message}
+                confirmText="삭제"
+                isDangerous
+            />
         </div>
     )
 }

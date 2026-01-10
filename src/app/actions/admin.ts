@@ -126,3 +126,53 @@ export async function notifyWaitingTeam(teamId: string) {
         return { error: '문자 발송 실패: ' + res.error }
     }
 }
+
+export async function getTournamentsForCopy(query?: string) {
+    const supabase = await createClient()
+    let dbQuery = supabase
+        .from('tournaments')
+        .select('id, name, start_date, divs, div_caps, places, entry_fee, bank_name, account_number, account_holder, poster_url, details_url')
+        .order('start_date', { ascending: false })
+        .limit(50)
+
+    if (query) {
+        dbQuery = dbQuery.ilike('name', `%${query}%`)
+    }
+
+    const { data, error } = await dbQuery
+
+    if (error) return { error: error.message }
+    return { data } as { data: any[], error: null }
+}
+
+export async function getPresets() {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('tournament_presets')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+    if (error) return { error: error.message }
+    return { data }
+}
+
+export async function savePreset(name: string, data: any) {
+    const supabase = await createClient()
+    const { error } = await supabase
+        .from('tournament_presets')
+        .insert({ name, data })
+
+    if (error) return { error: error.message }
+    return { success: true }
+}
+
+export async function deletePreset(id: string) {
+    const supabase = await createClient()
+    const { error } = await supabase
+        .from('tournament_presets')
+        .delete()
+        .eq('id', id)
+
+    if (error) return { error: error.message }
+    return { success: true }
+}

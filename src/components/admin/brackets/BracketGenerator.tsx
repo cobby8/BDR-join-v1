@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { generateHybridBracket } from '@/app/actions/bracket'
 import { Loader2, Settings2, Users } from 'lucide-react'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 interface Props {
     tournamentId: string
@@ -14,34 +15,45 @@ export default function BracketGenerator({ tournamentId, teamCount, onSuccess }:
     const [groupCount, setGroupCount] = useState(4)
     const [isGenerating, setIsGenerating] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+    const [confirmState, setConfirmState] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { }
+    })
 
     const teamsPerGroup = Math.ceil(teamCount / groupCount)
     const recommendedGroups = teamCount >= 12 ? 4 : teamCount >= 6 ? 2 : 1
 
     const handleGenerate = async () => {
-        if (!confirm('기존 대진표가 있다면 초기화됩니다. 계속하시겠습니까?')) return
+        setConfirmState({
+            isOpen: true,
+            title: '대진표 생성',
+            message: '기존 대진표가 있다면 초기화됩니다. 계속하시겠습니까?',
+            onConfirm: async () => {
+                setIsGenerating(true)
+                setMessage(null)
 
-        setIsGenerating(true)
-        setMessage(null)
+                try {
+                    const result = await generateHybridBracket(tournamentId, {
+                        groupCount,
+                        advancePerGroup: 2 // Default for now
+                    })
 
-        try {
-            const result = await generateHybridBracket(tournamentId, {
-                groupCount,
-                advancePerGroup: 2 // Default for now
-            })
-
-            if (result.success) {
-                setMessage({ type: 'success', text: result.message || '완료' })
-                if (onSuccess) onSuccess()
-            } else {
-                setMessage({ type: 'error', text: result.message || '실패' })
+                    if (result.success) {
+                        setMessage({ type: 'success', text: result.message || '완료' })
+                        if (onSuccess) onSuccess()
+                    } else {
+                        setMessage({ type: 'error', text: result.message || '실패' })
+                    }
+                } catch (error) {
+                    setMessage({ type: 'error', text: '오류가 발생했습니다.' })
+                    console.error(error)
+                } finally {
+                    setIsGenerating(false)
+                }
             }
-        } catch (error) {
-            setMessage({ type: 'error', text: '오류가 발생했습니다.' })
-            console.error(error)
-        } finally {
-            setIsGenerating(false)
-        }
+        })
     }
 
     return (
@@ -98,6 +110,18 @@ export default function BracketGenerator({ tournamentId, teamCount, onSuccess }:
                     )}
                 </button>
             </div>
+            <ConfirmModal
+                isOpen={confirmState.isOpen}
+                onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => {
+                    confirmState.onConfirm()
+                    setConfirmState(prev => ({ ...prev, isOpen: false }))
+                }}
+                title={confirmState.title}
+                description={confirmState.message}
+                confirmText="생성"
+                isDangerous
+            />
         </div>
     )
 }

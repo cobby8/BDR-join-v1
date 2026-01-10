@@ -3,11 +3,14 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, X, Trash2, Calendar, MapPin, Link as LinkIcon, Upload, Check, Settings2, RefreshCcw, Search, CreditCard } from 'lucide-react'
+import { ArrowLeft, Plus, X, Trash2, Calendar, MapPin, Link as LinkIcon, Upload, Check, Settings2, RefreshCcw, Search, CreditCard, Copy } from 'lucide-react'
 import ImageUpload from '@/components/common/ImageUpload'
 import Link from 'next/link'
 import { deleteTournament } from '@/app/actions/admin'
 import PlaceSearchModal from '@/components/admin/tournaments/PlaceSearchModal'
+import TournamentCopyModal from '@/components/admin/tournaments/TournamentCopyModal'
+import PresetManager from '@/components/admin/tournaments/PresetManager'
+import ConfirmModal from '@/components/common/ConfirmModal'
 
 interface Division {
     name: string
@@ -61,8 +64,18 @@ import PasswordPromptModal from '@/components/common/PasswordPromptModal'
 export default function TournamentForm({ initialData, isEdit = false }: TournamentFormProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [isCopyModalOpen, setIsCopyModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [isDeleteLoading, setIsDeleteLoading] = useState(false)
+
+    // Data Load Confirmation State
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+    const [pendingLoadData, setPendingLoadData] = useState<any>(null)
+    const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string; onOk?: () => void }>({
+        isOpen: false,
+        title: '',
+        message: '',
+    })
 
     // Dynamic State
     const [categories, setCategories] = useState<Category[]>([])
@@ -216,11 +229,11 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
 
         // Validation
         if (!gen.selectedCatId) {
-            alert('종별을 선택해주세요.')
+            setAlertState({ isOpen: true, title: '알림', message: '종별을 선택해주세요.' })
             return
         }
         if (gen.selectedDivisions.length === 0) {
-            alert('디비전을 최소 하나 이상 선택해주세요.')
+            setAlertState({ isOpen: true, title: '알림', message: '디비전을 최소 하나 이상 선택해주세요.' })
             return
         }
 
@@ -331,12 +344,12 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
         if (!initialData?.id) return
 
         if (!process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
-            alert('환경변수 설정 오류: 관리자 비밀번호가 설정되지 않았습니다.')
+            setAlertState({ isOpen: true, title: '오류', message: '환경변수 설정 오류: 관리자 비밀번호가 설정되지 않았습니다.' })
             return
         }
 
         if (password !== process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
-            alert('비밀번호가 일치하지 않습니다.')
+            setAlertState({ isOpen: true, title: '오류', message: '비밀번호가 일치하지 않습니다.' })
             return
         }
 
@@ -344,18 +357,70 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
             setIsDeleteLoading(true)
             const res = await deleteTournament(initialData.id)
             if (res.success) {
-                alert('삭제되었습니다.')
-                router.push('/admin')
+                setAlertState({
+                    isOpen: true,
+                    title: '성공',
+                    message: '삭제되었습니다.',
+                    onOk: () => router.push('/admin/tournaments')
+                })
             } else {
-                alert('삭제 실패: ' + res.error)
+                setAlertState({ isOpen: true, title: '오류', message: '삭제 실패: ' + res.error })
             }
         } catch (e: any) {
             console.error(e)
-            alert('오류가 발생했습니다: ' + e.message)
+            setAlertState({ isOpen: true, title: '오류', message: '오류가 발생했습니다: ' + e.message })
         } finally {
             setIsDeleteLoading(false)
             setShowDeleteModal(false)
         }
+    }
+
+    const handleLoadData = (data: any) => {
+        setPendingLoadData(data)
+        setIsCopyModalOpen(false)
+        setIsConfirmOpen(true)
+    }
+
+    const executeLoadData = () => {
+        if (!pendingLoadData) return
+
+        const data = pendingLoadData
+        setFormData(prev => ({
+            ...prev,
+            // Only update fields that are present in data (Copy mode might have names, Preset might not)
+            name: data.name ? `[복사본] ${data.name}` : prev.name,
+            gender: data.gender || prev.gender,
+            entry_fee: data.entry_fee || '',
+            bank_name: data.bank_name || '',
+            account_number: data.account_number || '',
+            account_holder: data.account_holder || '',
+            poster_url: data.poster_url || '',
+            details_url: data.details_url || '',
+            // Reset dates for copy
+            start_date: '',
+            end_date: '',
+            reg_start_at: '',
+            reg_end_at: '',
+            status: '준비중'
+        }))
+
+        if (data.places) {
+            setPlaces(data.places)
+        }
+
+        if (data.divs) {
+            const loadedCats: Category[] = []
+            Object.entries(data.divs).forEach(([catName, divNames]: [string, any]) => {
+                const divisions = (divNames as string[]).map(dName => ({
+                    name: dName,
+                    cap: data.div_caps?.[dName] || 0
+                }))
+                loadedCats.push({ name: catName, divisions })
+            })
+            setCategories(loadedCats)
+        }
+
+        setPendingLoadData(null)
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -388,16 +453,26 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
                 const { error } = await supabase.from('tournaments')
                     .update(payload as any).eq('id', initialData.id)
                 if (error) throw error
-                alert('수정되었습니다.')
-                router.push('/admin/tournaments')
+                setAlertState({
+                    isOpen: true,
+                    title: '성공',
+                    message: '수정되었습니다.',
+                    onOk: () => router.push('/admin/tournaments')
+                })
             } else {
                 const { error } = await supabase.from('tournaments').insert(payload as any)
                 if (error) throw error
-                router.push('/admin/tournaments')
+                // For insert, maybe toast is better, but consistency:
+                setAlertState({
+                    isOpen: true,
+                    title: '성공',
+                    message: '대회가 생성되었습니다.',
+                    onOk: () => router.push('/admin/tournaments')
+                })
             }
         } catch (err: any) {
             console.error(err)
-            alert('오류: ' + err.message)
+            setAlertState({ isOpen: true, title: '오류', message: '오류: ' + err.message })
         } finally {
             setLoading(false)
         }
@@ -413,9 +488,41 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
                 </Link>
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold text-gray-900">{isEdit ? '대회 수정' : '새 대회 만들기'}</h1>
-                    <span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-500 font-medium">Coming Soon / {isEdit ? 'Edit' : 'New'}</span>
+                    {!isEdit && (
+                        <button
+                            type="button"
+                            onClick={() => setIsCopyModalOpen(true)}
+                            className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-all shadow-sm"
+                        >
+                            <Copy className="w-3.5 h-3.5 text-blue-600" />
+                            기존 대회 불러오기
+                        </button>
+                    )}
                 </div>
                 <div className="ml-auto flex gap-3">
+                    <PresetManager
+                        onLoad={handleLoadData}
+                        currentData={(() => {
+                            const divsObj: Record<string, string[]> = {}
+                            const divCapsObj: Record<string, number> = {}
+                            categories.forEach(cat => {
+                                if (!cat.name) return
+                                const validDivs = cat.divisions.filter(d => d.name)
+                                if (validDivs.length > 0) {
+                                    divsObj[cat.name] = validDivs.map(d => d.name)
+                                    validDivs.forEach(d => {
+                                        divCapsObj[d.name] = d.cap
+                                    })
+                                }
+                            })
+                            return {
+                                ...formData,
+                                divs: divsObj,
+                                div_caps: divCapsObj,
+                                places: places
+                            }
+                        })()}
+                    />
                     <Link href="/admin/settings/categories" target="_blank" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
                         <Settings2 className="w-3 h-3" /> 종별 설정 관리
                     </Link>
@@ -1010,6 +1117,33 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
                 title="대회 삭제 (복구 불가)"
                 description="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
                 isLoading={isDeleteLoading}
+            />
+
+            <TournamentCopyModal
+                isOpen={isCopyModalOpen}
+                onClose={() => setIsCopyModalOpen(false)}
+                onSelect={handleLoadData}
+            />
+
+            <ConfirmModal
+                isOpen={isConfirmOpen}
+                onClose={() => setIsConfirmOpen(false)}
+                onConfirm={executeLoadData}
+                title="설정 불러오기"
+                description="현재 작성 중인 내용이 덮어씌워질 수 있습니다. 진행하시겠습니까?"
+                confirmText="불러오기"
+            />
+
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => {
+                    if (alertState.onOk) alertState.onOk()
+                    setAlertState(prev => ({ ...prev, isOpen: false }))
+                }}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
             />
         </form >
     )
