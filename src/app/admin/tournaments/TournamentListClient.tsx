@@ -99,14 +99,14 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                     return (
                         <div
                             key={tour.id}
-                            className={`group relative bg-white border rounded-2xl p-6 hover:shadow-lg transition-all overflow-hidden flex flex-col justify-between ${isClosingSoon ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-200 hover:border-blue-500'}`}
+                            className={`group relative bg-white border rounded-2xl p-5 hover:shadow-lg transition-all overflow-hidden flex flex-col justify-between ${isClosingSoon ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-200 hover:border-blue-500'}`}
                         >
                             <div>
-                                <Link href={`/admin/tournaments/${tour.id}`} className="hover:underline block mb-3">
+                                <Link href={`/admin/tournaments/${tour.id}`} className="hover:underline block mb-2">
                                     <h3 className="text-lg font-bold text-gray-900 leading-snug break-keep">{tour.name}</h3>
                                 </Link>
 
-                                <div className="flex items-center gap-3 text-sm text-gray-500 mb-4">
+                                <div className="flex items-center gap-3 text-sm text-gray-500 mb-3">
                                     <span className="flex items-center gap-1 shrink-0">
                                         <Calendar className="w-4 h-4" />
                                         {tour.start_date ? new Date(tour.start_date).toLocaleDateString() : '미정'}
@@ -120,7 +120,7 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                                 </div>
                             </div>
 
-                            <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                            <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                                 <div className="flex items-center gap-2">
                                     <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold shrink-0 ${(isAutoClosed || tour.status === '마감') ? 'bg-red-50 text-red-600' :
                                         tour.status === '접수중' ? 'bg-blue-50 text-blue-600' :
@@ -140,13 +140,13 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                                         href={`/admin/tournaments/edit/${tour.id}`}
                                         className="p-2 text-gray-400 hover:text-[hsl(var(--primary))] hover:bg-blue-50 rounded-lg transition-colors"
                                     >
-                                        <Edit2 className="w-5 h-5" />
+                                        <Edit2 className="w-4 h-4" />
                                     </Link>
                                     <button
                                         onClick={(e) => handleDeleteClick(tour.id, e)}
                                         className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                     >
-                                        <Trash2 className="w-5 h-5" />
+                                        <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
@@ -157,7 +157,7 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                 {/* Add New Card */}
                 <Link
                     href="/admin/tournaments/create"
-                    className="flex flex-col items-center justify-center gap-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-6 hover:bg-blue-50 hover:border-blue-300 transition-all min-h-[240px] group"
+                    className="flex flex-col items-center justify-center gap-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-5 hover:bg-blue-50 hover:border-blue-300 transition-all min-h-[200px] group"
                 >
                     <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                         <Plus className="w-8 h-8 text-gray-400 group-hover:text-blue-500" />

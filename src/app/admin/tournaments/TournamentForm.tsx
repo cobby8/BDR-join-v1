@@ -389,11 +389,11 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
                     .update(payload as any).eq('id', initialData.id)
                 if (error) throw error
                 alert('수정되었습니다.')
-                router.refresh()
+                router.push('/admin/tournaments')
             } else {
                 const { error } = await supabase.from('tournaments').insert(payload as any)
                 if (error) throw error
-                router.push('/admin')
+                router.push('/admin/tournaments')
             }
         } catch (err: any) {
             console.error(err)
@@ -408,7 +408,7 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
     return (
         <form onSubmit={handleSubmit} className="w-full px-4 md:px-8 pb-32 max-w-[1920px] mx-auto min-h-screen">
             <div className="flex items-center gap-4 py-6 border-b border-gray-100 mb-6 bg-white/80 backdrop-blur-sm sticky top-0 z-20">
-                <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <Link href="/admin/tournaments" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <ArrowLeft className="w-6 h-6 text-gray-500" />
                 </Link>
                 <div className="flex items-center gap-3">
