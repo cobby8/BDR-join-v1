@@ -73,7 +73,7 @@ export default function PlaceSearchModal({ isOpen, onClose, onSelect }: PlaceSea
                         <MapPin className="w-5 h-5 text-blue-600" />
                         경기장 검색 (TMap)
                     </h3>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                    <button type="button" onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
@@ -90,6 +90,7 @@ export default function PlaceSearchModal({ isOpen, onClose, onSelect }: PlaceSea
                             autoFocus
                         />
                         <button
+                            type="button"
                             onClick={handleSearch}
                             disabled={loading}
                             className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
@@ -105,6 +106,7 @@ export default function PlaceSearchModal({ isOpen, onClose, onSelect }: PlaceSea
                         results.map((poi, idx) => (
                             <button
                                 key={`${poi.id}-${idx}`}
+                                type="button"
                                 onClick={() => handleSelect(poi)}
                                 className="w-full text-left p-3 hover:bg-blue-50 rounded-xl transition-all group border border-transparent hover:border-blue-100"
                             >

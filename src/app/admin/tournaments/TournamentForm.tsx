@@ -929,7 +929,7 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
                                                         {/* Cap Input */}
                                                         <div className="flex items-center gap-2 mt-auto">
                                                             <div className="flex-1 flex items-center gap-2 bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-100">
-                                                                <span className="text-[10px] font-bold text-gray-400 uppercase">CAP</span>
+                                                                <span className="text-[10px] font-bold text-gray-400 uppercase">참가팀수</span>
                                                                 <input
                                                                     type="number"
                                                                     value={div.cap}
