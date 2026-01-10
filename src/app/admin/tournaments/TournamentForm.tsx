@@ -265,7 +265,7 @@ export default function TournamentForm({ initialData, isEdit = false }: Tourname
                 if (gen.gender === '여성') {
                     parts.push(`${div}W`)
                 } else {
-                    if (gen.gender) parts.push(gen.gender)
+                    // For male or mixed, just use division name without gender prefix
                     parts.push(div)
                 }
 

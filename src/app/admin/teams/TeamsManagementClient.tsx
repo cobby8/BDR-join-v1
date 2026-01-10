@@ -48,6 +48,7 @@ export default function TeamsManagementClient({
     const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
     const [selectedRegion, setSelectedRegion] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState<'ALL' | 'WAITING'>('ALL')
 
     // Extract unique regions
     const regions = useMemo(() => {
@@ -65,8 +66,9 @@ export default function TeamsManagementClient({
 
             const matchesTour = selectedTour ? team.tournament_id === selectedTour : true
             const matchesRegion = selectedRegion ? team.province === selectedRegion : true
+            const matchesTab = activeTab === 'WAITING' ? team.status === 'WAITING' : true
 
-            return matchesSearch && matchesTour && matchesRegion
+            return matchesSearch && matchesTour && matchesRegion && matchesTab
         })
 
         // Default Sort: Team Name Ascending
@@ -99,6 +101,29 @@ export default function TeamsManagementClient({
                         엑셀 다운로드
                     </button>
                 </div>
+            </div>
+
+            {/* Status Tabs */}
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl w-fit">
+                {['ALL', 'WAITING'].map((tab) => {
+                    const count = tab === 'WAITING'
+                        ? initialTeams.filter(t => t.status === 'WAITING').length
+                        : initialTeams.length
+                    const label = tab === 'ALL' ? '전체' : '대기팀'
+
+                    return (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab as any)}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900'
+                                }`}
+                        >
+                            {label} <span className="ml-1 opacity-60 text-xs">{count}</span>
+                        </button>
+                    )
+                })}
             </div>
 
             {/* Filters */}

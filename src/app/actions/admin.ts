@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendSms } from '@/lib/solapi'
 
 export async function deleteTournament(id: string) {
     const supabase = await createClient()
@@ -91,5 +92,37 @@ export async function fetchTeamDetails(teamId: string, managerPhone: string) {
     return {
         players: playersRes.data,
         history: historyRes.data || []
+    }
+}
+
+export async function notifyWaitingTeam(teamId: string) {
+    const supabase = await createClient()
+
+    // Fetch Team Info
+    const { data: team, error } = await supabase
+        .from('teams')
+        .select('manager_phone, name_ko, tournaments(name)')
+        .eq('id', teamId)
+        .single()
+
+    if (error || !team) {
+        return { error: '팀 정보를 찾을 수 없습니다.' }
+    }
+
+    const { manager_phone, name_ko, tournaments } = team
+    if (!manager_phone) {
+        return { error: '대표자 연락처가 없습니다.' }
+    }
+
+    const tournamentName = (tournaments as any)?.name || '대회'
+    const message = `[BDR] '${tournamentName}' ${name_ko}팀 대기 접수 안내\n빈 자리가 발생하여 참가 신청이 가능합니다. 24시간 내에 확정 바랍니다.`
+
+    // Send SMS
+    const res = await sendSms(manager_phone, message)
+
+    if (res.success) {
+        return { success: true, message: '알림 문자를 발송했습니다.' }
+    } else {
+        return { error: '문자 발송 실패: ' + res.error }
     }
 }

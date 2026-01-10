@@ -17,6 +17,23 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
         notFound()
     }
 
+    // Fetch team counts separately per division to determine waiting status
+    // Status 'APPLIED' and 'CONFIRMED' count towards capacity. 'WAITING' and 'CANCELED' do not.
+    // Assuming 'status' column is ready. If legacy 'pending' exists, we treat it as APPLIED.
+    const { data: teams } = await supabase
+        .from('teams')
+        .select('division, status')
+        .eq('tournament_id', id)
+        .in('status', ['APPLIED', 'CONFIRMED', 'pending']) // Include 'pending' for backward compatibility
+
+    // Aggregation: { "DivisionName": count }
+    const divisionCounts: Record<string, number> = {}
+    teams?.forEach((t: any) => {
+        if (t.division) {
+            divisionCounts[t.division] = (divisionCounts[t.division] || 0) + 1
+        }
+    })
+
     return (
         <div className="max-w-[800px] mx-auto py-8 px-4">
             <Link href="/" className="inline-flex items-center text-gray-500 hover:text-gray-900 mb-6 transition-colors font-medium text-sm">
@@ -83,7 +100,7 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
                 )}
             </div>
 
-            <RegistrationForm tournament={tour as any} />
+            <RegistrationForm tournament={tour as any} divisionCounts={divisionCounts} />
         </div>
     )
 }

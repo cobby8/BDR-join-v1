@@ -107,9 +107,11 @@ function parseRosterText(text: string): Player[] {
 }
 
 
+// ... imports
+
 /* ================= MAIN COMPONENT ================= */
 
-export default function RegistrationForm({ tournament }: { tournament: any }) {
+export default function RegistrationForm({ tournament, divisionCounts = {} }: { tournament: any; divisionCounts?: Record<string, number> }) {
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -474,20 +476,37 @@ export default function RegistrationForm({ tournament }: { tournament: any }) {
                             {(divs[formData.category] || []).map((div: string) => {
                                 const capKey = `${div}`
                                 const capKey2 = `${formData.category} ${div}`.trim()
-                                const cap = caps[capKey] || caps[capKey2] || '-'
+                                const capStr = caps[capKey] || caps[capKey2] || '-'
+                                const cap = Number(capStr)
+                                const current = divisionCounts[div] || 0
+                                const isFull = !isNaN(cap) && current >= cap
 
                                 return (
                                     <button
                                         key={div}
                                         type="button"
                                         onClick={() => updateField('division', div)}
-                                        className={`p-4 rounded-xl border-2 font-bold text-left transition-all flex justify-between ${formData.division === div
-                                            ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                        className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center ${formData.division === div
+                                            ? (isFull ? 'border-orange-500 bg-orange-50 text-orange-900' : 'border-blue-600 bg-blue-50 text-blue-700')
                                             : 'border-transparent bg-gray-50 text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
-                                        <span>{div}</span>
-                                        <span className="text-xs font-normal opacity-70">정원: {cap}팀</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-bold flex items-center gap-2">
+                                                {div}
+                                                {isFull && (
+                                                    <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-extrabold border border-orange-200">
+                                                        대기접수
+                                                    </span>
+                                                )}
+                                            </span>
+                                            {isFull && <span className="text-xs text-orange-600/70 font-medium">정원 초과 (현재 {current}팀)</span>}
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`text-xs font-bold ${isFull ? 'text-orange-600' : 'opacity-70'}`}>
+                                                {!isNaN(cap) ? `${current}/${cap}팀` : `정원: ${capStr}`}
+                                            </span>
+                                        </div>
                                     </button>
                                 )
                             })}
@@ -673,6 +692,12 @@ export default function RegistrationForm({ tournament }: { tournament: any }) {
 
     if (step === 4) return renderStep4()
 
+    // Check waiting status for button
+    const selectedDivCapStr = tournament.div_caps?.[formData.division] || tournament.div_caps?.[`${formData.category} ${formData.division}`.trim()] || '-'
+    const selectedDivCap = Number(selectedDivCapStr)
+    const selectedDivCurrent = divisionCounts[formData.division] || 0
+    const isWaiting = !isNaN(selectedDivCap) && selectedDivCurrent >= selectedDivCap && formData.division
+
     return (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-100/50 p-6 md:p-8">
             <StepIndicator current={step} total={4} />
@@ -696,9 +721,17 @@ export default function RegistrationForm({ tournament }: { tournament: any }) {
                     type="button"
                     onClick={step === 3 ? handleSubmit : handleNext}
                     disabled={isLoading}
-                    className="flex-[2] py-4 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:bg-blue-300 flex items-center justify-center gap-2"
+                    className={`flex-[2] py-4 rounded-xl text-white font-bold transition-colors shadow-lg flex items-center justify-center gap-2 disabled:opacity-50
+                        ${isWaiting && step === 3
+                            ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'
+                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                        }`}
                 >
-                    {isLoading ? <RefreshCcw className="w-5 h-5 animate-spin" /> : (step === 3 ? (isEditMode ? '수정 완료' : '신청서 제출하기') : '다음')}
+                    {isLoading ? <RefreshCcw className="w-5 h-5 animate-spin" /> : (
+                        step === 3
+                            ? (isEditMode ? '수정 완료' : (isWaiting ? '대기 접수하기' : '신청서 제출하기'))
+                            : '다음'
+                    )}
                 </button>
             </div>
         </div>

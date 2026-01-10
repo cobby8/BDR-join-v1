@@ -37,6 +37,37 @@ export async function submitApplication(data: ApplicationPayload) {
         return { success: false, error: '선수는 최소 5명 이상 등록해야 합니다.' }
     }
 
+
+    // 1.5 Check Capacity & Determine Status
+    const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', data.tournamentId)
+        .single()
+
+    let initialStatus = 'APPLIED' // Default
+    if (tournament) {
+        // Fetch current count for this division
+        const { count, error: countError } = await supabase
+            .from('teams')
+            .select('*', { count: 'exact', head: true })
+            .eq('tournament_id', data.tournamentId)
+            .eq('division', data.division)
+            .in('status', ['APPLIED', 'CONFIRMED', 'pending'])
+
+        if (!countError) {
+            const caps = tournament.div_caps || {}
+            const capKey = data.division
+            const capKey2 = `${data.category} ${data.division}`.trim()
+            const capStr = caps[capKey] || caps[capKey2] || '-'
+            const cap = Number(capStr)
+
+            if (!isNaN(cap) && (count || 0) >= cap) {
+                initialStatus = 'WAITING'
+            }
+        }
+    }
+
     // 2. Insert Team
     const { data: team, error: teamError } = await supabase
         .from('teams')
@@ -53,7 +84,7 @@ export async function submitApplication(data: ApplicationPayload) {
             division: data.division,
             uniform_home: data.uniformHome,
             uniform_away: data.uniformAway,
-            status: 'pending',
+            status: initialStatus,
             payment_status: 'unpaid'
         })
         .select('id')

@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { MapPin, Users, Trophy, Phone } from 'lucide-react'
-import { updateTeamStatus } from '@/app/actions/admin'
+import { MapPin, Users, Trophy, Phone, Bell } from 'lucide-react'
+import { updateTeamStatus, notifyWaitingTeam } from '@/app/actions/admin'
 
 // (Keep Team interface same as Client or import shared type, but since it's a prop, we can redefine local subset or use any)
 // To be safe, let's redefine with new fields
@@ -43,6 +43,13 @@ export default function TeamsTable({ teams, onTeamClick, teamCounts, enableInlin
         if (res.error) {
             alert('업데이트 실패: ' + res.error)
         }
+    }
+
+    const handleNotify = async (teamId: string) => {
+        if (!confirm('대기 접수 안내 문자를 발송하시겠습니까?')) return
+        const res = await notifyWaitingTeam(teamId)
+        if (res.success) alert(res.message)
+        else alert(res.error)
     }
 
     return (
@@ -109,8 +116,8 @@ export default function TeamsTable({ teams, onTeamClick, teamCounts, enableInlin
                                                     onChange={(e) => handleStatusChange(team.id, 'payment_status', e.target.value)}
                                                     disabled={updatingParams === `${team.id}-payment_status`}
                                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border-0 ring-1 ring-inset focus:outline-none cursor-pointer ${team.payment_status === 'paid' ? 'bg-green-50 text-green-700 ring-green-600/20' :
-                                                            team.payment_status === 'pending' ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/20' :
-                                                                'bg-red-50 text-red-700 ring-red-600/20'
+                                                        team.payment_status === 'pending' ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/20' :
+                                                            'bg-red-50 text-red-700 ring-red-600/20'
                                                         }`}
                                                 >
                                                     <option value="pending">미입금</option>
@@ -118,20 +125,31 @@ export default function TeamsTable({ teams, onTeamClick, teamCounts, enableInlin
                                                     <option value="refunded">환불완료</option>
                                                 </select>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 flex items-center gap-2">
                                                 <select
                                                     value={team.status}
                                                     onChange={(e) => handleStatusChange(team.id, 'status', e.target.value)}
                                                     disabled={updatingParams === `${team.id}-status`}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border-0 ring-1 ring-inset focus:outline-none cursor-pointer ${team.status === 'confirmed' ? 'bg-blue-50 text-blue-700 ring-blue-700/10' :
-                                                            team.status === 'pending' ? 'bg-gray-50 text-gray-600 ring-gray-500/10' :
-                                                                'bg-red-50 text-red-700 ring-red-600/10'
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border-0 ring-1 ring-inset focus:outline-none cursor-pointer ${team.status === 'CONFIRMED' || team.status === 'confirmed' ? 'bg-blue-50 text-blue-700 ring-blue-700/10' :
+                                                            team.status === 'WAITING' ? 'bg-orange-50 text-orange-700 ring-orange-600/10' :
+                                                                team.status === 'APPLIED' || team.status === 'pending' ? 'bg-green-50 text-green-700 ring-green-600/10' :
+                                                                    'bg-red-50 text-red-700 ring-red-600/10'
                                                         }`}
                                                 >
-                                                    <option value="pending">대기중</option>
-                                                    <option value="confirmed">확정</option>
-                                                    <option value="cancelled">취소</option>
+                                                    <option value="APPLIED">접수완료</option>
+                                                    <option value="WAITING">대기접수</option>
+                                                    <option value="CONFIRMED">참가확정</option>
+                                                    <option value="CANCELED">취소</option>
                                                 </select>
+                                                {team.status === 'WAITING' && (
+                                                    <button
+                                                        onClick={() => handleNotify(team.id)}
+                                                        className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                                        title="대기 안내 문자 발송"
+                                                    >
+                                                        <Bell className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </td>
                                         </>
                                     ) : (

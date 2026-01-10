@@ -23,24 +23,29 @@ interface TeamDetailModalProps {
     teamData?: any // Expanded team data including status
 }
 
-const UniformIcon = ({ color, text }: { color: string, text: string }) => (
-    <div className="flex flex-col items-center gap-1 group">
-        <div className="relative w-12 h-12 flex items-center justify-center drop-shadow-sm transition-transform group-hover:scale-105">
-            <svg viewBox="0 0 100 100" className="w-full h-full" style={{ fill: color }}>
-                {/* Sleeveless Jersey Shape */}
-                <path d="M 25,10 L 75,10 L 85,35 L 85,90 L 15,90 L 15,35 Z" />
-                {/* Collar Cutout */}
-                <path d="M 35,10 Q 50,25 65,10" fill="white" />
-            </svg>
-            {/* Text Overlay (First Letter of Team Name) */}
-            <span className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg font-black ${['white', '#ffffff', '#fff'].includes(color.toLowerCase()) || color.toLowerCase().includes('yellow') ? 'text-gray-900' : 'text-white'
-                }`}>
-                {text?.charAt(0).toUpperCase() || ''}
-            </span>
+const UniformIcon = ({ color, text }: { color: string, text: string }) => {
+    const safeColor = color || '#000000'
+    const isDark = ['white', '#ffffff', '#fff'].includes(safeColor.toLowerCase()) || safeColor.toLowerCase().includes('yellow')
+
+    return (
+        <div className="flex flex-col items-center gap-1 group">
+            <div className="relative w-12 h-12 flex items-center justify-center drop-shadow-sm transition-transform group-hover:scale-105">
+                <svg viewBox="0 0 100 100" className="w-full h-full" style={{ fill: safeColor }}>
+                    {/* Sleeveless Jersey Shape */}
+                    <path d="M 25,10 L 75,10 L 85,35 L 85,90 L 15,90 L 15,35 Z" />
+                    {/* Collar Cutout */}
+                    <path d="M 35,10 Q 50,25 65,10" fill="white" />
+                </svg>
+                {/* Text Overlay (First Letter of Team Name) */}
+                <span className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg font-black ${isDark ? 'text-gray-900' : 'text-white'
+                    }`}>
+                    {text?.charAt(0).toUpperCase() || ''}
+                </span>
+            </div>
+            <span className="text-[10px] text-gray-500 font-medium group-hover:text-blue-600 transition-colors truncate max-w-[60px]">{safeColor}</span>
         </div>
-        <span className="text-[10px] text-gray-500 font-medium group-hover:text-blue-600 transition-colors truncate max-w-[60px]">{color}</span>
-    </div>
-)
+    )
+}
 
 export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, teamData }: TeamDetailModalProps) {
     const [loading, setLoading] = useState(false)
