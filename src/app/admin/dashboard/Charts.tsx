@@ -38,7 +38,7 @@ export function RegionPieChart({ data }: RegionChartProps) {
                     fill="#8884d8"
                     paddingAngle={5}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
                 >
                     {data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -70,7 +70,7 @@ export function TournamentRevenueChart({ data }: TournamentChartProps) {
                 <XAxis type="number" tickFormatter={(value) => `${(value / 10000).toLocaleString()}만`} />
                 <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
                 <Tooltip
-                    formatter={(value: number) => [`${value.toLocaleString()}원`, '매출']}
+                    formatter={(value: number | undefined) => [`${(value || 0).toLocaleString()}원`, '매출']}
                 />
                 <Legend />
                 <Bar dataKey="revenue" fill="#3B82F6" name="예상 매출" radius={[0, 4, 4, 0]} />
