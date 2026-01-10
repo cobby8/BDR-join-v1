@@ -102,16 +102,14 @@ export default function LoginPage() {
                     </button>
                 </form>
             </div>
-        </form>
-            </div >
-        <ConfirmModal
-            isOpen={alertState.isOpen}
-            onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
-            onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
-            title={alertState.title}
-            description={alertState.message}
-            variant="alert"
-        />
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
+            />
         </div >
     )
 }
