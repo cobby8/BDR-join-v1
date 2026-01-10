@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, ChevronRight, Trophy, Copy, MapPin, Clock, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
@@ -94,6 +95,23 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
               href={`/join/${tour.id}${cloneFrom ? `?clone_team_id=${cloneFrom}` : ''}`}
               className="group flex flex-col bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all overflow-hidden"
             >
+              {/* Image Section */}
+              <div className="relative w-full aspect-[2/1] bg-gray-100 overflow-hidden border-b border-gray-100">
+                {tour.poster_url ? (
+                  <Image
+                    src={tour.poster_url}
+                    alt={tour.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50 flex-col gap-2">
+                    <Trophy className="w-8 h-8 opacity-20" />
+                    <span className="text-xs font-medium opacity-60">이미지 준비중</span>
+                  </div>
+                )}
+              </div>
+
               {/* Card Header */}
               <div className="p-6 pb-4">
                 <div className="flex justify-between items-start mb-3">
@@ -103,6 +121,11 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
                         }`}>
                         {tour.status}
                       </span>
+                      {Number(maxTeams) > 0 && (currentTeams / Number(maxTeams)) >= 0.9 && tour.status !== '마감' && currentTeams < Number(maxTeams) && (
+                        <span className="inline-flex px-3 py-1.5 rounded-full text-xs font-bold bg-red-600 text-white animate-pulse shadow-lg shadow-red-500/30">
+                          마감임박
+                        </span>
+                      )}
                       <span className="text-base text-gray-700 font-bold truncate">
                         {categorySummary}
                       </span>

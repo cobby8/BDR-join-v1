@@ -23,7 +23,7 @@ interface Props {
     tournaments: Tournament[]
 }
 
-const TABS = ['접수중', '접수전', '마감', '종료']
+const TABS = ['접수중', '준비중', '마감', '종료']
 
 export default function TournamentListClient({ tournaments: initialTournaments }: Props) {
     const [tournaments, setTournaments] = useState(initialTournaments)
@@ -38,7 +38,7 @@ export default function TournamentListClient({ tournaments: initialTournaments }
         const isAutoClosed = totalCap > 0 && teamCount >= totalCap
 
         if (activeTab === '접수중' && t.status === '접수중' && !isAutoClosed) return true
-        if (activeTab === '접수전' && t.status === '접수전') return true
+        if (activeTab === '준비중' && t.status === '준비중') return true
         if (activeTab === '마감' && (t.status === '마감' || isAutoClosed)) return true
         if (activeTab === '종료' && t.status === '종료') return true
         return false
@@ -93,22 +93,29 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                     const totalCap = tour.div_caps ? Object.values(tour.div_caps).reduce((a, b) => a + Number(b), 0) : 0
                     const teamCount = tour.teams?.[0]?.count || 0
                     const isAutoClosed = totalCap > 0 && teamCount >= totalCap
+                    const fillRatio = totalCap > 0 ? teamCount / totalCap : 0
+                    const isClosingSoon = fillRatio >= 0.9 && !isAutoClosed && tour.status === '접수중'
 
                     return (
                         <div
                             key={tour.id}
-                            className="group relative bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all hover:border-blue-500 overflow-hidden flex flex-col justify-between"
+                            className={`group relative bg-white border rounded-2xl p-6 hover:shadow-lg transition-all overflow-hidden flex flex-col justify-between ${isClosingSoon ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-200 hover:border-blue-500'}`}
                         >
                             <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${(isAutoClosed || tour.status === '마감') ? 'bg-red-50 text-red-600' :
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold shrink-0 ${(isAutoClosed || tour.status === '마감') ? 'bg-red-50 text-red-600' :
                                         tour.status === '접수중' ? 'bg-blue-50 text-blue-600' :
                                             'bg-gray-100 text-gray-500'
                                         }`}>
                                         {isAutoClosed ? '마감 (자동)' : tour.status}
                                     </span>
-                                    <Link href={`/admin/tournaments/${tour.id}`} className="hover:underline">
-                                        <h3 className="text-lg font-bold text-gray-900">{tour.name}</h3>
+                                    {isClosingSoon && (
+                                        <span className="inline-flex px-2 py-1 rounded-md text-xs font-bold bg-red-100 text-red-600 animate-pulse shrink-0">
+                                            마감임박
+                                        </span>
+                                    )}
+                                    <Link href={`/admin/tournaments/${tour.id}`} className="hover:underline truncate min-w-0">
+                                        <h3 className="text-lg font-bold text-gray-900 truncate">{tour.name}</h3>
                                     </Link>
                                 </div>
                                 <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
