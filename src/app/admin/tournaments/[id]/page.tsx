@@ -4,6 +4,8 @@ import TeamsManagementClient from '@/app/admin/teams/TeamsManagementClient'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
+import BracketManager from '@/components/admin/brackets/BracketManager'
+
 export default async function AdminTournamentDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
 
@@ -22,9 +24,7 @@ export default async function AdminTournamentDetailPage({ params }: { params: Pr
     const { data: teams } = await supabase
         .from('teams')
         .select(`
-            id, tournament_id, name_ko, name_en, manager_name, manager_phone, 
-            province, city, category, division, uniform_home, uniform_away, 
-            payment_status, status, created_at,
+            *,
             tournaments (name),
             players (count)
         `)
@@ -32,18 +32,27 @@ export default async function AdminTournamentDetailPage({ params }: { params: Pr
         .order('created_at', { ascending: false })
 
     return (
-        <div className="space-y-6">
-            <Link href="/admin/tournaments" className="inline-flex items-center text-gray-500 hover:text-gray-900">
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                대회 목록으로
-            </Link>
+        <div className="space-y-8">
+            <div>
+                <Link href="/admin/tournaments" className="inline-flex items-center text-gray-500 hover:text-gray-900 mb-4">
+                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    대회 목록으로
+                </Link>
 
-            <TeamsManagementClient
-                initialTeams={(teams as any) || []}
-                hideTournamentFilter={true}
-                title={`${tournament.name} - 참가팀 관리`}
-                enableInlineStatusEditing={true}
-            />
+                <TeamsManagementClient
+                    initialTeams={(teams as any) || []}
+                    hideTournamentFilter={true}
+                    title={`${tournament.name} - 참가팀 관리`}
+                    enableInlineStatusEditing={true}
+                />
+            </div>
+
+            <div className="border-t border-gray-200 pt-8">
+                <BracketManager
+                    tournamentId={id}
+                    teamCount={teams?.length || 0}
+                />
+            </div>
         </div>
     )
 }

@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import TeamsManagementClient from './TeamsManagementClient'
 
+export const dynamic = 'force-dynamic'
+
 // Fetch ALL teams for client-side filtering
 async function getTeams() {
     const { data } = await supabase
