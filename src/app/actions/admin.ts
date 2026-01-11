@@ -176,3 +176,12 @@ export async function deletePreset(id: string) {
     if (error) return { error: error.message }
     return { success: true }
 }
+
+export async function deleteTeam(teamId: string) {
+    const supabase = await createClient()
+    const { error } = await supabase.from('teams').delete().eq('id', teamId)
+    if (error) return { error: error.message }
+    revalidatePath('/admin/teams')
+    revalidatePath('/admin/tournaments')
+    return { success: true }
+}

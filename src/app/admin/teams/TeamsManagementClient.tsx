@@ -49,7 +49,7 @@ export default function TeamsManagementClient({
     const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
     const [selectedRegion, setSelectedRegion] = useState('')
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [activeTab, setActiveTab] = useState<'ALL' | 'WAITING'>('ALL')
+    const [activeTab, setActiveTab] = useState<'ALL' | 'WAITING' | 'CANCELED'>('ALL')
     const [alertState, setAlertState] = useState<{ isOpen: boolean; title: string; message: string }>({
         isOpen: false,
         title: '',
@@ -72,7 +72,20 @@ export default function TeamsManagementClient({
 
             const matchesTour = selectedTour ? team.tournament_id === selectedTour : true
             const matchesRegion = selectedRegion ? team.province === selectedRegion : true
-            const matchesTab = activeTab === 'WAITING' ? team.status === 'WAITING' : true
+
+            // Tab Logic
+            let matchesTab = true
+            const status = team.status?.toLowerCase() || ''
+            const isCanceled = ['cancelled', 'canceled'].includes(status)
+
+            if (activeTab === 'WAITING') {
+                matchesTab = status === 'waiting'
+            } else if (activeTab === 'CANCELED') {
+                matchesTab = isCanceled
+            } else {
+                // ALL (Active) - Exclude canceled
+                matchesTab = !isCanceled
+            }
 
             return matchesSearch && matchesTour && matchesRegion && matchesTab
         })
@@ -94,6 +107,11 @@ export default function TeamsManagementClient({
         return initialTeams.find(t => t.id === selectedTeamId)
     }, [initialTeams, selectedTeamId])
 
+    // Counts Calculation
+    const countActive = initialTeams.filter(t => !['cancelled', 'canceled'].includes(t.status?.toLowerCase())).length
+    const countWaiting = initialTeams.filter(t => t.status === 'WAITING').length
+    const countCanceled = initialTeams.filter(t => ['cancelled', 'canceled'].includes(t.status?.toLowerCase())).length
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -111,25 +129,22 @@ export default function TeamsManagementClient({
 
             {/* Status Tabs */}
             <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl w-fit">
-                {['ALL', 'WAITING'].map((tab) => {
-                    const count = tab === 'WAITING'
-                        ? initialTeams.filter(t => t.status === 'WAITING').length
-                        : initialTeams.length
-                    const label = tab === 'ALL' ? '전체' : '대기팀'
-
-                    return (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab as any)}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-900'
-                                }`}
-                        >
-                            {label} <span className="ml-1 opacity-60 text-xs">{count}</span>
-                        </button>
-                    )
-                })}
+                {[
+                    { id: 'ALL', label: '전체 (참가)', count: countActive },
+                    { id: 'WAITING', label: '대기팀', count: countWaiting },
+                    { id: 'CANCELED', label: '취소팀', count: countCanceled }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === tab.id
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                    >
+                        {tab.label} <span className="ml-1 opacity-60 text-xs">{tab.count}</span>
+                    </button>
+                ))}
             </div>
 
             {/* Filters */}
@@ -177,8 +192,12 @@ export default function TeamsManagementClient({
                 )}
             </div>
 
-            <div className="flex justify-end text-sm text-gray-500 mb-2">
-                총 {filteredTeams.length}개 팀
+            <div className="flex justify-end text-sm text-gray-500 mb-2 gap-2">
+                <span className="font-bold text-blue-600">참가 {filteredTeams.filter(t => !['cancelled', 'canceled'].includes(t.status?.toLowerCase())).length}팀</span>
+                <span className='text-gray-300'>|</span>
+                <span className="text-gray-400">취소 {initialTeams.filter(t => ['cancelled', 'canceled'].includes(t.status?.toLowerCase())).length}팀</span>
+                <span className='text-gray-300'>|</span>
+                <span>총 접수 {countActive}팀 (취소 제외)</span>
             </div>
 
             <TeamsTable
@@ -186,9 +205,7 @@ export default function TeamsManagementClient({
                 onTeamClick={handleTeamClick}
                 enableInlineStatusEditing={enableInlineStatusEditing}
                 teamCounts={initialTeams.reduce((acc, team) => {
-                    const key = team.name_ko + (team.manager_phone || '') // Unique key by name+phone to differentiate different teams with same name? Or just name? User said "Participating Tournaments Count". Same name usually means same team. 
-                    // Let's use name_ko for now as primary grouper, or better: name_ko + manager_name? 
-                    // Actually, simpler: Just count by name_ko.
+                    const key = team.name_ko + (team.manager_phone || '')
                     acc[team.name_ko] = (acc[team.name_ko] || 0) + 1
                     return acc
                 }, {} as Record<string, number>)}

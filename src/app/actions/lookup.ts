@@ -40,7 +40,7 @@ export async function findMyTeams(name: string, phone: string) {
                 )
             `)
             .eq('manager_name', name)
-            .eq('manager_phone', phone)
+            .in('manager_phone', [phone, phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')])
             .order('created_at', { ascending: false })
 
         if (error) throw error

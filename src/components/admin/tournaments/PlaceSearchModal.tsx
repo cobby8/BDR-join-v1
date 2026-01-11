@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Search, MapPin, X, Loader2 } from 'lucide-react'
 
-interface Place {
+export interface Place {
     name: string
     address: string
     lat: number

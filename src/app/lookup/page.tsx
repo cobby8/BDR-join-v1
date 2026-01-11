@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, Search, Loader2, ChevronRight, ExternalLink } from 'lucide-react'
 import ConfirmModal from '@/components/common/ConfirmModal'
 import Link from 'next/link'
@@ -18,9 +18,21 @@ export default function LookupPage() {
         message: ''
     })
 
+    // Auto-fill from localStorage
+    useEffect(() => {
+        const savedName = localStorage.getItem('lookup_name')
+        const savedPhone = localStorage.getItem('lookup_phone')
+        if (savedName) setName(savedName)
+        if (savedPhone) setPhone(savedPhone)
+    }, [])
+
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!name || !phone) return
+
+        // Save to localStorage
+        localStorage.setItem('lookup_name', name)
+        localStorage.setItem('lookup_phone', phone)
 
         setLoading(true)
         setSearched(false)

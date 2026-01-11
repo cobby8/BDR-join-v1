@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Copy, Trophy } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
-import TournamentCard from '@/components/TournamentCard'
+import TournamentList from '@/components/TournamentList'
 
 // Landing Page: Shows active tournaments
 export const dynamic = 'force-dynamic'
@@ -21,33 +21,40 @@ interface Tournament {
 }
 
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ clone_from?: string }> }) {
-  const { data: tournaments } = await supabase
+  const { data: tournamentsData } = await supabase
     .from('tournaments')
-    .select('*, teams(count)')
+    .select('*, teams(status)') // Fetch status to filter in memory
     .in('status', ['접수중', '대기접수', '마감임박'])
-    .order('start_date', { ascending: true }) // Upcoming first
+    .order('start_date', { ascending: true })
+
+  const tournaments = tournamentsData?.map((t: any) => ({
+    ...t,
+    teams: [{
+      count: t.teams.filter((team: any) => {
+        const s = team.status?.toLowerCase() || 'applied'
+        return ['applied', 'confirmed', 'waiting', 'pending'].includes(s)
+      }).length
+    }]
+  }))
 
   const sp = await searchParams
   const cloneFrom = sp.clone_from
 
   return (
-    <div className="max-w-screen-lg mx-auto py-10 px-6">
-      <header className="mb-10 flex justify-between items-end border-b border-gray-100 pb-6">
+    <div className="max-w-screen-lg mx-auto py-6 px-4 md:px-6">
+      <header className="mb-4 flex justify-between items-end border-b border-gray-100 pb-4">
         <div className="flex items-center gap-3">
           <Image
             src="/images/bdr-logo.png"
             alt="BDR Logo"
-            width={135}
-            height={68}
+            width={100}
+            height={50}
             className="object-contain"
           />
-          <h1 className="text-3xl font-extrabold text-slate-900 leading-tight">
-            참가신청서
+          <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">
+            대회목록
           </h1>
         </div>
-        <Link href="/lookup" className="text-sm font-bold text-gray-500 hover:text-blue-600 transition-colors bg-gray-50 px-4 py-2 rounded-full">
-          내 신청서 찾기 &gt;
-        </Link>
       </header>
 
       {cloneFrom && (
@@ -62,18 +69,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {((tournaments as unknown as any[]) || []).map((tour: any) => (
-          <TournamentCard key={tour.id} tour={tour} cloneFrom={cloneFrom} />
-        ))}
-
-        {(!tournaments || tournaments.length === 0) && (
-          <div className="col-span-full text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-            <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium text-lg">현재 접수 중인 대회가 없습니다.</p>
-          </div>
-        )}
-      </div>
+      <TournamentList tournaments={tournaments || []} cloneFrom={cloneFrom} />
     </div>
   )
 }

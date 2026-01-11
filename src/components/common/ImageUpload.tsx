@@ -42,8 +42,8 @@ export default function ImageUpload({ value, onChange, label, bucket = 'images',
 
             // Create unique file name
             const fileExt = file.name.split('.').pop()
-            const fileName = `${Date.now()} -${Math.random().toString(36).substring(2)}.${fileExt} `
-            const filePath = `${fileName} `
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+            const filePath = `${fileName}`
 
             // Upload to Supabase
             const { error: uploadError } = await supabase.storage

@@ -27,7 +27,7 @@ export default function TournamentCard({ tour, cloneFrom }: TournamentCardProps)
 
     const categorySummary = Object.entries(tour.divs || {}).map(([cat, divs]) => {
         const divArray = Array.isArray(divs) ? divs : [];
-        const displayDivs = divArray.join(', ');
+        const displayDivs = divArray.map((d: any) => typeof d === 'string' ? d : d.name).join(', ');
         return `${cat} ${displayDivs}`.trim();
     }).join(' / ') || '전체 종별'
 
@@ -46,7 +46,7 @@ export default function TournamentCard({ tour, cloneFrom }: TournamentCardProps)
 
     return (
         <Link
-            href={`/join/${tour.id}${cloneFrom ? `?clone_team_id=${cloneFrom}` : ''}`}
+            href={cloneFrom ? `/join/${tour.id}?clone_team_id=${cloneFrom}` : `/tournaments/${tour.id}`}
             className="group flex flex-col bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all overflow-hidden"
         >
             {/* Image Section */}

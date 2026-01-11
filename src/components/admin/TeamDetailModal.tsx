@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { X, Phone, User, Trophy, Pencil, Save, RefreshCw } from 'lucide-react'
 import ConfirmModal from '@/components/common/ConfirmModal'
 import { supabase } from '@/lib/supabase/client'
-import { updateTeamStatus, updateTeamInfo, updatePlayer, fetchTeamDetails } from '@/app/actions/admin'
+import { updateTeamStatus, updateTeamInfo, updatePlayer, fetchTeamDetails, deleteTeam } from '@/app/actions/admin'
 
 interface Player {
     id: string
@@ -261,6 +261,25 @@ export default function TeamDetailModal({ teamId, isOpen, onClose, teamName, tea
                                 <Save className="w-4 h-4" /> 저장
                             </button>
                         )}
+                        <button
+                            onClick={() => setAlertState({
+                                isOpen: true,
+                                title: '신청서 삭제',
+                                message: '정말로 이 팀의 신청서를 영구 삭제하시겠습니까? 복구할 수 없습니다.',
+                                onOk: async () => {
+                                    if (!teamId) return
+                                    const res = await deleteTeam(teamId)
+                                    if (res.error) {
+                                        setAlertState({ isOpen: true, title: '오류', message: res.error })
+                                    } else {
+                                        window.location.reload()
+                                    }
+                                }
+                            })}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+                        >
+                            신청서 삭제
+                        </button>
                         <button
                             onClick={onClose}
                             className="p-2 hover:bg-gray-100 rounded-full transition-colors"

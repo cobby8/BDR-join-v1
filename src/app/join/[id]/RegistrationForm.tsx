@@ -189,7 +189,7 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                                 name: p.name,
                                 backNumber: p.back_number,
                                 position: p.position,
-                                birth: p.birth || '',
+                                birth: p.birth_date || p.birth || '',
                                 isElite: p.is_elite,
                                 isValid: true
                             }))
@@ -226,8 +226,19 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
         }
         if (currentStep === 3) {
             if (formData.players.length < 5) return '최소 5명의 선수를 등록해야 합니다.'
+
+            // Check for valid flags
             const invalidPlayers = formData.players.filter(p => !p.isValid)
             if (invalidPlayers.length > 0) return '오류가 있는 선수 정보를 수정해주세요.'
+
+            // 1. Back Number Check
+            const backNumbers = formData.players.map(p => p.backNumber)
+            const uniqueBackNumbers = new Set(backNumbers)
+            if (backNumbers.length !== uniqueBackNumbers.size) return '등번호가 중복된 선수가 있습니다.'
+
+            // 2. Name + Birth Check (Warning logic or Block logic? User said "Validation", implies blocking)
+            const uniquePlayers = new Set(formData.players.map(p => `${p.name}-${p.birth}`))
+            if (formData.players.length !== uniquePlayers.size) return '이름과 생년월일이 동일한 선수가 중복 등록되어 있습니다.'
         }
         return null
     }
@@ -491,27 +502,50 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                     <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2">
                         <label className="text-sm font-bold text-gray-700">디비전 (모집정원 확인)</label>
                         <div className="grid grid-cols-1 gap-3">
-                            {(divs[formData.category] || []).map((div: string) => {
-                                const capKey = `${div}`
-                                const capKey2 = `${formData.category} ${div}`.trim()
-                                const capStr = caps[capKey] || caps[capKey2] || '-'
+                            {(divs[formData.category] || []).map((div: any) => {
+                                const divName = typeof div === 'string' ? div : div.name
+                                const divCap = typeof div === 'object' && div.cap ? div.cap : undefined
+
+                                const capKey = `${divName}`
+                                const capKey2 = `${formData.category} ${divName}`.trim()
+                                const capStr = divCap || caps[capKey] || caps[capKey2] || '-'
                                 const cap = Number(capStr)
-                                const current = divisionCounts[div] || 0
+                                // Calculate Current Count with smart matching
+                                let current = divisionCounts[divName] ||
+                                    divisionCounts[`${formData.category} ${divName}`] ||
+                                    divisionCounts[`${formData.category}${divName}`] || 0
+
+                                // If still 0, try finding keys that *end with* the division name (e.g. "남성 D7" matches "D7")
+                                if (current === 0) {
+                                    Object.keys(divisionCounts).forEach(key => {
+                                        // Check if key ends with divName (e.g. "남성 D7" ends with "D7") and includes category part?
+                                        // Logic: If DB is "남성 D7", and divName is "D7".
+                                        if (key.endsWith(divName) || key.includes(divName)) {
+                                            // Be careful of overlap (e.g. D7 matching D70). 
+                                            // Split by space check is safer
+                                            const parts = key.split(' ')
+                                            if (parts.includes(divName)) {
+                                                current += divisionCounts[key]
+                                            }
+                                        }
+                                    })
+                                }
+
                                 const isFull = !isNaN(cap) && current >= cap
 
                                 return (
                                     <button
-                                        key={div}
+                                        key={divName}
                                         type="button"
-                                        onClick={() => updateField('division', div)}
-                                        className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center ${formData.division === div
+                                        onClick={() => updateField('division', divName)}
+                                        className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center ${formData.division === divName
                                             ? (isFull ? 'border-orange-500 bg-orange-50 text-orange-900' : 'border-blue-600 bg-blue-50 text-blue-700')
                                             : 'border-transparent bg-gray-50 text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
                                         <div className="flex flex-col">
                                             <span className="font-bold flex items-center gap-2">
-                                                {div}
+                                                {divName}
                                                 {isFull && (
                                                     <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-extrabold border border-orange-200">
                                                         대기접수
@@ -604,37 +638,97 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                 <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
                     <RefreshCcw className="w-4 h-4 text-blue-500" /> 일괄 명단 붙여넣기
                 </h3>
-                <p className="text-xs text-gray-500 mb-3">형식: <b>이름/등번호/포지션/생년월일(6자리)/선출여부(선출/비선출)</b></p>
-                <textarea
-                    className="w-full h-32 p-3 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 resize-none font-mono"
-                    placeholder={`홍길동/7/G/010101/비선출\n강백호/10/PF/000202/선출`}
-                    onBlur={(e) => {
-                        if (e.target.value.trim()) {
-                            setPendingRosterText(e.target.value)
-                            setRosterConfirmOpen(true)
-                            e.target.value = '' // Clear UI immediately, restore if cancelled? No, just clear.
-                        }
-                    }}
-                />
+                <p className="text-xs text-gray-500 mb-3">
+                    형식: <b>이름/등번호/포지션/생년월일(6자리)/선출여부</b> (예: 홍길동/7/G/010101/비선출)
+                </p>
+                <div className="relative">
+                    <textarea
+                        className="w-full h-32 p-3 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 resize-none font-mono mb-2"
+                        placeholder={`홍길동/7/G/010101/비선출\n강백호/10/PF/000202/선출`}
+                        value={pendingRosterText}
+                        onChange={(e) => setPendingRosterText(e.target.value)}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (pendingRosterText.trim()) {
+                                setRosterConfirmOpen(true)
+                            } else {
+                                setAlertState({ isOpen: true, title: '알림', message: '명단을 입력해주세요.' })
+                            }
+                        }}
+                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors"
+                    >
+                        명단 적용하기
+                    </button>
+                </div>
             </div>
 
             {/* List */}
             <div className="space-y-3">
                 {formData.players.map((p, idx) => (
-                    <div key={idx} className={`flex items-center gap-2 p-3 rounded-xl border ${p.isValid ? 'bg-white border-gray-100' : 'bg-red-50 border-red-100'}`}>
-                        <div className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full font-bold text-xs text-gray-500">
-                            {p.backNumber || '-'}
+                    <div key={idx} className={`flex flex-col sm:flex-row items-center gap-2 p-3 rounded-xl border ${p.isValid ? 'bg-white border-gray-100' : 'bg-red-50 border-red-100'}`}>
+                        <div className="w-10 shrink-0">
+                            <input
+                                placeholder="NO"
+                                value={p.backNumber}
+                                onChange={(e) => {
+                                    const newPlayers = [...formData.players]
+                                    newPlayers[idx].backNumber = e.target.value
+                                    updateField('players', newPlayers)
+                                }}
+                                className="w-full text-center bg-gray-100 rounded-lg py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                         </div>
-                        <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                            <span className="font-bold text-gray-900 truncate">{p.name || '(이름없음)'}</span>
-                            <span className="text-gray-500">{p.position} / {p.birth}</span>
-                            <span className={`${p.isElite ? 'text-red-500 font-bold' : 'text-gray-400'}`}>{p.isElite ? '선출' : '비선출'}</span>
-                            {!p.isValid && <span className="text-red-500 text-xs sm:col-span-4">{p.error}</span>}
+                        <div className="flex-1 grid grid-cols-4 gap-2 w-full">
+                            <input
+                                placeholder="이름"
+                                value={p.name}
+                                onChange={(e) => {
+                                    const newPlayers = [...formData.players]
+                                    newPlayers[idx].name = e.target.value
+                                    updateField('players', newPlayers)
+                                }}
+                                className="col-span-1 border-b border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent py-1 text-sm font-bold text-gray-900"
+                            />
+                            <input
+                                placeholder="포지션"
+                                value={p.position}
+                                onChange={(e) => {
+                                    const newPlayers = [...formData.players]
+                                    newPlayers[idx].position = e.target.value
+                                    updateField('players', newPlayers)
+                                }}
+                                className="col-span-1 border-b border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent py-1 text-sm text-gray-600"
+                            />
+                            <input
+                                placeholder="생년월일(6자리)"
+                                maxLength={6}
+                                value={p.birth}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '')
+                                    const newPlayers = [...formData.players]
+                                    newPlayers[idx].birth = val
+                                    updateField('players', newPlayers)
+                                }}
+                                className="col-span-1 border-b border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent py-1 text-sm text-gray-600 tracking-wider"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const newPlayers = [...formData.players]
+                                    newPlayers[idx].isElite = !newPlayers[idx].isElite
+                                    updateField('players', newPlayers)
+                                }}
+                                className={`col-span-1 text-sm font-bold ${p.isElite ? 'text-red-500' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                {p.isElite ? '선출' : '비선출'}
+                            </button>
                         </div>
                         <button
                             type="button"
                             onClick={() => updateField('players', formData.players.filter((_, i) => i !== idx))}
-                            className="p-2 text-gray-400 hover:text-red-500"
+                            className="p-2 text-gray-400 hover:text-red-500 self-end sm:self-center"
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -642,13 +736,13 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                 ))}
                 {formData.players.length === 0 && (
                     <div className="text-center py-8 text-gray-300 text-sm">
-                        위 입력창에 선수 명단을 붙여넣으세요.
+                        위 입력창에 선수 명단을 붙여넣거나 직접 추가하세요.
                     </div>
                 )}
             </div>
             <button
                 type="button"
-                onClick={() => updateField('players', [...formData.players, { id: Date.now().toString(), name: '', backNumber: '', position: '', birth: '', isElite: false, isValid: false, error: '직접 입력' }])}
+                onClick={() => updateField('players', [...formData.players, { id: Date.now().toString(), name: '', backNumber: '', position: '', birth: '', isElite: false, isValid: true, error: '' }])}
                 className="w-full py-3 bg-white border border-dashed border-gray-300 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-50 hover:border-gray-400 transition-colors"
             >
                 + 선수 직접 추가
@@ -674,17 +768,32 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                 )}
             </p>
 
-            {/* Bank info only for new apps or if unpaid? Keep it for reference. */}
+            {/* Bank info */}
             <div className="bg-blue-50 p-6 rounded-2xl mb-8 max-w-sm mx-auto">
                 <div className="text-blue-900 font-bold mb-1">{tournament.bank_name || '은행정보 없음'}</div>
-                <div className="text-2xl font-extrabold text-blue-600 mb-2 tracking-wide font-mono">
-                    {tournament.account_number || '-'}
+                <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="text-2xl font-extrabold text-blue-600 tracking-wide font-mono">
+                        {tournament.account_number || '-'}
+                    </div>
+                    {tournament.account_number && (
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(tournament.account_number)
+                                setAlertState({ isOpen: true, title: '복사 완료', message: '계좌번호가 복사되었습니다.' })
+                            }}
+                            className="bg-white p-2 rounded-full shadow-sm border border-blue-100 hover:bg-blue-50 text-blue-500 transition-colors"
+                        >
+                            <Copy className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
                 <div className="text-blue-800/70 text-sm">예금주: {tournament.account_holder || '예금주'}</div>
                 {tournament.entry_fee && (
                     <div className="mt-4 pt-4 border-t border-blue-100 flex justify-between items-center">
                         <span className="text-blue-800 text-sm">입금 금액</span>
-                        <span className="text-xl font-bold text-blue-700">{tournament.entry_fee}</span>
+                        <span className="text-xl font-bold text-blue-700">
+                            {Number(tournament.entry_fee).toLocaleString()}원
+                        </span>
                     </div>
                 )}
             </div>
@@ -709,10 +818,24 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
     if (step === 4) return renderStep4()
 
     // Check waiting status for button
-    const selectedDivCapStr = tournament.div_caps?.[formData.division] || tournament.div_caps?.[`${formData.category} ${formData.division}`.trim()] || '-'
-    const selectedDivCap = Number(selectedDivCapStr)
-    const selectedDivCurrent = divisionCounts[formData.division] || 0
-    const isWaiting = !isNaN(selectedDivCap) && selectedDivCurrent >= selectedDivCap && formData.division
+    // Ensure we handle object division correctly for waiting check logic too
+    const currentDiv = typeof formData.division === 'string' ? formData.division : (formData.division as any)?.name
+
+    // We need to find the cap for the current division
+    let selectedDivCap = 0
+    let selectedDivCapStr = '-'
+
+    if (currentDiv) {
+        // Try to find the division object from tournament.divs (if we can) or just check caps
+        // Re-construct logic similar to renderStep1
+        const capKey = `${currentDiv}`
+        const capKey2 = `${formData.category} ${currentDiv}`.trim()
+        selectedDivCapStr = tournament.div_caps?.[capKey] || tournament.div_caps?.[capKey2] || '-'
+        selectedDivCap = Number(selectedDivCapStr)
+    }
+
+    const selectedDivCurrent = divisionCounts[currentDiv] || 0
+    const isWaiting = !isNaN(selectedDivCap) && selectedDivCurrent >= selectedDivCap && currentDiv
 
     return (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-100/50 p-6 md:p-8">
@@ -750,6 +873,38 @@ export default function RegistrationForm({ tournament, divisionCounts = {} }: { 
                     )}
                 </button>
             </div>
+
+            {/* Modals */}
+            <ConfirmModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+                title={alertState.title}
+                description={alertState.message}
+                variant="alert"
+                confirmText="확인"
+            />
+            <ConfirmModal
+                isOpen={submitConfirmOpen}
+                onClose={() => setSubmitConfirmOpen(false)}
+                onConfirm={executeSubmit}
+                title={isEditMode ? "신청서 수정" : "신청서 제출"}
+                description={isEditMode ? "입력하신 정보로 신청서를 수정하시겠습니까?" : "입력하신 정보로 참가신청서를 제출하시겠습니까?"}
+                confirmText={isEditMode ? "수정하기" : "제출하기"}
+            />
+            <ConfirmModal
+                isOpen={rosterConfirmOpen}
+                onClose={() => setRosterConfirmOpen(false)}
+                onConfirm={() => {
+                    const parsed = parseRosterText(pendingRosterText);
+                    setFormData(prev => ({ ...prev, players: [...prev.players, ...parsed] }));
+                    setRosterConfirmOpen(false);
+                    setPendingRosterText('');
+                }}
+                title="선수 명단 추가"
+                description={`총 ${parseRosterText(pendingRosterText).length}명의 선수를 명단에 추가하시겠습니까?`}
+                confirmText="추가하기"
+            />
         </div>
     )
 }
