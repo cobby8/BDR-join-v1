@@ -112,34 +112,48 @@ export default function TournamentListClient({ tournaments: initialTournaments }
                                     <h3 className="text-lg font-bold text-gray-900 leading-snug break-keep">{tour.name}</h3>
                                 </Link>
 
-                                <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
-                                    <span className="flex items-center gap-1 shrink-0">
-                                        <Calendar className="w-4 h-4" />
-                                        {tour.start_date ? new Date(tour.start_date).toLocaleDateString() : '미정'}
-                                        {' ~ '}
-                                        {tour.end_date ? new Date(tour.end_date).toLocaleDateString() : '미정'}
-                                    </span>
-                                    <span className="text-gray-300">|</span>
-                                    <span className="shrink-0">
-                                        참가팀: {teamCount} / {totalCap > 0 ? totalCap : '-'}
-                                    </span>
-                                </div>
-                            </div>
+                                    {/* Participation Progress Bar */}
+                                    <div className="flex flex-col gap-1 w-full mt-2">
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-xs text-gray-500">모집현황</span>
+                                            <div className="flex items-center gap-1 text-sm">
+                                                <span className="font-bold text-gray-900">{teamCount}</span>
+                                                <span className="text-gray-400">/</span>
+                                                <span className="text-gray-500">{totalCap > 0 ? totalCap : '-'}</span>
+                                            </div>
+                                        </div>
+                                        {totalCap > 0 && (
+                                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden w-full">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${teamCount >= totalCap ? 'bg-red-500' : 'bg-blue-500'}`}
+                                                    style={{ width: `${Math.min((teamCount / totalCap) * 100, 100)}%` }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
 
-                            <div className="flex justify-between items-center pt-2 mt-auto border-t border-gray-100">
-                                <div className="flex items-center gap-2">
-                                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold shrink-0 ${(isAutoClosed || tour.status === '마감') ? 'bg-red-50 text-red-600' :
-                                        tour.status === '접수중' ? 'bg-blue-50 text-blue-600' :
-                                            'bg-gray-100 text-gray-500'
-                                        }`}>
-                                        {isAutoClosed ? '마감 (자동)' : tour.status}
-                                    </span>
-                                    {isClosingSoon && (
-                                        <span className="inline-flex px-2 py-1 rounded-md text-xs font-bold bg-red-100 text-red-600 animate-pulse shrink-0">
-                                            마감임박
+                                    <div className="flex items-center gap-3 text-sm text-gray-500 mt-3 mb-1">
+                                        <span className="flex items-center gap-1 shrink-0">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            {tour.start_date ? new Date(tour.start_date).toLocaleDateString() : '미정'}
                                         </span>
-                                    )}
+                                    </div>
                                 </div>
+
+                                <div className="flex justify-between items-center pt-3 mt-auto border-t border-gray-100">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold shrink-0 ${(isAutoClosed || tour.status === '마감') ? 'bg-red-50 text-red-600' :
+                                            tour.status === '접수중' ? 'bg-blue-50 text-blue-600' :
+                                                'bg-gray-100 text-gray-500'
+                                            }`}>
+                                            {isAutoClosed ? '마감 (자동)' : tour.status}
+                                        </span>
+                                        {isClosingSoon && (
+                                            <span className="inline-flex px-2 py-1 rounded-md text-xs font-bold bg-red-100 text-red-600 animate-pulse shrink-0">
+                                                마감임박
+                                            </span>
+                                        )}
+                                    </div>
 
                                 <div className="flex gap-1">
                                     <Link
