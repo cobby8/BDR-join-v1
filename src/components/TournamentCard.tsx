@@ -32,7 +32,7 @@ export default function TournamentCard({ tour, cloneFrom }: TournamentCardProps)
     } else {
         // Fallback to div_caps if divs is missing
         const caps = typeof tour.div_caps === 'string' ? JSON.parse(tour.div_caps) : (tour.div_caps || {})
-        maxTeams = Object.values(caps).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0)
+        maxTeams = Object.values(caps).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0) as number
     }
 
     let placeName = '장소 미정'
