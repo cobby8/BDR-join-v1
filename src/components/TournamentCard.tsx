@@ -12,7 +12,28 @@ interface TournamentCardProps {
 
 export default function TournamentCard({ tour, cloneFrom }: TournamentCardProps) {
     const currentTeams = tour.teams?.[0]?.count || 0
-    const maxTeams = Object.values(tour.div_caps || {}).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0)
+
+    // Calculate maxTeams from divs if available
+    let maxTeams = 0
+    let divsObj = tour.divs
+    if (typeof divsObj === 'string') {
+        try { divsObj = JSON.parse(divsObj) } catch (e) { }
+    }
+
+    if (divsObj) {
+        Object.values(divsObj).forEach((divs: any) => {
+            if (Array.isArray(divs)) {
+                divs.forEach((d: any) => {
+                    const cap = typeof d === 'object' ? (d.cap || d.max_teams || 0) : 0
+                    maxTeams += Number(cap)
+                })
+            }
+        })
+    } else {
+        // Fallback to div_caps if divs is missing
+        const caps = typeof tour.div_caps === 'string' ? JSON.parse(tour.div_caps) : (tour.div_caps || {})
+        maxTeams = Object.values(caps).reduce((a: any, b: any) => (Number(a) || 0) + (Number(b) || 0), 0)
+    }
 
     let placeName = '장소 미정'
     try {

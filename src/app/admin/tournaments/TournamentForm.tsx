@@ -245,11 +245,17 @@ export default function TournamentForm({
                 }
             })
 
-            // Calculate Total Cap
+            // Calculate Total Cap and Div Caps
             let totalCap = 0
+            const calculatedDivCaps: Record<string, number> = {}
+
             categories.forEach(cat => {
                 cat.divisions.forEach(div => {
-                    totalCap += (Number(div.cap) || 0)
+                    const cap = (Number(div.cap) || 0)
+                    totalCap += cap
+                    if (div.name) {
+                        calculatedDivCaps[div.name] = (calculatedDivCaps[div.name] || 0) + cap
+                    }
                 })
             })
 
@@ -260,6 +266,7 @@ export default function TournamentForm({
                 ...restFormData,
                 places: JSON.stringify(places),
                 divs: divsMap,
+                div_caps: calculatedDivCaps,
                 updated_at: new Date().toISOString()
             }
 
