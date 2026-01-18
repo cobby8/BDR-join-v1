@@ -177,6 +177,26 @@ export default function TournamentCard({ tour, cloneFrom }: TournamentCardProps)
                         </div>
                     </div>
                 </div>
+
+                {/* Participating Teams List */}
+                {tour.participatingTeams && tour.participatingTeams.length > 0 && (
+                    <div className="mt-3 px-1 text-xs text-gray-500 break-keep leading-relaxed">
+                        <span className="font-bold text-gray-600 mr-2">참가팀:</span>
+                        {tour.participatingTeams
+                            .sort((a: any, b: any) => {
+                                const nameA = a.name;
+                                const nameB = b.name;
+                                const isKoreanA = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(nameA);
+                                const isKoreanB = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(nameB);
+
+                                if (isKoreanA && !isKoreanB) return -1;
+                                if (!isKoreanA && isKoreanB) return 1;
+                                return nameA.localeCompare(nameB);
+                            })
+                            .map((t: any) => t.name)
+                            .join(', ')}
+                    </div>
+                )}
             </div>
         </Link>
     )

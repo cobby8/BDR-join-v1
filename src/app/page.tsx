@@ -23,7 +23,7 @@ interface Tournament {
 export default async function LandingPage({ searchParams }: { searchParams: Promise<{ clone_from?: string }> }) {
   const { data: tournamentsData } = await supabase
     .from('tournaments')
-    .select('*, teams(status)') // Fetch status to filter in memory
+    .select('*, teams(status, name_ko, name_en)') // Fetch status and names
     .in('status', ['접수중', '대기접수', '마감임박'])
     .order('start_date', { ascending: true })
 
@@ -34,7 +34,15 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
         const s = team.status?.toLowerCase() || 'applied'
         return ['applied', 'confirmed', 'waiting', 'pending'].includes(s)
       }).length
-    }]
+    }],
+    participatingTeams: t.teams
+      .filter((team: any) => {
+        const s = team.status?.toLowerCase() || 'applied'
+        return ['applied', 'confirmed', 'waiting', 'pending'].includes(s)
+      })
+      .map((team: any) => ({
+        name: team.name_ko || team.name_en || 'Unknown Team'
+      }))
   }))
 
   const sp = await searchParams
